@@ -2,10 +2,18 @@ from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from uuid import UUID
 
+from postgrest.exceptions import APIError
+
 from app.core.supabase import get_service_client
 from app.schemas.food_definition import CreateFoodDefinitionRequest, FoodDefinition
 
 _TABLE = "global_food_definitions"
+
+
+class FoodNameTakenError(Exception):
+    """A food with this exact name already exists in the shared catalog."""
+
+    pass
 
 
 def search(query: str, limit: int = 10) -> list[FoodDefinition]:
@@ -77,18 +85,24 @@ def resolve_food_ids(household_id: UUID, names: Sequence[str]) -> dict[str, UUID
 
 def create(user_id: UUID, body: CreateFoodDefinitionRequest) -> FoodDefinition:
     client = get_service_client()
-    result = (
-        client.table(_TABLE)
-        .insert(
-            {
-                **body.model_dump(mode="json"),
-                "created_by_user_id": str(user_id),
-                "is_verified": False,
-                "usage_count": 0,
-            }
+    try:
+        result = (
+            client.table(_TABLE)
+            .insert(
+                {
+                    **body.model_dump(mode="json"),
+                    "created_by_user_id": str(user_id),
+                    "is_verified": False,
+                    "usage_count": 0,
+                }
+            )
+            .execute()
         )
-        .execute()
-    )
+    except APIError as exc:
+        # 23505 = unique violation on the name: say so, instead of a server error.
+        if exc.code == "23505":
+            raise FoodNameTakenError from exc
+        raise
     return FoodDefinition(**result.data[0])
 
 

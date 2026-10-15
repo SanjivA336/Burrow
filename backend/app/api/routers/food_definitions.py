@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.auth import get_current_user_id
 from app.core.responses import Envelope, ok
@@ -23,4 +23,10 @@ def search_food_definitions(
 def create_food_definition(
     body: CreateFoodDefinitionRequest, user_id: UUID = Depends(get_current_user_id)
 ) -> Envelope[FoodDefinition]:
-    return ok(food_definitions_service.create(user_id, body))
+    try:
+        return ok(food_definitions_service.create(user_id, body))
+    except food_definitions_service.FoodNameTakenError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "A food with that name already exists. Pick it from the search results instead.",
+        ) from exc

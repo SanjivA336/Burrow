@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.food_definition import AccountingType, FoodCategory
 from app.schemas.units import Unit
+from app.services.expiry import EditMeaning, Place
 
 
 class InventoryItemStatus(StrEnum):
@@ -46,7 +47,7 @@ class RemovalReason(StrEnum):
     DB trigger sets when a logged use brings quantity to zero: this one is
     for "I found it already empty," with no specific use to attribute to
     anyone. Both EMPTY and EXPIRED land on their matching status and go
-    through the same discard() freeze-and-done path -- no
+    through the same discard() finalize-and-done path -- no
     consumption_events row is written either way, so the item's remaining
     share (if any) splits equally across its allowed members rather than
     being billed to whoever clicked the button.
@@ -82,17 +83,24 @@ class InventoryItem(BaseModel):
     purchased_at: datetime
     expiry_date: date | None
     best_by_date: date | None
-    freeze_by_date: date | None
-    is_frozen: bool
-    freeze_date: date | None
+    # Storage-aware expiry (see services/expiry.py). The item's own copy of
+    # the three place values (days, or -1 never expires / -2 not recommended /
+    # -3 unknown), how much of its life is left as of `moved_at` (None = never
+    # tracked, so no clock), and whether it has ever changed place.
+    pantry_days: int = -3
+    fridge_days: int = -3
+    freezer_days: int = -3
+    remaining_fraction: float | None = None
+    moved_at: datetime | None = None
+    has_moved: bool = False
     status: InventoryItemStatus
     accounting_type: AccountingType
     split_member_count: int | None
     # Null while the item's cost/quantity/roster are still live and directly
-    # editable; set once (see services/accounting.py's freeze_item_debt)
+    # editable; set once (see services/accounting.py's finalize_item_debt)
     # the moment the item leaves ACTIVE, at which point its final share gets
     # posted as real ledger_entries and further changes need a correction.
-    debt_frozen_at: datetime | None
+    debt_finalized_at: datetime | None
     created_at: datetime
     updated_at: datetime
     # A label on this specific physical item (e.g. "HEB milk" vs "Costco
@@ -113,6 +121,8 @@ class InventoryItem(BaseModel):
     # in which case the enrichment join comes back empty.
     category: FoodCategory | None
     storage_location_name: str
+    # FRIDGE / FREEZER / PANTRY / OTHER -- which shelf life applies to this item.
+    storage_location_type: str | None = None
     # Resolved via the same enrichment join as food_name/storage_location_name
     # -- who's currently allowed to consume this item (see
     # inventory_item_allowed_members). Editable directly while the item's
@@ -120,7 +130,7 @@ class InventoryItem(BaseModel):
     allowed_member_ids: list[UUID]
     # Who's on the hook as creditor for this item's cost -- set once at
     # creation (purchase_events.member_id) and never editable afterward,
-    # regardless of freeze state. Shown read-only in the UI.
+    # regardless of finalize state. Shown read-only in the UI.
     buyer_member_id: UUID
 
 
@@ -164,12 +174,16 @@ class UpdateInventoryItemRequest(BaseModel):
     settable to a real value, same reasoning as UpdateRecipeRequest).
 
     cost, total_quantity, and allowed_member_ids are always accepted here
-    but rejected by the service layer once the item's debt has frozen
-    (debt_frozen_at is not null) -- see POST .../corrections instead, which
+    but rejected by the service layer once the item's debt has been finalized
+    (debt_finalized_at is not null) -- see POST .../corrections instead, which
     is the only path for those three once real ledger_entries exist.
     """
 
     expiry_date: date | None = None
+    # Only read when the item has moved since it was added and expiry_date is
+    # being changed: FIX_RULE ("the default was wrong") or THIS_ITEM ("this item
+    # will expire then"). Omitted means THIS_ITEM, which always honors the date.
+    expiry_edit_meaning: EditMeaning | None = None
     best_by_date: date | None = None
     storage_location_id: UUID | None = None
     name_override: str | None = Field(default=None, max_length=200)
@@ -182,8 +196,47 @@ class UpdateInventoryItemRequest(BaseModel):
     allowed_member_ids: list[UUID] | None = Field(default=None, min_length=1)
 
 
+class PlaceExpiryAction(StrEnum):
+    # Set the shelf life for a place from a picked date (days from the day the
+    # item was added; for the place the item is in, the date is honored).
+    SET_DATE = "SET_DATE"
+    # Forget this item's shelf life for the place (it becomes unknown).
+    REMOVE = "REMOVE"
+    # Give a removed place its value back: the food's number if it has one,
+    # otherwise it stays unknown until a number is typed.
+    ADD_BACK = "ADD_BACK"
+
+
+class PlaceExpiryRequest(BaseModel):
+    place: Place
+    action: PlaceExpiryAction
+    expiry_date: date | None = None
+    # Only read for SET_DATE on the place the item is in, after it has moved.
+    expiry_edit_meaning: EditMeaning | None = None
+
+    @model_validator(mode="after")
+    def _date_needed_to_set(self) -> "PlaceExpiryRequest":
+        if self.action == PlaceExpiryAction.SET_DATE and self.expiry_date is None:
+            raise ValueError("expiry_date is required to set a date")
+        return self
+
+
+class ExpiryPreviewRequest(BaseModel):
+    expiry_date: date
+
+
+class ExpiryPreview(BaseModel):
+    """What a date edit would do, for the prompt shown when the item has moved
+    since it was added. `needs_choice` is false whenever both meanings give the
+    same answer, so the prompt only appears when it matters."""
+
+    needs_choice: bool
+    this_item: date | None
+    fix_rule: date | None
+
+
 class CorrectInventoryItemRequest(BaseModel):
-    """Only valid once an item's debt has already frozen -- the direct-edit
+    """Only valid once an item's debt has already been finalized -- the direct-edit
     path (UpdateInventoryItemRequest) is what handles cost/quantity changes
     before that. Posts a purchase_corrections row and, for a cost change,
     a new ADJUSTMENT ledger entry per affected member for the delta."""

@@ -77,8 +77,11 @@ export interface FoodDefinition {
   preferred_unit: Unit
   category: FoodCategory
   accounting_type_default: AccountingType
-  shelf_life_days: number | null
-  freezer_shelf_life_days: number | null
+  // Shelf life per place: a number of days, or a code (-1 never expires,
+  // -2 not recommended, -3 unknown). Read these through lib/shelfLife.ts.
+  pantry_shelf_life_days: number
+  fridge_shelf_life_days: number
+  freezer_shelf_life_days: number
   created_by_user_id: string | null
   is_verified: boolean
   usage_count: number
@@ -106,6 +109,17 @@ export type InventoryItemStatus = 'ACTIVE' | 'EMPTY' | 'DISCARDED' | 'EXPIRED' |
 // distinction was worth.
 export type RemovalReason = 'EMPTY' | 'EXPIRED' | 'VOIDED'
 
+// What editing an item's expiry date would do under each meaning, so the app
+// only asks "the default was wrong" or "this item will expire then" when the
+// answers differ. Dates are YYYY-MM-DD.
+export interface ExpiryPreview {
+  needs_choice: boolean
+  this_item: string | null
+  fix_rule: string | null
+}
+
+export type ExpiryEditMeaning = 'FIX_RULE' | 'THIS_ITEM'
+
 export interface InventoryItem {
   id: string
   household_id: string
@@ -119,9 +133,16 @@ export interface InventoryItem {
   purchased_at: string
   expiry_date: string | null
   best_by_date: string | null
-  freeze_by_date: string | null
-  is_frozen: boolean
-  freeze_date: string | null
+  // Storage-aware expiry: this item's own copy of the three place values
+  // (days or the same codes as a food), how much of its life is left as of
+  // moved_at (null = never tracked), and whether it has ever changed place.
+  pantry_days: number
+  fridge_days: number
+  freezer_days: number
+  remaining_fraction: number | null
+  moved_at: string | null
+  has_moved: boolean
+  storage_location_type: StorageLocationType | null
   status: InventoryItemStatus
   accounting_type: AccountingType
   split_member_count: number | null
@@ -129,7 +150,7 @@ export interface InventoryItem {
   // directly editable; set once the item leaves ACTIVE, at which point its
   // final share is posted as real ledger entries and further changes need
   // a correction (see PurchaseCorrection) instead of a plain edit.
-  debt_frozen_at: string | null
+  debt_finalized_at: string | null
   created_at: string
   updated_at: string
   name_override: string | null

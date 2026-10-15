@@ -74,8 +74,6 @@ def _food(**overrides) -> FoodDefinition:
         preferred_unit="ml",
         category="DAIRY_ALTERNATIVES",
         accounting_type_default="SHARED",
-        shelf_life_days=None,
-        freezer_shelf_life_days=None,
         created_by_user_id=None,
         is_verified=True,
         usage_count=0,

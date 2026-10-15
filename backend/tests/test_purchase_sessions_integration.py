@@ -25,6 +25,7 @@ from app.main import app
 from app.services.ai.base import AiProviderUnavailableError
 from app.services.receipt_ocr import OcrResult
 from tests.conftest import make_developer
+from tests.helpers.foods import find_or_create_food
 from tests.helpers.supabase_test_users import create_test_user, delete_test_user, sign_in
 
 pytestmark = pytest.mark.integration
@@ -108,10 +109,7 @@ async def _create_and_upload_session(api_client, household) -> dict:
 
 
 async def _search_food(api_client, headers, query: str) -> dict:
-    response = await api_client.get(
-        "/api/food-definitions/search", params={"query": query}, headers=headers
-    )
-    return response.json()["data"][0]
+    return await find_or_create_food(api_client, headers, query)
 
 
 async def test_process_parses_lines_and_filters_noise(api_client, household, monkeypatch) -> None:

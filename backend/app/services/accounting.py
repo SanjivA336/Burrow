@@ -127,29 +127,29 @@ def bill_outsider_usage(
     )
 
 
-def freeze_item_debt(item_id: UUID) -> None:
+def finalize_item_debt(item_id: UUID) -> None:
     """Called once an item leaves ACTIVE (see inventory_items.py's consume()
     and discard()) -- computes each non-buyer member's final share from
     whatever consumption_events actually happened, posts it as a real,
-    permanent PURCHASE ledger entry, and marks the item frozen. Idempotent:
-    no-ops if debt_frozen_at is already set (or the item's PERSONAL), so
+    permanent PURCHASE ledger entry, and marks the item finalized. Idempotent:
+    no-ops if debt_finalized_at is already set (or the item's PERSONAL), so
     it's safe to call from multiple status-changing code paths without
     double-billing.
 
-    The read (roster + consumption) and the freeze claim both happen inside
-    claim_item_debt_freeze (migration 0039), under one row lock on the item
+    The read (roster + consumption) and the finalize claim both happen inside
+    claim_item_debt_finalize (migration 0039), under one row lock on the item
     -- not as separate unlocked SELECTs followed by a compare-and-swap.
     set_inventory_item_roster (migration 0030) takes that same lock, so a
-    roster edit that lands first is what gets priced here, and a freeze
-    that lands first makes that RPC's own "already frozen" check reject the
+    roster edit that lands first is what gets priced here, and a finalize
+    that lands first makes that RPC's own "already finalized" check reject the
     edit cleanly instead of the edit silently never reaching the ledger.
     consume_inventory_item's UPDATE already takes this same lock implicitly,
     so the usage side of this was already race-free.
     """
     client = get_service_client()
-    result = client.rpc("claim_item_debt_freeze", {"p_item_id": str(item_id)}).execute()
+    result = client.rpc("claim_item_debt_finalize", {"p_item_id": str(item_id)}).execute()
     claim = result.data
-    if not claim or claim["already_frozen"]:
+    if not claim or claim["already_finalized"]:
         return
 
     buyer_id = UUID(claim["buyer_id"])

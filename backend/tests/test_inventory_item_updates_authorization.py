@@ -24,13 +24,10 @@ def _item(household_id: uuid.UUID, **overrides) -> InventoryItem:
         purchased_at=now,
         expiry_date=date(2026, 12, 31),
         best_by_date=None,
-        freeze_by_date=None,
-        is_frozen=False,
-        freeze_date=None,
         status="ACTIVE",
         accounting_type="SHARED",
         split_member_count=2,
-        debt_frozen_at=None,
+        debt_finalized_at=None,
         created_at=now,
         updated_at=now,
         food_name="Whole Milk",
@@ -58,9 +55,9 @@ def fake_inventory(monkeypatch):
         if item is None:
             raise inventory_service.ItemNotFoundError
         fields = body.model_fields_set
-        frozen_gated = {"cost", "total_quantity", "allowed_member_ids"}
-        if frozen_gated & fields and item.debt_frozen_at is not None:
-            raise inventory_service.ItemFrozenError
+        finalized_gated = {"cost", "total_quantity", "allowed_member_ids"}
+        if finalized_gated & fields and item.debt_finalized_at is not None:
+            raise inventory_service.ItemFinalizedError
         updates: dict = {}
         if "expiry_date" in fields:
             updates["expiry_date"] = body.expiry_date
@@ -76,8 +73,8 @@ def fake_inventory(monkeypatch):
         item = store.get(item_id)
         if item is None:
             raise inventory_service.ItemNotFoundError
-        if item.debt_frozen_at is None:
-            raise inventory_service.ItemNotFrozenError
+        if item.debt_finalized_at is None:
+            raise inventory_service.ItemNotFinalizedError
         updates: dict = {}
         if body.new_cost is not None:
             updates["cost"] = body.new_cost
@@ -121,7 +118,7 @@ async def test_member_can_edit_cost_while_live(client, fake_members, fake_invent
     household_id = uuid.uuid4()
     user_id = uuid.uuid4()
     fake_members.seed(make_member(household_id, user_id))
-    item = _item(household_id, debt_frozen_at=None)
+    item = _item(household_id, debt_finalized_at=None)
     fake_inventory[item.id] = item
 
     response = await client.patch(
@@ -134,12 +131,12 @@ async def test_member_can_edit_cost_while_live(client, fake_members, fake_invent
     assert response.json()["data"]["cost"] == "9.99"
 
 
-async def test_member_cannot_edit_cost_once_frozen(client, fake_members, fake_inventory) -> None:
+async def test_member_cannot_edit_cost_once_finalized(client, fake_members, fake_inventory) -> None:
     household_id = uuid.uuid4()
     user_id = uuid.uuid4()
     fake_members.seed(make_member(household_id, user_id))
     item = _item(
-        household_id, debt_frozen_at=datetime.now(UTC), status="EMPTY", quantity=Decimal(0)
+        household_id, debt_finalized_at=datetime.now(UTC), status="EMPTY", quantity=Decimal(0)
     )
     fake_inventory[item.id] = item
 
@@ -152,12 +149,14 @@ async def test_member_cannot_edit_cost_once_frozen(client, fake_members, fake_in
     assert response.status_code == 409
 
 
-async def test_dates_stay_editable_even_once_frozen(client, fake_members, fake_inventory) -> None:
+async def test_dates_stay_editable_even_once_finalized(
+    client, fake_members, fake_inventory
+) -> None:
     household_id = uuid.uuid4()
     user_id = uuid.uuid4()
     fake_members.seed(make_member(household_id, user_id))
     item = _item(
-        household_id, debt_frozen_at=datetime.now(UTC), status="EMPTY", quantity=Decimal(0)
+        household_id, debt_finalized_at=datetime.now(UTC), status="EMPTY", quantity=Decimal(0)
     )
     fake_inventory[item.id] = item
 
@@ -176,7 +175,7 @@ async def test_correction_rejected_while_item_is_still_live(
     household_id = uuid.uuid4()
     user_id = uuid.uuid4()
     fake_members.seed(make_member(household_id, user_id))
-    item = _item(household_id, debt_frozen_at=None)
+    item = _item(household_id, debt_finalized_at=None)
     fake_inventory[item.id] = item
 
     response = await client.post(
@@ -188,12 +187,12 @@ async def test_correction_rejected_while_item_is_still_live(
     assert response.status_code == 400
 
 
-async def test_correction_accepted_once_frozen(client, fake_members, fake_inventory) -> None:
+async def test_correction_accepted_once_finalized(client, fake_members, fake_inventory) -> None:
     household_id = uuid.uuid4()
     user_id = uuid.uuid4()
     fake_members.seed(make_member(household_id, user_id))
     item = _item(
-        household_id, debt_frozen_at=datetime.now(UTC), status="EMPTY", quantity=Decimal(0)
+        household_id, debt_finalized_at=datetime.now(UTC), status="EMPTY", quantity=Decimal(0)
     )
     fake_inventory[item.id] = item
 
@@ -212,7 +211,7 @@ async def test_correction_requires_at_least_one_field(client, fake_members, fake
     user_id = uuid.uuid4()
     fake_members.seed(make_member(household_id, user_id))
     item = _item(
-        household_id, debt_frozen_at=datetime.now(UTC), status="EMPTY", quantity=Decimal(0)
+        household_id, debt_finalized_at=datetime.now(UTC), status="EMPTY", quantity=Decimal(0)
     )
     fake_inventory[item.id] = item
 

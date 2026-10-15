@@ -318,11 +318,20 @@ leaving localhost.
   household, inventory, shopping list, balances), not localhost. Passed: a
   12-step browser run plus hand-checked signup/reset emails (inbox, not spam,
   SPF/DKIM/DMARC pass).
-- [ ] **Many more seeded foods.** The built-in food list is small (about 115
-  entries) and was generated as typical averages (not copied from any
-  company's data), so people will often search for something that isn't there.
-  Grow it a lot, keeping the same approach: generated typical values with the
-  shelf-life numbers described as estimates. Added 2026-10-06.
+- [x] **Many more seeded foods.** The built-in food list grew from about 90
+  entries to 325 (generated typical values, not copied from any company's data,
+  with the shelf-life numbers described as estimates). Variants follow one
+  naming pattern, and brand names are left out on purpose. Done in v0.10.0.
+- [x] **Storage-aware expiry (pantry, fridge, freezer).** Each food now has a
+  shelf life for the pantry, the fridge and the freezer, and moving an item
+  recalculates its date from how much of its life is left (a freezer with no
+  number of its own pauses the clock). A place can also say "never expires",
+  "not recommended" or "unknown". When an item has moved and its date is edited,
+  the app asks whether the date describes the food or this item. Done in
+  v0.10.0.
+- [x] **Food creation screen: storage choices.** Making your own food now offers
+  a number of days for each place, or "Unknown" (the default) and "Never
+  expires". Done in v0.10.0.
 - [ ] **First-time hints / tutorial for new users.** Nothing guides a brand-new
   person through the app yet. Not designed yet: the approach (coach marks, a
   checklist, an empty-state walkthrough, a sample burrow) still has to be

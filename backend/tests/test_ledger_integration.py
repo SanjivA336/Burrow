@@ -1,4 +1,4 @@
-"""Integration tests for the live-until-frozen debt model (migration 0024),
+"""Integration tests for the live-until-finalized debt model (migration 0024),
 against the real linked Supabase project.
 
 Every dollar amount here is hand-computed, not just "assert it changed":
@@ -18,6 +18,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.core.config import get_settings
 from app.main import app
+from tests.helpers.foods import find_or_create_food
 from tests.helpers.supabase_test_users import create_test_user, delete_test_user, sign_in
 
 pytestmark = pytest.mark.integration
@@ -113,14 +114,8 @@ async def provision(api_client):
             await delete_test_user(user["id"])
 
 
-async def _search_milk(api_client: AsyncClient, headers: dict) -> str:
-    response = await api_client.get(
-        "/api/food-definitions/search", params={"query": "Whole Milk"}, headers=headers
-    )
-    assert response.status_code == 200, response.text
-    results = response.json()["data"]
-    assert results, "seed data should contain 'Whole Milk'"
-    return results[0]["id"]
+async def _search_milk(api_client, headers) -> str:
+    return (await find_or_create_food(api_client, headers, "Whole Milk"))["id"]
 
 
 async def _create_item(
@@ -238,7 +233,7 @@ def _net(balances: list[dict], debtor: str, creditor: str) -> Decimal:
 
 
 # ---------------------------------------------------------------------------
-# Live-until-frozen lifecycle
+# Live-until-finalized lifecycle
 # ---------------------------------------------------------------------------
 
 
@@ -250,19 +245,19 @@ async def test_item_creation_posts_nothing(api_client, provision) -> None:
     item = await _create_item(
         api_client, household, quantity="10", cost="10.00", allowed_member_indices=[0, 1]
     )
-    assert item["debt_frozen_at"] is None
+    assert item["debt_finalized_at"] is None
 
     entries = await _entries(api_client, household)
     assert entries == []
 
 
-async def test_live_preview_matches_frozen_result_exactly(api_client, provision) -> None:
+async def test_live_preview_matches_finalized_result_exactly(api_client, provision) -> None:
     """4 members (buyer A + B, C, D), qty=12/cost=12 -> $1/unit, allotment=3
     each. A (the buyer) uses 4, B uses 8 -- both exceed the *initial* 3-each
     allotment simultaneously, so both lock in the same cascade round at
     their real usage; the remaining 0 units leave C and D undocumented at a
     $0 share. The live preview (before the item empties) and the real,
-    frozen ledger entries (after) must agree exactly -- nothing should
+    finalized ledger entries (after) must agree exactly -- nothing should
     change from the user's point of view when the item's story ends."""
     household = await provision(4)
     a, b, c, d = household["member_ids"]
@@ -283,12 +278,12 @@ async def test_live_preview_matches_frozen_result_exactly(api_client, provision)
     drain = await _consume(api_client, household, item["id"], 1, "8")
     assert drain.status_code == 200
     assert drain.json()["data"]["status"] == "EMPTY"
-    assert drain.json()["data"]["debt_frozen_at"] is not None
+    assert drain.json()["data"]["debt_finalized_at"] is not None
 
-    frozen_balances = await _balances(api_client, household)
-    assert _net(frozen_balances, b, a) == Decimal("8.0")
-    assert _net(frozen_balances, c, a) == Decimal("0")
-    assert _net(frozen_balances, d, a) == Decimal("0")
+    finalized_balances = await _balances(api_client, household)
+    assert _net(finalized_balances, b, a) == Decimal("8.0")
+    assert _net(finalized_balances, c, a) == Decimal("0")
+    assert _net(finalized_balances, d, a) == Decimal("0")
 
     entries = await _entries(api_client, household)
     assert len(entries) == 1
@@ -302,7 +297,7 @@ async def test_undocumented_usage_splits_the_remaining_allotment_evenly(
     api_client, provision
 ) -> None:
     """2 members, nobody documents usage at all -- discarding (not
-    consuming) still has to freeze a real, equal-split debt."""
+    consuming) still has to finalize a real, equal-split debt."""
     household = await provision(2)
     a, b = household["member_ids"]
     item = await _create_item(
@@ -331,7 +326,7 @@ async def test_personal_item_never_freezes_or_posts(api_client, provision) -> No
     consume = await _consume(api_client, household, item["id"], 0, "5")
     assert consume.status_code == 200, consume.text
     assert consume.json()["data"]["status"] == "EMPTY"
-    assert consume.json()["data"]["debt_frozen_at"] is None
+    assert consume.json()["data"]["debt_finalized_at"] is None
 
     entries = await _entries(api_client, household)
     assert entries == []
@@ -364,11 +359,11 @@ async def test_single_allowed_member_produces_no_entries(api_client, provision) 
 
 
 # ---------------------------------------------------------------------------
-# Live editing vs. post-freeze corrections
+# Live editing vs. post-finalize corrections
 # ---------------------------------------------------------------------------
 
 
-async def test_direct_edit_allowed_live_blocked_once_frozen(api_client, provision) -> None:
+async def test_direct_edit_allowed_live_blocked_once_finalized(api_client, provision) -> None:
     household = await provision(2)
     item = await _create_item(
         api_client, household, quantity="10", cost="10.00", allowed_member_indices=[0, 1]
@@ -381,11 +376,11 @@ async def test_direct_edit_allowed_live_blocked_once_frozen(api_client, provisio
     discard = await _discard(api_client, household, item["id"])
     assert discard.status_code == 200, discard.text
 
-    frozen_edit = await _patch(api_client, household, item["id"], {"cost": "20.00"})
-    assert frozen_edit.status_code == 409, frozen_edit.text
+    finalized_edit = await _patch(api_client, household, item["id"], {"cost": "20.00"})
+    assert finalized_edit.status_code == 409, finalized_edit.text
 
 
-async def test_correction_rejected_before_freeze(api_client, provision) -> None:
+async def test_correction_rejected_before_finalize(api_client, provision) -> None:
     household = await provision(2)
     item = await _create_item(
         api_client, household, quantity="10", cost="10.00", allowed_member_indices=[0, 1]
@@ -449,8 +444,8 @@ async def test_correction_adjusts_only_the_member_whose_usage_drove_the_original
 
 async def test_concurrent_discard_freezes_exactly_once(api_client, provision) -> None:
     """Two requests racing to discard the same still-ACTIVE item must not
-    both win: freeze_item_debt() claims the freeze with a compare-and-swap
-    on debt_frozen_at (only-if-still-null) before posting anything, mirroring
+    both win: finalize_item_debt() claims the finalize with a compare-and-swap
+    on debt_finalized_at (only-if-still-null) before posting anything, mirroring
     the atomic `.eq("status", "ACTIVE")` guard discard() itself already
     uses. Without that guard, both requests could independently observe the
     item as no-longer-ACTIVE and each post their own copy of the same
@@ -525,9 +520,11 @@ async def test_ledger_single_writer_direct_insert_rejected(api_client, provision
     assert response.status_code in (401, 403)
 
 
-async def test_roster_editable_while_live_frozen_once_debt_finalized(api_client, provision) -> None:
+async def test_roster_editable_while_live_locked_once_finalized(
+    api_client, provision
+) -> None:
     """SHARED roster edits are free while the item's debt is still live
-    (nothing posted yet, so nothing to protect), but blocked once frozen,
+    (nothing posted yet, so nothing to protect), but blocked once finalized,
     same as cost/quantity. PERSONAL items stay free forever regardless.
 
     Checked through the API's item-update endpoint, the only way a client can
@@ -543,7 +540,7 @@ async def test_roster_editable_while_live_frozen_once_debt_finalized(api_client,
     live_item = await _create_item(
         api_client, household, quantity="10", cost="10.00", allowed_member_indices=[0, 1]
     )
-    frozen_item = await _create_item(
+    finalized_item = await _create_item(
         api_client, household, quantity="10", cost="10.00", allowed_member_indices=[0, 1]
     )
     personal_item = await _create_item(
@@ -554,7 +551,7 @@ async def test_roster_editable_while_live_frozen_once_debt_finalized(api_client,
         allowed_member_indices=[0],
         accounting_type="PERSONAL",
     )
-    assert (await _discard(api_client, household, frozen_item["id"])).status_code == 200
+    assert (await _discard(api_client, household, finalized_item["id"])).status_code == 200
 
     async def _try_add(item_id: str, member_index: int) -> httpx.Response:
         async with httpx.AsyncClient(base_url=settings.supabase_url) as rest:
@@ -575,8 +572,11 @@ async def test_roster_editable_while_live_frozen_once_debt_finalized(api_client,
     live_edit = await _patch(
         api_client, household, live_item["id"], {"allowed_member_ids": [everyone[0], everyone[2]]}
     )
-    frozen_edit = await _patch(
-        api_client, household, frozen_item["id"], {"allowed_member_ids": [everyone[0], everyone[2]]}
+    finalized_edit = await _patch(
+        api_client,
+        household,
+        finalized_item["id"],
+        {"allowed_member_ids": [everyone[0], everyone[2]]},
     )
     personal_edit = await _patch(
         api_client,
@@ -586,11 +586,11 @@ async def test_roster_editable_while_live_frozen_once_debt_finalized(api_client,
     )
 
     assert live_edit.status_code == 200, live_edit.text
-    assert frozen_edit.status_code == 409, frozen_edit.text
+    assert finalized_edit.status_code == 409, finalized_edit.text
     assert personal_edit.status_code == 200, personal_edit.text
 
     # Straight to the database as a logged-in member: refused no matter what.
-    for item in (live_item, frozen_item, personal_item):
+    for item in (live_item, finalized_item, personal_item):
         attempt = await _try_add(item["id"], 1)
         assert attempt.status_code in (401, 403), attempt.text
 

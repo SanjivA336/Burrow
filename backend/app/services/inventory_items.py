@@ -1,15 +1,20 @@
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
 
 from postgrest.exceptions import APIError
 
+from app.core.concurrency import run_parallel
 from app.core.supabase import get_service_client
 from app.schemas.consumption import ConsumptionEvent, RecordConsumptionCorrectionRequest
 from app.schemas.food_definition import AccountingType
 from app.schemas.inventory_item import (
     CorrectInventoryItemRequest,
     CreateInventoryItemRequest,
+    ExpiryPreview,
     InventoryItem,
+    PlaceExpiryAction,
+    PlaceExpiryRequest,
     PurchaseCorrection,
     RemovalReason,
     UpdateInventoryItemRequest,
@@ -17,6 +22,7 @@ from app.schemas.inventory_item import (
 from app.schemas.member import Member
 from app.schemas.units import Dimension, MeasurementPreference, Unit, UnitSystem
 from app.services import accounting as accounting_service
+from app.services import expiry
 from app.services import food_definitions as food_definitions_service
 from app.services import households as households_service
 from app.services import units as units_service
@@ -29,7 +35,7 @@ _TABLE = "inventory_items"
 # to show "Whole Milk" / "Garage Fridge" / who can use this.
 _ENRICHED_SELECT = (
     "*, household_food_variants(global_food_definitions(name, category)), "
-    "storage_locations(name), inventory_item_allowed_members(member_id), "
+    "storage_locations(name, type), inventory_item_allowed_members(member_id), "
     "purchase_events(member_id)"
 )
 
@@ -46,17 +52,23 @@ class ItemNotFoundError(Exception):
     pass
 
 
-class ItemFrozenError(Exception):
+class StorageLocationNotFoundError(Exception):
+    """The storage location doesn't exist (or belongs to another household)."""
+
+    pass
+
+
+class ItemFinalizedError(Exception):
     """Raised when a caller tries to directly edit cost, total_quantity, or
-    allowed_member_ids on an item whose debt has already frozen -- real
+    allowed_member_ids on an item whose debt has already been finalized -- real
     ledger_entries exist by then, so those three need a correction
     (correct_item) instead of a plain edit."""
 
     pass
 
 
-class ItemNotFrozenError(Exception):
-    """The inverse of ItemFrozenError -- corrections only make sense once
+class ItemNotFinalizedError(Exception):
+    """The inverse of ItemFinalizedError -- corrections only make sense once
     there's something real to correct. While an item is still live, use
     update_item directly instead."""
 
@@ -111,6 +123,7 @@ def _flatten(row: dict) -> InventoryItem:
     row["food_type_name"] = global_definition.get("name") or "Unknown food"
     row["category"] = global_definition.get("category")
     row["storage_location_name"] = storage.get("name") or "Unknown location"
+    row["storage_location_type"] = storage.get("type")
     row["allowed_member_ids"] = [a["member_id"] for a in allowed]
     row["buyer_member_id"] = purchase_event.get("member_id")
 
@@ -143,21 +156,93 @@ def _raw_base(household_id: UUID, item_id: UUID) -> tuple[Decimal, Decimal, Unit
     )
 
 
-def _resolve_accounting_type(body: CreateInventoryItemRequest) -> AccountingType:
-    if body.accounting_type is not None:
-        return body.accounting_type
+def _load_creation_inputs(
+    body: CreateInventoryItemRequest,
+) -> tuple[AccountingType, expiry.PlaceLives, str]:
+    """What a new item needs from the database before its first write: the
+    food's default split and its three place shelf lives, and the type of the
+    storage location it is going into. Two independent reads, run together."""
     client = get_service_client()
-    try:
-        result = (
+
+    def read_food():
+        return (
             client.table("global_food_definitions")
-            .select("accounting_type_default")
+            .select(
+                "accounting_type_default, pantry_shelf_life_days, "
+                "fridge_shelf_life_days, freezer_shelf_life_days"
+            )
             .eq("id", str(body.global_food_definition_id))
             .single()
             .execute()
         )
+
+    def read_location():
+        return (
+            client.table("storage_locations")
+            .select("type")
+            .eq("id", str(body.storage_location_id))
+            .maybe_single()
+            .execute()
+        )
+
+    try:
+        food_result, location_result = run_parallel(read_food, read_location)
     except APIError as exc:
         raise FoodDefinitionNotFoundError from exc
-    return AccountingType(result.data["accounting_type_default"])
+    if not location_result or not location_result.data:
+        raise StorageLocationNotFoundError
+    food = food_result.data
+    accounting_type = body.accounting_type or AccountingType(food["accounting_type_default"])
+    lives = expiry.PlaceLives(
+        pantry=food["pantry_shelf_life_days"],
+        fridge=food["fridge_shelf_life_days"],
+        freezer=food["freezer_shelf_life_days"],
+    )
+    return accounting_type, lives, location_result.data["type"]
+
+
+def _clock_from_item(item: InventoryItem) -> expiry.Clock:
+    """The item's stored state as the expiry module's Clock."""
+    started = item.created_at
+    return expiry.Clock(
+        remaining_fraction=item.remaining_fraction,
+        moved_at=item.moved_at or started,
+        created_at=started,
+        place=expiry.place_for_storage_type(item.storage_location_type or "PANTRY"),
+        lives=expiry.PlaceLives(
+            pantry=item.pantry_days, fridge=item.fridge_days, freezer=item.freezer_days
+        ),
+        has_moved=item.has_moved,
+    )
+
+
+def _clock_columns(clock: expiry.Clock, expiry_date: date | None) -> dict:
+    """The columns a clock change writes, in one dict so they always change
+    together (the stored expiry_date is only ever a copy of the fraction)."""
+    return {
+        "remaining_fraction": expiry.round_fraction(clock.remaining_fraction),
+        "moved_at": clock.moved_at.isoformat(),
+        "has_moved": clock.has_moved,
+        "pantry_days": clock.lives.pantry,
+        "fridge_days": clock.lives.fridge,
+        "freezer_days": clock.lives.freezer,
+        "expiry_date": expiry_date.isoformat() if expiry_date else None,
+    }
+
+
+def _storage_type(household_id: UUID, storage_location_id: UUID) -> str:
+    client = get_service_client()
+    result = (
+        client.table("storage_locations")
+        .select("type")
+        .eq("id", str(storage_location_id))
+        .eq("household_id", str(household_id))
+        .maybe_single()
+        .execute()
+    )
+    if not result or not result.data:
+        raise StorageLocationNotFoundError
+    return result.data["type"]
 
 
 def create_manual(
@@ -166,7 +251,20 @@ def create_manual(
     body: CreateInventoryItemRequest,
     receipt_image_path: str | None = None,
 ) -> InventoryItem:
-    accounting_type = _resolve_accounting_type(body)
+    accounting_type, lives, storage_type = _load_creation_inputs(body)
+    now = datetime.now(UTC)
+    # The expiry module owns every date rule: the starting progress, this
+    # item's own copy of the three place shelf lives, and the date to store
+    # (a typed date wins; otherwise the food's number for the place).
+    # Leaving expiry_date out means "use the food's default"; sending it as an
+    # explicit null means "this item has no date" (the user cleared it).
+    clock, expiry_date = expiry.initial_clock(
+        lives,
+        expiry.place_for_storage_type(storage_type),
+        now,
+        body.expiry_date,
+        no_date="expiry_date" in body.model_fields_set and body.expiry_date is None,
+    )
     client = get_service_client()
     rpc_result = client.rpc(
         "create_manual_inventory_item",
@@ -181,12 +279,17 @@ def create_manual(
             "p_quantity": str(units_service.to_base(body.quantity, body.preferred_unit)),
             "p_preferred_unit": body.preferred_unit.value,
             "p_cost": str(body.cost),
-            "p_expiry_date": body.expiry_date.isoformat() if body.expiry_date else None,
+            "p_expiry_date": expiry_date.isoformat() if expiry_date else None,
             "p_best_by_date": body.best_by_date.isoformat() if body.best_by_date else None,
             "p_allowed_member_ids": [str(m) for m in body.allowed_member_ids],
             "p_accounting_type": accounting_type.value,
             "p_receipt_image_path": receipt_image_path,
             "p_name_override": body.name_override,
+            "p_remaining_fraction": expiry.round_fraction(clock.remaining_fraction),
+            "p_pantry_days": clock.lives.pantry,
+            "p_fridge_days": clock.lives.fridge,
+            "p_freezer_days": clock.lives.freezer,
+            "p_started_at": now.isoformat(),
         },
     ).execute()
     new_item_id = (
@@ -306,7 +409,7 @@ def consume(
     # not this code) -- that's the item's story ending, so its final debt
     # gets computed and posted for real right here, once.
     if item.status != "ACTIVE":
-        accounting_service.freeze_item_debt(item_id)
+        accounting_service.finalize_item_debt(item_id)
         item = get_by_id(household_id, item_id)
         assert item is not None
     return item
@@ -328,8 +431,8 @@ def discard(household_id: UUID, item_id: UUID, reason: RemovalReason) -> Invento
     if not result.data:
         raise ValueError("That item doesn't exist or has already been removed")
     # Discarding always leaves ACTIVE -- same "the item's story is over"
-    # freeze point as consuming it to zero.
-    accounting_service.freeze_item_debt(item_id)
+    # finalize point as consuming it to zero.
+    accounting_service.finalize_item_debt(item_id)
     return get_by_id(household_id, item_id)  # type: ignore[return-value]
 
 
@@ -368,7 +471,7 @@ def _void(household_id: UUID, item_id: UUID) -> InventoryItem:
         )
         if not result.data:
             raise ValueError("That item doesn't exist or has already been removed")
-        accounting_service.freeze_item_debt(item_id)
+        accounting_service.finalize_item_debt(item_id)
         return get_by_id(household_id, item_id)  # type: ignore[return-value]
 
     # No usage at all -- safe to remove outright.
@@ -395,7 +498,7 @@ def update_item(
     legitimately clearable-or-settable). Dates, storage, nickname, and a
     same-dimension unit-system swap are always editable; cost,
     total_quantity, and allowed_member_ids are rejected once the item's
-    debt has frozen (see correct_item instead).
+    debt has been finalized (see correct_item instead).
     """
     current = get_by_id(household_id, item_id)
     if current is None:
@@ -404,12 +507,35 @@ def update_item(
     fields = body.model_fields_set
     updates: dict = {}
 
-    if "expiry_date" in fields:
-        updates["expiry_date"] = body.expiry_date.isoformat() if body.expiry_date else None
     if "best_by_date" in fields:
         updates["best_by_date"] = body.best_by_date.isoformat() if body.best_by_date else None
+    now = datetime.now(UTC)
+    clock = _clock_from_item(current)
+    clock_changed = False
+    # The date to store; it only changes when the clock does. An item that was
+    # never tracked has no clock, so its date is whatever was typed for it.
+    new_expiry_date = current.expiry_date
+
     if "storage_location_id" in fields and body.storage_location_id is not None:
         updates["storage_location_id"] = str(body.storage_location_id)
+        if body.storage_location_id != current.storage_location_id:
+            new_type = _storage_type(household_id, body.storage_location_id)
+            moved = expiry.move(clock, expiry.place_for_storage_type(new_type), now)
+            if moved is not clock:
+                clock, clock_changed = moved, True
+                if clock.remaining_fraction is not None:
+                    new_expiry_date = expiry.shown_expiry(clock, previous=current.expiry_date)
+    if "expiry_date" in fields:
+        clock, new_expiry_date = expiry.edit_current_date(
+            clock,
+            body.expiry_date,
+            now,
+            body.expiry_edit_meaning or expiry.EditMeaning.THIS_ITEM,
+            previous=current.expiry_date,
+        )
+        clock_changed = True
+    if clock_changed:
+        updates.update(_clock_columns(clock, new_expiry_date))
     if "name_override" in fields:
         updates["name_override"] = body.name_override
 
@@ -426,9 +552,9 @@ def update_item(
         updates["display_unit"] = new_unit.value
         _remember_measurement_choice(current.household_food_variant_id, new_unit)
 
-    frozen_gated_fields = {"cost", "total_quantity", "allowed_member_ids"}
-    if frozen_gated_fields & fields and current.debt_frozen_at is not None:
-        raise ItemFrozenError
+    finalized_gated_fields = {"cost", "total_quantity", "allowed_member_ids"}
+    if finalized_gated_fields & fields and current.debt_finalized_at is not None:
+        raise ItemFinalizedError
 
     if "cost" in fields and body.cost is not None:
         updates["cost"] = str(body.cost)
@@ -457,7 +583,7 @@ def update_item(
     if "allowed_member_ids" in fields and body.allowed_member_ids is not None:
         # One transaction, under a row lock on the item: the delete + insert
         # + split_member_count bump can't interleave with a concurrent
-        # roster edit, and freeze_item_debt can't catch the roster
+        # roster edit, and finalize_item_debt can't catch the roster
         # half-swapped. See migration 0030.
         client.rpc(
             "set_inventory_item_roster",
@@ -471,10 +597,105 @@ def update_item(
     return get_by_id(household_id, item_id)  # type: ignore[return-value]
 
 
+def preview_expiry_edit(household_id: UUID, item_id: UUID, new_date: date) -> ExpiryPreview:
+    """What editing the current place's date to `new_date` would give under each
+    meaning, so the app can ask "the default was wrong" or "this item will
+    expire then" only when the two answers actually differ."""
+    current = get_by_id(household_id, item_id)
+    if current is None:
+        raise ItemNotFoundError
+    clock = _clock_from_item(current)
+    now = datetime.now(UTC)
+    this_item = expiry.edit_current_date(
+        clock, new_date, now, expiry.EditMeaning.THIS_ITEM, previous=current.expiry_date
+    )[1]
+    try:
+        fix_rule = expiry.edit_current_date(
+            clock, new_date, now, expiry.EditMeaning.FIX_RULE, previous=current.expiry_date
+        )[1]
+    except ValueError:
+        fix_rule = None  # the date is before the item was added: only THIS_ITEM applies
+    needs_choice = (
+        clock.has_moved
+        and clock.remaining_fraction is not None
+        and fix_rule is not None
+        and fix_rule != this_item
+    )
+    return ExpiryPreview(needs_choice=needs_choice, this_item=this_item, fix_rule=fix_rule)
+
+
+def _food_place_values(item: InventoryItem) -> expiry.PlaceLives:
+    """The catalog food's current numbers for the three places (used when a
+    removed place is added back to an item)."""
+    client = get_service_client()
+    result = (
+        client.table("household_food_variants")
+        .select(
+            "global_food_definitions(pantry_shelf_life_days, fridge_shelf_life_days, "
+            "freezer_shelf_life_days)"
+        )
+        .eq("id", str(item.household_food_variant_id))
+        .maybe_single()
+        .execute()
+    )
+    food = ((result.data if result else None) or {}).get("global_food_definitions") or {}
+    return expiry.PlaceLives(
+        pantry=food.get("pantry_shelf_life_days", expiry.UNKNOWN),
+        fridge=food.get("fridge_shelf_life_days", expiry.UNKNOWN),
+        freezer=food.get("freezer_shelf_life_days", expiry.UNKNOWN),
+    )
+
+
+def change_place_expiry(
+    household_id: UUID, item_id: UUID, body: PlaceExpiryRequest
+) -> InventoryItem:
+    """Set, remove or restore this item's shelf life for one place. For the
+    place the item is in, SET_DATE honors the picked date exactly (see
+    expiry.edit_current_date); for the other places it records how long the
+    item would last there, counted from the day it was added."""
+    current = get_by_id(household_id, item_id)
+    if current is None:
+        raise ItemNotFoundError
+    clock = _clock_from_item(current)
+    now = datetime.now(UTC)
+    previous = current.expiry_date
+    is_current_place = body.place == clock.place
+
+    if body.action == PlaceExpiryAction.SET_DATE:
+        assert body.expiry_date is not None  # guaranteed by the request model
+        if is_current_place:
+            new_clock, new_date = expiry.edit_current_date(
+                clock,
+                body.expiry_date,
+                now,
+                body.expiry_edit_meaning or expiry.EditMeaning.THIS_ITEM,
+                previous=previous,
+            )
+        else:
+            new_clock, new_date = expiry.edit_place_days(clock, body.place, body.expiry_date, now)
+    elif body.action == PlaceExpiryAction.REMOVE:
+        new_clock, new_date = expiry.remove_place(clock, body.place, now, previous=previous)
+    else:
+        food_value = _food_place_values(current).get(body.place)
+        new_clock, new_date = expiry.add_place_back(
+            clock, body.place, food_value, now, previous=previous
+        )
+
+    # An item that was never tracked has no clock to derive a date from, so a
+    # change that doesn't start one leaves its date as it was.
+    if new_clock.remaining_fraction is None:
+        new_date = previous
+
+    get_service_client().table(_TABLE).update(_clock_columns(new_clock, new_date)).eq(
+        "household_id", str(household_id)
+    ).eq("id", str(item_id)).execute()
+    return get_by_id(household_id, item_id)  # type: ignore[return-value]
+
+
 def correct_item(
     household_id: UUID, member_id: UUID, item_id: UUID, body: CorrectInventoryItemRequest
 ) -> InventoryItem:
-    """Only valid once an item's debt has already frozen -- update_item is
+    """Only valid once an item's debt has already been finalized -- update_item is
     what handles cost/quantity changes before that. Records a
     purchase_corrections row and, for a cost change on a non-PERSONAL item,
     posts a new ADJUSTMENT ledger entry per affected member for the delta
@@ -485,8 +706,8 @@ def correct_item(
     current = get_by_id(household_id, item_id)
     if current is None:
         raise ItemNotFoundError
-    if current.debt_frozen_at is None:
-        raise ItemNotFrozenError
+    if current.debt_finalized_at is None:
+        raise ItemNotFinalizedError
     raw = _raw_base(household_id, item_id)
     assert raw is not None
     current_qty_base, current_total_base, display_unit, baseline_updated_at = raw
@@ -520,7 +741,7 @@ def correct_item(
     # Claim the correction with a compare-and-swap on the item row before
     # writing anything -- two concurrent corrections that both read the same
     # baseline would otherwise each post their delta, adjusting the ledger
-    # by the sum while the item moved once. Mirrors freeze_item_debt's CAS.
+    # by the sum while the item moved once. Mirrors finalize_item_debt's CAS.
     # (item_updates is always non-empty: the request validator requires
     # new_cost or new_total_quantity.)
     claim = (
@@ -679,8 +900,8 @@ def _post_usage_correction_adjustments(
     corrected_member_id: UUID,
     delta_base: Decimal,
 ) -> None:
-    """A frozen item's PURCHASE ledger_entries were split against the usage
-    on record at freeze time. A usage correction changes that split, so
+    """A finalized item's PURCHASE ledger_entries were split against the usage
+    on record at finalize time. A usage correction changes that split, so
     post the per-member difference as ADJUSTMENT entries -- exactly the
     shape correct_item uses for a cost change, except the driver here is
     the usage delta, not a cost delta. Assumes the CORRECTION event has
@@ -720,7 +941,7 @@ def _post_usage_correction_adjustments(
     cost = Decimal(str(item.cost))
 
     # Usage can now include members outside allowed_member_ids (migration
-    # 0036) -- pull their slice out at unit_cost the same way freeze_item_debt
+    # 0036) -- pull their slice out at unit_cost the same way finalize_item_debt
     # does, both before and after the correction, so correcting an outsider's
     # logged amount actually moves their billed amount instead of silently
     # doing nothing (compute_item_shares only ever knows about member_ids).
@@ -784,8 +1005,8 @@ def correct_consumption(
     row, never edits the original. inventory_items.quantity is a
     maintained cache, so it's recomputed here (current - delta); the
     billing side is either live (nothing to do, _live_shares nets the
-    delta on the next read) or already frozen (post ADJUSTMENT entries for
-    the re-split). If the correction empties a still-live item, it freezes
+    delta on the next read) or already finalized (post ADJUSTMENT entries for
+    the re-split). If the correction empties a still-live item, it finalizes
     the same way consume() does.
     """
     current = get_by_id(household_id, item_id)
@@ -842,7 +1063,7 @@ def correct_consumption(
 
     # Compare-and-swap on the item row before writing anything -- two
     # concurrent corrections would otherwise both recompute quantity and
-    # (for a frozen item) both post adjustments. Mirrors correct_item.
+    # (for a finalized item) both post adjustments. Mirrors correct_item.
     claim = (
         client.table(_TABLE)
         .update({"quantity": str(new_quantity_base)})
@@ -866,23 +1087,23 @@ def correct_consumption(
         }
     ).execute()
 
-    if current.debt_frozen_at is not None and current.accounting_type != "PERSONAL":
+    if current.debt_finalized_at is not None and current.accounting_type != "PERSONAL":
         _post_usage_correction_adjustments(
             client, household_id, current, current_total_base, corrected_member_id, delta_base
         )
     else:
         # A correction that pushes usage to the item's limit takes quantity
         # to 0, and the inventory_items quantity=0 trigger has already
-        # flipped a still-ACTIVE item to EMPTY on the claim above. Freeze
-        # it, the same way consume() does. freeze_item_debt no-ops for
-        # PERSONAL and for anything already frozen.
+        # flipped a still-ACTIVE item to EMPTY on the claim above. Finalize
+        # it, the same way consume() does. finalize_item_debt no-ops for
+        # PERSONAL and for anything already finalized.
         refreshed = get_by_id(household_id, item_id)
         if (
             refreshed is not None
             and refreshed.status != "ACTIVE"
-            and refreshed.debt_frozen_at is None
+            and refreshed.debt_finalized_at is None
         ):
-            accounting_service.freeze_item_debt(item_id)
+            accounting_service.finalize_item_debt(item_id)
 
     return get_by_id(household_id, item_id)  # type: ignore[return-value]
 
@@ -960,7 +1181,8 @@ def list_active_member_ids(household_id: UUID) -> set[UUID]:
 def resolve_accounting_types(
     global_food_definition_ids: list[UUID],
 ) -> dict[UUID, AccountingType]:
-    """Batch counterpart to _resolve_accounting_type's default lookup, for
+    """Batch version of the accounting-type default lookup done for one item in
+    _load_creation_inputs, for
     callers processing multiple items at once (e.g. receipt finalize)."""
     if not global_food_definition_ids:
         return {}

@@ -1,13 +1,10 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
-import { apiClient, ApiError } from '../lib/apiClient'
+import { apiClient } from '../lib/apiClient'
 import { CategoryDot } from './CategoryDot'
+import { CreateFoodForm } from './CreateFoodForm'
 import { Modal } from './Modal'
-import { FOOD_CATEGORIES, FOOD_CATEGORY_LABELS } from '../lib/foodCategories'
-import { DIMENSION_LABELS, UNITS_BY_DIMENSION, UNIT_LABELS } from '../lib/units'
-import type { Dimension, FoodCategory, FoodDefinition, Unit } from '../types/entities'
-
-const DIMENSIONS: Dimension[] = ['WEIGHT', 'VOLUME', 'COUNT']
+import type { FoodDefinition } from '../types/entities'
 
 interface Props {
   // Callers that only have a partial food on hand (e.g. reconstructing a
@@ -35,9 +32,6 @@ export const TypeSearchField = forwardRef<TypeSearchFieldHandle, Props>(function
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<FoodDefinition[]>([])
   const [creatingOpen, setCreatingOpen] = useState(false)
-  const [newUnit, setNewUnit] = useState<Unit>('count')
-  const [newCategory, setNewCategory] = useState<FoodCategory>('OTHER')
-  const [createError, setCreateError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -81,27 +75,7 @@ export const TypeSearchField = forwardRef<TypeSearchFieldHandle, Props>(function
     setQuery('')
   }
 
-  const openCreateModal = () => {
-    setNewUnit('count')
-    setNewCategory('OTHER')
-    setCreateError(null)
-    setCreatingOpen(true)
-  }
-
-  const createNew = async () => {
-    setCreateError(null)
-    try {
-      const food = await apiClient.post<FoodDefinition>('/api/food-definitions', {
-        name: query,
-        preferred_unit: newUnit,
-        category: newCategory,
-      })
-      setCreatingOpen(false)
-      pick(food)
-    } catch (err) {
-      setCreateError(err instanceof ApiError ? err.message : 'Something went wrong')
-    }
-  }
+  const openCreateModal = () => setCreatingOpen(true)
 
   if (value) {
     return (
@@ -160,48 +134,13 @@ export const TypeSearchField = forwardRef<TypeSearchFieldHandle, Props>(function
 
       {creatingOpen && (
         <Modal title={`Create "${query}"`} onClose={() => setCreatingOpen(false)}>
-          <div className="flex flex-col gap-3">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-muted">Unit</label>
-              <select
-                className="w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field"
-                value={newUnit}
-                onChange={(e) => setNewUnit(e.target.value as Unit)}
-              >
-                {DIMENSIONS.map((dim) => (
-                  <optgroup key={dim} label={DIMENSION_LABELS[dim]}>
-                    {UNITS_BY_DIMENSION[dim].map((u) => (
-                      <option key={u} value={u}>
-                        {UNIT_LABELS[u]}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-muted">Category</label>
-              <select
-                className="w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field"
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value as FoodCategory)}
-              >
-                {FOOD_CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {FOOD_CATEGORY_LABELS[category]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {createError && <p className="text-sm text-danger">{createError}</p>}
-            <button
-              type="button"
-              onClick={createNew}
-              className="rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover"
-            >
-              Create
-            </button>
-          </div>
+          <CreateFoodForm
+            name={query}
+            onCreated={(food) => {
+              setCreatingOpen(false)
+              pick(food)
+            }}
+          />
         </Modal>
       )}
     </div>

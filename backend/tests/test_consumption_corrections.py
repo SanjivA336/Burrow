@@ -1,5 +1,5 @@
 """correct_consumption: append-only CORRECTION rows, quantity recomputed as
-a maintained cache, ADJUSTMENT entries only when the item's already frozen."""
+a maintained cache, ADJUSTMENT entries only when the item's already finalized."""
 
 import uuid
 from datetime import UTC, datetime
@@ -47,13 +47,10 @@ def _item(**overrides) -> InventoryItem:
         purchased_at=now,
         expiry_date=None,
         best_by_date=None,
-        freeze_by_date=None,
-        is_frozen=False,
-        freeze_date=None,
         status="ACTIVE",
         accounting_type="SHARED",
         split_member_count=2,
-        debt_frozen_at=None,
+        debt_finalized_at=None,
         created_at=now,
         updated_at=now,
         name_override=None,
@@ -126,7 +123,7 @@ class _FakeClient:
 
 @pytest.fixture
 def patched(monkeypatch):
-    calls = {"adjustments": 0, "freeze": 0}
+    calls = {"adjustments": 0, "finalize": 0}
     monkeypatch.setattr(
         inventory_service,
         "_post_usage_correction_adjustments",
@@ -134,8 +131,8 @@ def patched(monkeypatch):
     )
     monkeypatch.setattr(
         inventory_service.accounting_service,
-        "freeze_item_debt",
-        lambda _id: calls.__setitem__("freeze", calls["freeze"] + 1),
+        "finalize_item_debt",
+        lambda _id: calls.__setitem__("finalize", calls["finalize"] + 1),
     )
     return calls
 
@@ -166,7 +163,7 @@ def _run(monkeypatch, *, item, client, actual):
 def test_live_item_correction_writes_signed_delta_and_recomputes_quantity(
     monkeypatch, patched
 ) -> None:
-    item = _item(quantity=Decimal("6"), total_quantity=Decimal("10"), debt_frozen_at=None)
+    item = _item(quantity=Decimal("6"), total_quantity=Decimal("10"), debt_finalized_at=None)
     client = _FakeClient(
         original={"member_id": str(_MEMBER_ID), "quantity_used": "4", "kind": "USAGE"}
     )
@@ -183,11 +180,11 @@ def test_live_item_correction_writes_signed_delta_and_recomputes_quantity(
     assert Decimal(client._payload["quantity"]) == Decimal("9")
     # Live item: no re-split.
     assert patched["adjustments"] == 0
-    assert patched["freeze"] == 0
+    assert patched["finalize"] == 0
 
 
-def test_frozen_item_correction_posts_adjustments(monkeypatch, patched) -> None:
-    item = _item(quantity=Decimal("0"), status="EMPTY", debt_frozen_at=datetime.now(UTC))
+def test_finalized_item_correction_posts_adjustments(monkeypatch, patched) -> None:
+    item = _item(quantity=Decimal("0"), status="EMPTY", debt_finalized_at=datetime.now(UTC))
     client = _FakeClient(
         original={"member_id": str(_MEMBER_ID), "quantity_used": "4", "kind": "USAGE"}
     )
@@ -199,7 +196,7 @@ def test_frozen_item_correction_posts_adjustments(monkeypatch, patched) -> None:
 
 
 def test_second_correction_measures_from_the_effective_value(monkeypatch, patched) -> None:
-    item = _item(quantity=Decimal("6"), debt_frozen_at=None)
+    item = _item(quantity=Decimal("6"), debt_finalized_at=None)
     client = _FakeClient(
         original={"member_id": str(_MEMBER_ID), "quantity_used": "4", "kind": "USAGE"},
         priors=[{"quantity_used": "-3"}],  # already corrected 4 -> 1
@@ -213,7 +210,7 @@ def test_second_correction_measures_from_the_effective_value(monkeypatch, patche
 
 
 def test_no_op_correction_is_rejected(monkeypatch, patched) -> None:
-    item = _item(debt_frozen_at=None)
+    item = _item(debt_finalized_at=None)
     client = _FakeClient(
         original={"member_id": str(_MEMBER_ID), "quantity_used": "4", "kind": "USAGE"}
     )
@@ -223,7 +220,7 @@ def test_no_op_correction_is_rejected(monkeypatch, patched) -> None:
 
 def test_over_usage_correction_is_rejected(monkeypatch, patched) -> None:
     # quantity 6, logged 4; correcting to 11 means +7 usage -> remaining -1.
-    item = _item(quantity=Decimal("6"), total_quantity=Decimal("10"), debt_frozen_at=None)
+    item = _item(quantity=Decimal("6"), total_quantity=Decimal("10"), debt_finalized_at=None)
     client = _FakeClient(
         original={"member_id": str(_MEMBER_ID), "quantity_used": "4", "kind": "USAGE"}
     )
@@ -232,7 +229,7 @@ def test_over_usage_correction_is_rejected(monkeypatch, patched) -> None:
 
 
 def test_targeting_a_non_usage_event_is_not_found(monkeypatch, patched) -> None:
-    item = _item(debt_frozen_at=None)
+    item = _item(debt_finalized_at=None)
     client = _FakeClient(
         original={"member_id": str(_MEMBER_ID), "quantity_used": "-1", "kind": "CORRECTION"}
     )
@@ -241,7 +238,7 @@ def test_targeting_a_non_usage_event_is_not_found(monkeypatch, patched) -> None:
 
 
 def test_cas_claim_loss_raises_conflict(monkeypatch, patched) -> None:
-    item = _item(debt_frozen_at=None)
+    item = _item(debt_finalized_at=None)
     client = _FakeClient(
         original={"member_id": str(_MEMBER_ID), "quantity_used": "4", "kind": "USAGE"},
         claim_data=[],  # updated_at moved under us

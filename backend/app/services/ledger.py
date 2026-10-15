@@ -130,7 +130,7 @@ def _ghost_member_ids(household_id: UUID) -> set[UUID]:
 
 
 def _live_items(household_id: UUID) -> list[dict]:
-    """The household's shared items whose debt hasn't frozen yet: the fetch half
+    """The household's shared items whose debt hasn't been finalized yet: the fetch half
     of _live_shares, split out so compute_balances can run it alongside its other
     reads."""
     client = get_service_client()
@@ -139,7 +139,7 @@ def _live_items(household_id: UUID) -> list[dict]:
         .select("id, purchase_event_id, total_quantity, cost")
         .eq("household_id", str(household_id))
         .eq("accounting_type", "SHARED")
-        .is_("debt_frozen_at", "null")
+        .is_("debt_finalized_at", "null")
         .execute()
     ).data
 
@@ -150,9 +150,9 @@ def _live_shares(household_id: UUID) -> list[tuple[UUID, UUID, Decimal]]:
 
 def _live_shares_from_items(items: list[dict]) -> list[tuple[UUID, UUID, Decimal]]:
     """(debtor, creditor, amount) triples for every item whose debt hasn't
-    frozen yet (debt_frozen_at is null) -- computed live from whatever
+    finalized yet (debt_finalized_at is null) -- computed live from whatever
     consumption_events exist right now, via the same compute_item_shares
-    rule freeze_item_debt uses once, for real, at freeze time. Never
+    rule finalize_item_debt uses once, for real, at finalize time. Never
     posted anywhere; recomputed fresh on every call, so it always reflects
     the current state of the world and never drifts from it.
 
@@ -267,11 +267,11 @@ def _ledger_balance_rows(household_id: UUID) -> list[dict]:
 
 def compute_balances(household_id: UUID) -> list[LedgerBalance]:
     """Net, pairwise balances across three blended sources: every posted
-    ledger entry, every not-yet-frozen item's live computed share (see
+    ledger entry, every not-yet-finalized item's live computed share (see
     _live_shares), and every recorded settlement (see
     settlements_service.settlement_deltas) -- all folded into one net dict,
     indistinguishable to the caller. That's the point: an active item's
-    debt should look exactly as real as an already-frozen one, and a
+    debt should look exactly as real as an already-finalized one, and a
     payment someone logged should cancel debt exactly as if the ledger
     entries it covered had never been posted.
 

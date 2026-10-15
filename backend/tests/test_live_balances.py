@@ -59,7 +59,7 @@ class _FakeClient:
         return _FakeQuery(self._tables[name])
 
 
-def test_compute_balances_blends_a_live_unfrozen_item_with_zero_ledger_entries(
+def test_compute_balances_blends_a_live_unfinalized_item_with_zero_ledger_entries(
     monkeypatch,
 ) -> None:
     household_id = uuid.uuid4()
@@ -101,7 +101,7 @@ def test_compute_balances_blends_a_live_unfrozen_item_with_zero_ledger_entries(
 
 
 def test_compute_balances_blends_live_share_on_top_of_a_real_ledger_entry(monkeypatch) -> None:
-    """The same pair already has a real, frozen $2 debt from something
+    """The same pair already has a real, finalized $2 debt from something
     else entirely -- the live share from a still-active item adds on top,
     indistinguishably, in the same direction."""
     household_id = uuid.uuid4()
@@ -206,11 +206,11 @@ def test_reversal_row_re_adds_the_debt_it_cancelled(monkeypatch) -> None:
     assert balances[0].amount == Decimal("5.00")
 
 
-def test_frozen_items_never_contribute_a_live_share(monkeypatch) -> None:
-    """_live_shares only ever queries debt_frozen_at IS NULL rows -- a fake
+def test_finalized_items_never_contribute_a_live_share(monkeypatch) -> None:
+    """_live_shares only ever queries debt_finalized_at IS NULL rows -- a fake
     that returns nothing for that filter (simulating "this item is already
-    frozen") must contribute nothing, proving the live path doesn't
-    double-count something freeze_item_debt already posted for real."""
+    finalized") must contribute nothing, proving the live path doesn't
+    double-count something finalize_item_debt already posted for real."""
     household_id = uuid.uuid4()
     client = _FakeClient(inventory_item_rows=[])
     monkeypatch.setattr("app.services.ledger.get_service_client", lambda: client)

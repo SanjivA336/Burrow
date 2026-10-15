@@ -21,6 +21,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { apiClient, ApiError } from '../../lib/apiClient'
 import { CategoryDot } from '../../components/CategoryDot'
 import { ExpiryIcon, type ExpiryState } from '../../components/ExpiryIcon'
+import { NEVER_EXPIRES, itemPlaceValues, placeForStorageType } from '../../lib/shelfLife'
 import { Modal } from '../../components/Modal'
 import { SwipeActionRow } from '../../components/SwipeActionRow'
 import { WarningCounts } from '../../components/WarningCounts'
@@ -426,8 +427,16 @@ export function InventoryPage() {
     const itemHref = `/households/${householdId}/inventory-items/${item.id}`
     // A warning wins; otherwise a plain blue calendar if any date is set.
     const warning = expiryWarningByItemId.get(item.id)
+    // No date at all: say so quietly, unless it never expires where it's kept.
+    const placeValue =
+      itemPlaceValues(item)[placeForStorageType(item.storage_location_type ?? 'PANTRY')]
     const expiryState: ExpiryState =
-      warning?.state ?? (item.expiry_date || item.best_by_date ? 'ok' : 'none')
+      warning?.state ??
+      (item.expiry_date || item.best_by_date
+        ? 'ok'
+        : placeValue === NEVER_EXPIRES
+          ? 'none'
+          : 'unknown')
     const swipeActions: SwipeAction[] = [
       {
         key: 'EMPTY',

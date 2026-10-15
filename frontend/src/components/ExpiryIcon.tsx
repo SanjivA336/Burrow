@@ -1,6 +1,8 @@
-import { Calendar, CalendarClock, CalendarX } from 'lucide-react'
+import { Calendar, CalendarClock, CalendarOff, CalendarX } from 'lucide-react'
 
-export type ExpiryState = 'none' | 'ok' | 'soon' | 'expired'
+// 'none' draws nothing (the item never expires where it is). 'unknown' is the
+// quiet "no expiry date found" mark for an item that has no date to show.
+export type ExpiryState = 'none' | 'unknown' | 'ok' | 'soon' | 'expired'
 
 interface Props {
   state: ExpiryState
@@ -19,12 +21,21 @@ function label(state: ExpiryState, daysUntil: number | undefined): string {
 }
 
 // A small calendar that says where an item stands on expiry without a line of
-// text: blue = there is a date, amber = it's close, red = it's past. Each state
+// text: blue = there is a date, amber = it's close, red = it's past, and a
+// faint struck-through calendar = no date found for where it's kept. Each state
 // also has its own glyph, so the meaning doesn't depend on telling colours
-// apart. Renders nothing for an item with no date. The exact days are on the
-// item's page and in the warnings list.
+// apart. The exact days are on the item's page and in the warnings list.
 export function ExpiryIcon({ state, daysUntil, size = 15 }: Props) {
   if (state === 'none') return null
+
+  if (state === 'unknown') {
+    const text = 'No expiry date found'
+    return (
+      <span className="inline-flex shrink-0 text-faint" title={text} role="img" aria-label={text}>
+        <CalendarOff size={size} strokeWidth={1.9} />
+      </span>
+    )
+  }
 
   const Icon = state === 'ok' ? Calendar : state === 'soon' ? CalendarClock : CalendarX
   const color = state === 'ok' ? 'text-info' : state === 'soon' ? 'text-warning' : 'text-danger'

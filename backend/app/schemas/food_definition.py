@@ -2,9 +2,10 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.units import Unit
+from app.services.expiry import NOT_RECOMMENDED, UNKNOWN, is_valid_code
 
 
 class AccountingType(StrEnum):
@@ -37,8 +38,11 @@ class FoodDefinition(BaseModel):
     preferred_unit: Unit
     category: FoodCategory
     accounting_type_default: AccountingType
-    shelf_life_days: int | None
-    freezer_shelf_life_days: int | None
+    # Shelf life per place: a number of days, or a code (-1 never expires,
+    # -2 not recommended, -3 unknown). See services/expiry.py.
+    pantry_shelf_life_days: int = UNKNOWN
+    fridge_shelf_life_days: int = UNKNOWN
+    freezer_shelf_life_days: int = UNKNOWN
     created_by_user_id: UUID | None
     is_verified: bool
     usage_count: int
@@ -52,5 +56,17 @@ class CreateFoodDefinitionRequest(BaseModel):
     preferred_unit: Unit
     category: FoodCategory = FoodCategory.OTHER
     accounting_type_default: AccountingType = AccountingType.SHARED
-    shelf_life_days: int | None = Field(default=None, gt=0)
-    freezer_shelf_life_days: int | None = Field(default=None, gt=0)
+    pantry_shelf_life_days: int = UNKNOWN
+    fridge_shelf_life_days: int = UNKNOWN
+    freezer_shelf_life_days: int = UNKNOWN
+
+    @field_validator(
+        "pantry_shelf_life_days", "fridge_shelf_life_days", "freezer_shelf_life_days"
+    )
+    @classmethod
+    def _valid_place_value(cls, value: int) -> int:
+        # "Not recommended" is only ever set on verified foods, never by a user
+        # creating their own, so it is refused here.
+        if not is_valid_code(value) or value == NOT_RECOMMENDED:
+            raise ValueError("Use a number of days, -1 (never expires) or -3 (unknown)")
+        return value

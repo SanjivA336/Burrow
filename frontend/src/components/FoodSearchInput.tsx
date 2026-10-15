@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { apiClient, ApiError } from '../lib/apiClient'
+import { apiClient } from '../lib/apiClient'
 import { CategoryDot } from './CategoryDot'
-import { FOOD_CATEGORIES, FOOD_CATEGORY_LABELS } from '../lib/foodCategories'
-import { DIMENSION_LABELS, UNITS_BY_DIMENSION, UNIT_LABELS } from '../lib/units'
-import type { Dimension, FoodCategory, FoodDefinition, Unit } from '../types/entities'
-
-const DIMENSIONS: Dimension[] = ['WEIGHT', 'VOLUME', 'COUNT']
+import { CreateFoodForm } from './CreateFoodForm'
+import type { FoodDefinition } from '../types/entities'
 
 interface Props {
   // Callers that only have a food's id/name on hand (e.g. pre-filling an
@@ -25,9 +22,6 @@ export function FoodSearchInput({ value, onChange, initialQuery }: Props) {
   const [results, setResults] = useState<FoodDefinition[]>([])
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [newUnit, setNewUnit] = useState<Unit>('count')
-  const [newCategory, setNewCategory] = useState<FoodCategory>('OTHER')
-  const [createError, setCreateError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
@@ -62,21 +56,6 @@ export function FoodSearchInput({ value, onChange, initialQuery }: Props) {
   const clear = () => {
     onChange(null)
     setQuery('')
-  }
-
-  const createNew = async () => {
-    setCreateError(null)
-    try {
-      const food = await apiClient.post<FoodDefinition>('/api/food-definitions', {
-        name: query,
-        preferred_unit: newUnit,
-        category: newCategory,
-      })
-      pick(food)
-      setCreating(false)
-    } catch (err) {
-      setCreateError(err instanceof ApiError ? err.message : 'Something went wrong')
-    }
   }
 
   if (value) {
@@ -131,47 +110,14 @@ export function FoodSearchInput({ value, onChange, initialQuery }: Props) {
               + Create "{query}"
             </button>
           ) : (
-            <div className="flex flex-col gap-3 p-3">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-muted">Unit</label>
-                <select
-                  className="w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field"
-                  value={newUnit}
-                  onChange={(e) => setNewUnit(e.target.value as Unit)}
-                >
-                  {DIMENSIONS.map((dim) => (
-                    <optgroup key={dim} label={DIMENSION_LABELS[dim]}>
-                      {UNITS_BY_DIMENSION[dim].map((u) => (
-                        <option key={u} value={u}>
-                          {UNIT_LABELS[u]}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-muted">Category</label>
-                <select
-                  className="w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value as FoodCategory)}
-                >
-                  {FOOD_CATEGORIES.map((category) => (
-                    <option key={category} value={category}>
-                      {FOOD_CATEGORY_LABELS[category]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {createError && <p className="text-sm text-danger">{createError}</p>}
-              <button
-                type="button"
-                onClick={createNew}
-                className="rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover"
-              >
-                Create
-              </button>
+            <div className="p-3">
+              <CreateFoodForm
+                name={query}
+                onCreated={(food) => {
+                  pick(food)
+                  setCreating(false)
+                }}
+              />
             </div>
           )}
         </div>

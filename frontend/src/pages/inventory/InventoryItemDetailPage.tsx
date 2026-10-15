@@ -4,10 +4,13 @@ import { ArrowLeft, Hourglass, PackageX } from 'lucide-react'
 import { formatQuantity } from '../../lib/formatQuantity'
 import { apiClient, ApiError } from '../../lib/apiClient'
 import { CategoryDot } from '../../components/CategoryDot'
+import { ItemExpirySection } from '../../components/ItemExpirySection'
 import { UnitSelect } from '../../components/UnitSelect'
 import { useHouseholdResource } from '../../hooks/useHouseholdResource'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { FOOD_CATEGORY_LABELS } from '../../lib/foodCategories'
+import { shortDate } from '../../lib/formatDate'
+import { PLACE_LABELS, placeForStorageType } from '../../lib/shelfLife'
 import { DIMENSION_LABELS, UNIT_LABELS, UNITS_BY_DIMENSION, guessDimension } from '../../lib/units'
 import type {
   ConsumptionEvent,
@@ -22,7 +25,7 @@ const inputClass =
   'w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field outline-none placeholder:text-faint focus:border-primary'
 
 // A field that's shown (never hidden) but locked -- once an item's debt is
-// frozen, cost/quantity/unit need a correction instead of a plain edit, and
+// finalized, cost/quantity/unit need a correction instead of a plain edit, and
 // buyer is never editable at all. Greyed out rather than removed so its
 // existence and current value both stay visible.
 const disabledInputClass =
@@ -52,6 +55,8 @@ export function InventoryItemDetailPage() {
   const [confirmingVoid, setConfirmingVoid] = useState(false)
   const [voiding, setVoiding] = useState(false)
   const [removing, setRemoving] = useState<'EXPIRED' | 'EMPTY' | null>(null)
+  // What a move did to the expiry date, with a way back (see moveTo).
+  const [moveNote, setMoveNote] = useState<{ text: string; undoTo: string } | null>(null)
 
   const sortedMembers = useMemo(
     () => [...members].sort((a, b) => a.nickname.localeCompare(b.nickname)),
@@ -74,7 +79,7 @@ export function InventoryItemDetailPage() {
       )
       .then(setCorrections)
       .catch(() => setCorrections([]))
-  }, [householdId, itemId, item?.debt_frozen_at])
+  }, [householdId, itemId, item?.debt_finalized_at])
 
   const patch = async (body: Record<string, unknown>) => {
     setActionError(null)
@@ -94,7 +99,7 @@ export function InventoryItemDetailPage() {
   // duplicate add, a typo, someone else took it), not something that
   // happened to real stock. If nothing's been used from the item yet, the
   // backend hard-deletes it outright instead of just flipping its status --
-  // see the RemovalReason docstring. Either way this only works pre-freeze,
+  // see the RemovalReason docstring. Either way this only works pre-finalize,
   // same constraint the server already enforces for every removal reason.
   const voidItem = async () => {
     setActionError(null)
@@ -130,8 +135,45 @@ export function InventoryItemDetailPage() {
   if (loading) return <p className="text-sm text-muted">Loading…</p>
   if (error || !item) return <p className="text-sm text-danger">{error ?? 'Item not found'}</p>
 
-  const isFrozen = item.debt_frozen_at !== null
+  const isFinalized = item.debt_finalized_at !== null
   const dimension = guessDimension(item.preferred_unit)
+
+  // Moving an item can change its expiry date (the same share of its life is
+  // carried to the new place), so say what happened and offer the way back.
+  const moveTo = async (locationId: string, offerUndo = true) => {
+    const fromId = item.storage_location_id
+    const beforeDate = item.expiry_date
+    setActionError(null)
+    setMoveNote(null)
+    setSaving(true)
+    try {
+      const updated = await apiClient.patch<InventoryItem>(
+        `/api/households/${householdId}/inventory-items/${itemId}`,
+        { storage_location_id: locationId },
+      )
+      const placeName = PLACE_LABELS[placeForStorageType(updated.storage_location_type ?? 'PANTRY')]
+      const frozenAndPaused =
+        updated.storage_location_type === 'FREEZER' &&
+        updated.freezer_days <= 0 &&
+        updated.remaining_fraction !== null
+      let text: string | null = null
+      if (beforeDate && updated.expiry_date && beforeDate !== updated.expiry_date) {
+        text = `Expiry date moved from ${shortDate(beforeDate)} to ${shortDate(updated.expiry_date)} for the ${placeName}.`
+      } else if (!beforeDate && updated.expiry_date) {
+        text = `Expiry date set to ${shortDate(updated.expiry_date)} for the ${placeName}.`
+      } else if (beforeDate && !updated.expiry_date) {
+        text = frozenAndPaused
+          ? 'Frozen. The expiry clock is paused until it moves out of the freezer.'
+          : `No expiry date found for the ${placeName}.`
+      }
+      if (text && offerUndo) setMoveNote({ text, undoTo: fromId })
+      reload()
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Something went wrong')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const toggleMember = (memberId: string) => {
     const current = item.allowed_member_ids
@@ -222,7 +264,7 @@ export function InventoryItemDetailPage() {
                   <button
                     key={member.id}
                     type="button"
-                    disabled={isFrozen || saving}
+                    disabled={isFinalized || saving}
                     onClick={() => toggleMember(member.id)}
                     className={`flex h-10 items-center justify-center rounded-control border px-2 py-2 text-center text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                       selected
@@ -235,7 +277,7 @@ export function InventoryItemDetailPage() {
                 )
               })}
             </div>
-            {isFrozen && (
+            {isFinalized && (
               <p className="mt-1.5 text-xs text-faint">
                 This item's cost has already been settled, so who it's split between is locked in.
               </p>
@@ -247,7 +289,7 @@ export function InventoryItemDetailPage() {
             <select
               className={inputClass}
               value={item.storage_location_id}
-              onChange={(e) => void patch({ storage_location_id: e.target.value })}
+              onChange={(e) => void moveTo(e.target.value)}
             >
               {storageLocations.map((loc) => (
                 <option key={loc.id} value={loc.id}>
@@ -255,33 +297,34 @@ export function InventoryItemDetailPage() {
                 </option>
               ))}
             </select>
+            {moveNote && (
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+                {moveNote.text}
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void moveTo(moveNote.undoTo, false)}
+                  className="font-medium text-primary hover:underline disabled:opacity-50"
+                >
+                  Undo
+                </button>
+              </p>
+            )}
           </div>
 
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className={fieldLabelClass}>Expiry date</label>
-              <input
-                type="date"
-                className={inputClass}
-                defaultValue={item.expiry_date ?? ''}
-                onBlur={(e) => {
-                  const value = e.target.value || null
-                  if (value !== item.expiry_date) void patch({ expiry_date: value })
-                }}
-              />
-            </div>
-            <div className="flex-1">
-              <label className={fieldLabelClass}>Best-by date</label>
-              <input
-                type="date"
-                className={inputClass}
-                defaultValue={item.best_by_date ?? ''}
-                onBlur={(e) => {
-                  const value = e.target.value || null
-                  if (value !== item.best_by_date) void patch({ best_by_date: value })
-                }}
-              />
-            </div>
+          <ItemExpirySection item={item} householdId={householdId!} onChanged={reload} />
+
+          <div>
+            <label className={fieldLabelClass}>Best-by date</label>
+            <input
+              type="date"
+              className={inputClass}
+              defaultValue={item.best_by_date ?? ''}
+              onBlur={(e) => {
+                const value = e.target.value || null
+                if (value !== item.best_by_date) void patch({ best_by_date: value })
+              }}
+            />
           </div>
           <p className="text-xs text-muted">
             Dates are suggestions. Check the package and the food itself before eating.
@@ -295,7 +338,7 @@ export function InventoryItemDetailPage() {
             Done
           </button>
 
-          {!isFrozen && (
+          {!isFinalized && (
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -318,7 +361,7 @@ export function InventoryItemDetailPage() {
             </div>
           )}
 
-          {!isFrozen &&
+          {!isFinalized &&
             (confirmingVoid ? (
               <div className="rounded-control border border-danger/30 bg-danger-soft p-3">
                 <p className="mb-2 text-xs text-muted">
@@ -567,7 +610,7 @@ function CostAndQuantitySection({
   buyerNickname: string
   onChanged: () => void
 }) {
-  const isFrozen = item.debt_frozen_at !== null
+  const isFinalized = item.debt_finalized_at !== null
   const [correcting, setCorrecting] = useState(false)
   const [newCost, setNewCost] = useState(item.cost)
   const [newQuantity, setNewQuantity] = useState(item.total_quantity)
@@ -611,8 +654,8 @@ function CostAndQuantitySection({
   }
 
   // Cost/quantity/unit are only editable while the item is still live --
-  // once frozen, real ledger_entries exist and a correction is the only
-  // path (below). Shown either way, just disabled once frozen, so the
+  // once finalized, real ledger_entries exist and a correction is the only
+  // path (below). Shown either way, just disabled once finalized, so the
   // field's existence (and its value) is never hidden, only locked.
   return (
     <>
@@ -622,8 +665,8 @@ function CostAndQuantitySection({
           <input
             type="number"
             step="any"
-            disabled={isFrozen}
-            className={isFrozen ? disabledInputClass : inputClass}
+            disabled={isFinalized}
+            className={isFinalized ? disabledInputClass : inputClass}
             defaultValue={item.total_quantity}
             onBlur={(e) => {
               if (e.target.value && e.target.value !== item.total_quantity) {
@@ -635,9 +678,9 @@ function CostAndQuantitySection({
         <div className="w-32">
           <label className={fieldLabelClass}>Unit</label>
           <UnitSelect
-            disabled={isFrozen || saving}
+            disabled={isFinalized || saving}
             dimensions={[dimension]}
-            className={isFrozen ? disabledInputClass : inputClass}
+            className={isFinalized ? disabledInputClass : inputClass}
             value={item.preferred_unit}
             onChange={(unit) => void saveDirectEdit('preferred_unit', unit)}
           />
@@ -650,8 +693,8 @@ function CostAndQuantitySection({
           <input
             type="number"
             step="0.01"
-            disabled={isFrozen}
-            className={isFrozen ? disabledInputClass : inputClass}
+            disabled={isFinalized}
+            className={isFinalized ? disabledInputClass : inputClass}
             defaultValue={item.cost}
             onBlur={(e) => {
               if (e.target.value && e.target.value !== item.cost) {
@@ -675,7 +718,7 @@ function CostAndQuantitySection({
 
       {error && !correcting && <p className="text-sm text-danger">{error}</p>}
 
-      {isFrozen && (
+      {isFinalized && (
         <div>
           <p className="mt-1.5 text-xs text-faint">
             Already settled. Use a correction to fix a mistake rather than editing directly.

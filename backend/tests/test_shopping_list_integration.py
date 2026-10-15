@@ -11,6 +11,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
+from tests.helpers.foods import find_or_create_food
 from tests.helpers.supabase_test_users import create_test_user, delete_test_user, sign_in
 
 pytestmark = pytest.mark.integration
@@ -61,10 +62,7 @@ async def household(api_client):
 
 
 async def _search_butter(api_client, headers) -> str:
-    response = await api_client.get(
-        "/api/food-definitions/search", params={"query": "Butter"}, headers=headers
-    )
-    return response.json()["data"][0]["id"]
+    return (await find_or_create_food(api_client, headers, "Butter"))["id"]
 
 
 async def _buy_butter(api_client, household, quantity: str) -> dict:

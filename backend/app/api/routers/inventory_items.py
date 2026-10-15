@@ -11,7 +11,10 @@ from app.schemas.inventory_item import (
     ConsumeInventoryItemRequest,
     CorrectInventoryItemRequest,
     CreateInventoryItemRequest,
+    ExpiryPreview,
+    ExpiryPreviewRequest,
     InventoryItem,
+    PlaceExpiryRequest,
     PurchaseCorrection,
     RemovalReason,
     UpdateInventoryItemRequest,
@@ -84,6 +87,10 @@ def create_inventory_item(
         item = inventory_service.create_manual(household_id, buyer_id, body)
     except inventory_service.FoodDefinitionNotFoundError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That food couldn't be found") from exc
+    except inventory_service.StorageLocationNotFoundError as exc:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "That storage location couldn't be found"
+        ) from exc
 
     activity_service.record(
         household_id,
@@ -139,11 +146,15 @@ def update_inventory_item(
         item = inventory_service.update_item(household_id, item_id, body)
     except inventory_service.ItemNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Item not found") from exc
-    except inventory_service.ItemFrozenError as exc:
+    except inventory_service.ItemFinalizedError as exc:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "This item's cost has already been split and settled, so it can't be edited "
             'directly anymore. Use "Report a mistake" to fix it instead.',
+        ) from exc
+    except inventory_service.StorageLocationNotFoundError as exc:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "That storage location couldn't be found"
         ) from exc
     except inventory_service.UnitDimensionMismatchError as exc:
         raise HTTPException(
@@ -169,6 +180,34 @@ def update_inventory_item(
     return ok(item)
 
 
+@router.post("/{item_id}/expiry-preview", response_model=Envelope[ExpiryPreview])
+def preview_expiry_edit(
+    household_id: UUID,
+    item_id: UUID,
+    body: ExpiryPreviewRequest,
+    _member: Member = Depends(require_household_membership),
+) -> Envelope[ExpiryPreview]:
+    try:
+        return ok(inventory_service.preview_expiry_edit(household_id, item_id, body.expiry_date))
+    except inventory_service.ItemNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Item not found") from exc
+
+
+@router.post("/{item_id}/place-expiry", response_model=Envelope[InventoryItem])
+def change_place_expiry(
+    household_id: UUID,
+    item_id: UUID,
+    body: PlaceExpiryRequest,
+    _member: Member = Depends(require_household_membership),
+) -> Envelope[InventoryItem]:
+    try:
+        return ok(inventory_service.change_place_expiry(household_id, item_id, body))
+    except inventory_service.ItemNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Item not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+
 @router.get("/{item_id}/corrections", response_model=Envelope[list[PurchaseCorrection]])
 def list_item_corrections(
     household_id: UUID,
@@ -190,7 +229,7 @@ def correct_inventory_item(
         item = inventory_service.correct_item(household_id, caller.id, item_id, body)
     except inventory_service.ItemNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Item not found") from exc
-    except inventory_service.ItemNotFrozenError as exc:
+    except inventory_service.ItemNotFinalizedError as exc:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             "This item hasn't been settled yet, so there's nothing to correct. Edit it "

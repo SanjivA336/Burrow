@@ -10,6 +10,7 @@ import { UnitSelect } from '../../components/UnitSelect'
 import { useAuth } from '../../hooks/useAuth'
 import { FOOD_CATEGORY_LABELS } from '../../lib/foodCategories'
 import { shortDate } from '../../lib/formatDate'
+import { PLACE_LABELS, placeForStorageType, shelfLifeDays } from '../../lib/shelfLife'
 import type {
   FoodDefinition,
   InventoryItem,
@@ -66,6 +67,24 @@ const fieldLabelClass = 'mb-1.5 block text-sm font-medium text-muted'
 // show the "autofilled and not yet edited" indicator (a thin burrow-green
 // border, cleared the instant the user edits the field, even back to the
 // same value it already had).
+// The line under the expiry date box. When the food has no shelf life on
+// record for the place it's going into, say so (instead of leaving a silent
+// blank), so a missing suggestion isn't mistaken for a bug.
+function expiryHint(
+  food: { pantry_shelf_life_days?: number } | null,
+  placeLabel: string | null,
+  autofilled: boolean,
+  hasDate: boolean,
+): string {
+  if (autofilled && hasDate) {
+    return 'Estimated from typical shelf life. Check the package and the food itself.'
+  }
+  if (!hasDate && food && food.pantry_shelf_life_days !== undefined && placeLabel) {
+    return `No typical shelf life on record for the ${placeLabel}. Add the date from the package if it has one.`
+  }
+  return 'A suggestion. Check the package and the food itself.'
+}
+
 const fieldClass = (autofilled: boolean) =>
   `w-full rounded-control border ${autofilled ? 'border-primary' : 'border-subtle'} bg-field px-2 py-2 text-sm text-text shadow-field outline-none placeholder:text-faint focus:border-primary`
 
@@ -344,15 +363,19 @@ export function PurchaseWizardModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft?.food?.id])
 
-  // Same idea for expiry date, off the food's own shelf life. There's no
-  // separate "best by" duration on a food definition, so that field stays
-  // manual-entry-only regardless.
+  // Same idea for expiry date, off the food's shelf life for the place it's
+  // going into (so picking the freezer instead of the fridge changes the
+  // suggestion until the user types a date themselves). A place with no
+  // number of its own suggests nothing. There's no separate "best by"
+  // duration on a food definition, so that field stays manual-entry-only.
   useEffect(() => {
     if (!draft?.food || customized.expiry_date) return
-    const value = draft.food.shelf_life_days ? todayPlusDays(draft.food.shelf_life_days) : ''
+    const type = storageLocations.find((loc) => loc.id === draft.storageLocationId)?.type ?? 'PANTRY'
+    const days = shelfLifeDays(draft.food, type)
+    const value = days ? todayPlusDays(days) : ''
     setDraft((prev) => (prev ? { ...prev, expiryDate: value } : prev))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft?.food?.id])
+  }, [draft?.food?.id, draft?.storageLocationId])
 
   // The unit isn't gated on "customized" at all -- unlike the other fields,
   // there's no sense in which a unit choice for one food should survive a
@@ -1075,9 +1098,17 @@ export function PurchaseWizardModal({
                               </button>
                             </div>
                             <p className="mt-1 text-xs text-muted">
-                              {!customized.expiry_date && draft.expiryDate
-                                ? 'Estimated from typical shelf life. Check the package and the food itself.'
-                                : 'A suggestion. Check the package and the food itself.'}
+                              {expiryHint(
+                                draft.food,
+                                PLACE_LABELS[
+                                  placeForStorageType(
+                                    storageLocations.find((l) => l.id === draft.storageLocationId)
+                                      ?.type ?? 'PANTRY',
+                                  )
+                                ],
+                                !customized.expiry_date,
+                                !!draft.expiryDate,
+                              )}
                             </p>
                           </div>
                           <div className="flex-1">

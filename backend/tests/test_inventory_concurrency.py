@@ -1,4 +1,4 @@
-"""Concurrency guards on the live-until-frozen debt model (migration 0030):
+"""Concurrency guards on the live-until-finalized debt model (migration 0030):
 the roster swap is one atomic RPC, and correct_item claims the item row
 with a compare-and-swap before posting anything."""
 
@@ -34,13 +34,10 @@ def _item(**overrides) -> InventoryItem:
         purchased_at=now,
         expiry_date=None,
         best_by_date=None,
-        freeze_by_date=None,
-        is_frozen=False,
-        freeze_date=None,
         status="EMPTY",
         accounting_type="PERSONAL",
         split_member_count=None,
-        debt_frozen_at=now,
+        debt_finalized_at=now,
         created_at=now,
         updated_at=now,
         name_override=None,
@@ -90,7 +87,7 @@ class _RpcRecorder:
 
 
 def test_roster_edit_uses_the_atomic_rpc(monkeypatch) -> None:
-    item = _item(accounting_type="SHARED", split_member_count=2, debt_frozen_at=None)
+    item = _item(accounting_type="SHARED", split_member_count=2, debt_finalized_at=None)
     m1, m2, m3 = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
     client = _RpcRecorder()
 
@@ -156,12 +153,12 @@ class _CasClient:
         return type("R", (), {"data": [{}]})()
 
 
-def _frozen_item() -> InventoryItem:
-    return _item(status="EMPTY", accounting_type="PERSONAL", debt_frozen_at=datetime.now(UTC))
+def _finalized_item() -> InventoryItem:
+    return _item(status="EMPTY", accounting_type="PERSONAL", debt_finalized_at=datetime.now(UTC))
 
 
 def test_correction_raises_when_the_cas_claim_matches_nothing(monkeypatch) -> None:
-    item = _frozen_item()
+    item = _finalized_item()
     client = _CasClient(claim_data=[])  # someone corrected first -> updated_at moved
 
     monkeypatch.setattr(inventory_service, "get_by_id", lambda hh, iid: item)
@@ -184,7 +181,7 @@ def test_correction_raises_when_the_cas_claim_matches_nothing(monkeypatch) -> No
 
 
 def test_correction_proceeds_when_the_cas_claim_wins(monkeypatch) -> None:
-    item = _frozen_item()
+    item = _finalized_item()
     client = _CasClient(claim_data=[{}])
 
     monkeypatch.setattr(inventory_service, "get_by_id", lambda hh, iid: item)
