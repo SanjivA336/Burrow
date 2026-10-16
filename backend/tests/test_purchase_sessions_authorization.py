@@ -55,7 +55,6 @@ def _item(session_id, **overrides) -> PurchaseSessionItem:
         preferred_unit=None,
         cost=None,
         expiry_date=None,
-        best_by_date=None,
         name_override=None,
         accounting_type=None,
         allowed_member_ids=[],

@@ -588,7 +588,6 @@ def finalize(
             preferred_unit=item.preferred_unit,
             cost=item.cost or Decimal(0),
             expiry_date=item.expiry_date,
-            best_by_date=item.best_by_date,
             name_override=item.name_override,
             allowed_member_ids=item.allowed_member_ids,
             accounting_type=(

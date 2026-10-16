@@ -29,7 +29,6 @@ def _item(food_name: str) -> InventoryItem:
         cost=Decimal("0"),
         purchased_at=now,
         expiry_date=None,
-        best_by_date=None,
         status="ACTIVE",
         accounting_type="PERSONAL",
         split_member_count=None,

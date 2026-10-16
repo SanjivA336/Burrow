@@ -33,7 +33,6 @@ def _item(**overrides) -> InventoryItem:
         cost=Decimal("4.00"),
         purchased_at=now,
         expiry_date=None,
-        best_by_date=None,
         status="EMPTY",
         accounting_type="PERSONAL",
         split_member_count=None,

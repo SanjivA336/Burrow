@@ -23,7 +23,6 @@ def _item(household_id: uuid.UUID, **overrides) -> InventoryItem:
         cost=Decimal("4.99"),
         purchased_at=now,
         expiry_date=date(2026, 12, 31),
-        best_by_date=None,
         status="ACTIVE",
         accounting_type="SHARED",
         split_member_count=2,

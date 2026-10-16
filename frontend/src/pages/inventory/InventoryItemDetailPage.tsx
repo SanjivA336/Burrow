@@ -1,17 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NumberInput } from '../../components/NumberInput'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Hourglass, PackageX } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Hourglass, PackageX } from 'lucide-react'
 import { formatQuantity } from '../../lib/formatQuantity'
 import { apiClient, ApiError } from '../../lib/apiClient'
 import { CategoryDot } from '../../components/CategoryDot'
-import { ItemExpirySection } from '../../components/ItemExpirySection'
+import { ItemExpirySection, type ItemExpiryHandle } from '../../components/ItemExpirySection'
+import { MemberPicker } from '../../components/MemberPicker'
 import { UnitSelect } from '../../components/UnitSelect'
 import { useHouseholdResource } from '../../hooks/useHouseholdResource'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { FOOD_CATEGORY_LABELS } from '../../lib/foodCategories'
-import { shortDate } from '../../lib/formatDate'
-import { PLACE_LABELS, placeForStorageType } from '../../lib/shelfLife'
 import { DIMENSION_LABELS, UNIT_LABELS, UNITS_BY_DIMENSION, guessDimension } from '../../lib/units'
 import type {
   ConsumptionEvent,
@@ -34,6 +33,32 @@ const disabledInputClass =
 
 const fieldLabelClass = 'mb-1.5 block text-sm font-medium text-muted'
 
+// The edits waiting for "Save Changes". They live only in this page: leaving
+// the page throws them away, and coming back starts again from what is saved.
+interface Draft {
+  nickname: string
+  quantity: string
+  unit: Unit
+  cost: string
+  allowedMemberIds: string[]
+  storageLocationId: string
+}
+
+function draftFromItem(item: InventoryItem): Draft {
+  return {
+    nickname: item.name_override ?? '',
+    quantity: String(Number(item.total_quantity)),
+    unit: item.preferred_unit,
+    cost: item.cost,
+    allowedMemberIds: item.allowed_member_ids,
+    storageLocationId: item.storage_location_id,
+  }
+}
+
+function sameMembers(a: string[], b: string[]) {
+  return a.length === b.length && a.every((id) => b.includes(id))
+}
+
 export function InventoryItemDetailPage() {
   const { householdId, itemId } = useParams<{ householdId: string; itemId: string }>()
   const navigate = useNavigate()
@@ -42,6 +67,7 @@ export function InventoryItemDetailPage() {
     loading,
     error,
     reload,
+    setData,
   } = useHouseholdResource<InventoryItem>(
     householdId && itemId ? `/api/households/${householdId}/inventory-items/${itemId}` : null,
   )
@@ -56,13 +82,30 @@ export function InventoryItemDetailPage() {
   const [confirmingVoid, setConfirmingVoid] = useState(false)
   const [voiding, setVoiding] = useState(false)
   const [removing, setRemoving] = useState<'EXPIRED' | 'EMPTY' | null>(null)
-  // What a move did to the expiry date, with a way back (see moveTo).
-  const [moveNote, setMoveNote] = useState<{ text: string; undoTo: string } | null>(null)
+  const [showMore, setShowMore] = useState(true)
+  const expiryRef = useRef<ItemExpiryHandle>(null)
 
-  const sortedMembers = useMemo(
-    () => [...members].sort((a, b) => a.nickname.localeCompare(b.nickname)),
-    [members],
-  )
+  // The draft starts from the saved item, and follows it (a refresh, a change
+  // from another phone) only while there is nothing unsaved to protect.
+  const [draft, setDraft] = useState<Draft | null>(null)
+  const baselineRef = useRef('')
+  useEffect(() => {
+    if (!item) return
+    const fresh = draftFromItem(item)
+    const freshKey = JSON.stringify(fresh)
+    setDraft((current) => {
+      if (current === null) {
+        baselineRef.current = freshKey
+        return fresh
+      }
+      const currentKey = JSON.stringify(current)
+      if (currentKey === baselineRef.current || currentKey === freshKey) {
+        baselineRef.current = freshKey
+        return fresh
+      }
+      return current
+    })
+  }, [item])
 
   useEffect(() => {
     if (!householdId) return
@@ -81,19 +124,6 @@ export function InventoryItemDetailPage() {
       .then(setCorrections)
       .catch(() => setCorrections([]))
   }, [householdId, itemId, item?.debt_finalized_at])
-
-  const patch = async (body: Record<string, unknown>) => {
-    setActionError(null)
-    setSaving(true)
-    try {
-      await apiClient.patch(`/api/households/${householdId}/inventory-items/${itemId}`, body)
-      reload()
-    } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'Something went wrong')
-    } finally {
-      setSaving(false)
-    }
-  }
 
   // A distinct reason from Discarded/Expired/Lost/Empty: this purchase
   // shouldn't count as a real transaction at all, for whatever reason (a
@@ -134,58 +164,80 @@ export function InventoryItemDetailPage() {
   }
 
   if (loading) return <p className="text-sm text-muted">Loading…</p>
-  if (error || !item) return <p className="text-sm text-danger">{error ?? 'Item not found'}</p>
+  if (error || !item || !draft) {
+    return <p className="text-sm text-danger">{error ?? 'Item not found'}</p>
+  }
 
   const isFinalized = item.debt_finalized_at !== null
   const dimension = guessDimension(item.preferred_unit)
+  const activeMembers = members.filter((m) => m.is_active)
+  // With one person in the burrow there is nobody to choose between.
+  const showWhoIsUsing = activeMembers.length > 1
+  const update = (changes: Partial<Draft>) => setDraft({ ...draft, ...changes })
 
-  // Moving an item can change its expiry date (the same share of its life is
-  // carried to the new place), so say what happened and offer the way back.
-  const moveTo = async (locationId: string, offerUndo = true) => {
-    const fromId = item.storage_location_id
-    const beforeDate = item.expiry_date
+  // Everything that differs from what's saved goes to the server together:
+  // first the ordinary fields (one request), then the expiry date, which may
+  // ask what the date means. The page closes only once all of it is saved.
+  const saveChanges = async () => {
+    if (!householdId || !itemId) return
     setActionError(null)
-    setMoveNote(null)
+
+    if (!isFinalized) {
+      if (!(Number(draft.quantity) > 0)) {
+        setActionError('Enter how much there is (more than zero).')
+        return
+      }
+      if (showWhoIsUsing && draft.allowedMemberIds.length === 0) {
+        setActionError('Pick at least one person who is using this.')
+        return
+      }
+    }
+
+    const body: Record<string, unknown> = {}
+    const nickname = draft.nickname.trim() || null
+    if (nickname !== item.name_override) body.name_override = nickname
+    if (draft.storageLocationId !== item.storage_location_id) {
+      body.storage_location_id = draft.storageLocationId
+    }
+    if (!isFinalized) {
+      if (Number(draft.quantity) !== Number(item.total_quantity)) {
+        body.total_quantity = draft.quantity
+      }
+      if (draft.unit !== item.preferred_unit) body.preferred_unit = draft.unit
+      if (Number(draft.cost || 0) !== Number(item.cost)) body.cost = draft.cost || '0'
+      if (!sameMembers(draft.allowedMemberIds, item.allowed_member_ids)) {
+        body.allowed_member_ids = draft.allowedMemberIds
+      }
+    }
+
     setSaving(true)
     try {
-      const updated = await apiClient.patch<InventoryItem>(
-        `/api/households/${householdId}/inventory-items/${itemId}`,
-        { storage_location_id: locationId },
-      )
-      const placeName = PLACE_LABELS[placeForStorageType(updated.storage_location_type ?? 'PANTRY')]
-      const frozenAndPaused =
-        updated.storage_location_type === 'FREEZER' &&
-        updated.freezer_days <= 0 &&
-        updated.remaining_fraction !== null
-      let text: string | null = null
-      if (beforeDate && updated.expiry_date && beforeDate !== updated.expiry_date) {
-        text = `Expiry date moved from ${shortDate(beforeDate)} to ${shortDate(updated.expiry_date)} for the ${placeName}.`
-      } else if (!beforeDate && updated.expiry_date) {
-        text = `Expiry date set to ${shortDate(updated.expiry_date)} for the ${placeName}.`
-      } else if (beforeDate && !updated.expiry_date) {
-        text = frozenAndPaused
-          ? 'Frozen. The expiry clock is paused until it moves out of the freezer.'
-          : `No expiry date found for the ${placeName}.`
+      let latest = item
+      if (Object.keys(body).length > 0) {
+        latest = await apiClient.patch<InventoryItem>(
+          `/api/households/${householdId}/inventory-items/${itemId}`,
+          body,
+        )
       }
-      if (text && offerUndo) setMoveNote({ text, undoTo: fromId })
-      reload()
+      const expiry = await expiryRef.current?.commit(latest)
+      if (expiry?.status === 'cancelled') {
+        // They backed out of "which date is this?": stay here, with the rest saved.
+        setData(latest)
+        return
+      }
+      if (expiry?.item) latest = expiry.item
+      setData(latest)
+      navigate(`/households/${householdId}`)
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Something went wrong')
+      reload()
     } finally {
       setSaving(false)
     }
   }
 
-  const toggleMember = (memberId: string) => {
-    const current = item.allowed_member_ids
-    const next = current.includes(memberId)
-      ? current.filter((id) => id !== memberId)
-      : [...current, memberId]
-    void patch({ allowed_member_ids: next })
-  }
-
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6">
+    <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-col gap-6">
       <div>
         <Link
           to={`/households/${householdId}`}
@@ -196,7 +248,7 @@ export function InventoryItemDetailPage() {
         </Link>
         <div className="flex items-center gap-2">
           <CategoryDot category={item.category} />
-          <h2 className="text-xl font-semibold">{item.food_name}</h2>
+          <h2 className="min-w-0 break-words text-xl font-semibold">{item.food_name}</h2>
         </div>
         <p className="mt-1 text-xs text-faint">
           {item.category && FOOD_CATEGORY_LABELS[item.category]} · {DIMENSION_LABELS[dimension]}
@@ -230,67 +282,52 @@ export function InventoryItemDetailPage() {
 
       {tab === 'details' ? (
         <>
-          <div>
-            <label className={fieldLabelClass}>Nickname</label>
-            <input
-              type="text"
-              className={inputClass}
-              placeholder={item.food_type_name}
-              defaultValue={item.name_override ?? ''}
-              onBlur={(e) => {
-                const value = e.target.value.trim() || null
-                if (value !== item.name_override) void patch({ name_override: value })
-              }}
-            />
-          </div>
-
           <CostAndQuantitySection
             item={item}
             householdId={householdId!}
             itemId={itemId!}
             dimension={dimension}
-            saving={saving}
+            draft={draft}
+            onDraft={update}
             buyerNickname={
               members.find((m) => m.id === item.buyer_member_id)?.nickname ?? 'Unknown'
             }
             onChanged={reload}
           />
 
-          <div>
-            <label className={fieldLabelClass}>Who's using this?</label>
-            <div className="grid grid-cols-3 gap-2 rounded-control border border-transparent p-2">
-              {sortedMembers.map((member) => {
-                const selected = item.allowed_member_ids.includes(member.id)
-                return (
-                  <button
-                    key={member.id}
-                    type="button"
-                    disabled={isFinalized || saving}
-                    onClick={() => toggleMember(member.id)}
-                    className={`flex h-10 items-center justify-center rounded-control border px-2 py-2 text-center text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                      selected
-                        ? 'border-primary bg-primary-soft text-primary'
-                        : 'border-subtle bg-surface-2 text-muted hover:bg-surface-hover'
-                    }`}
-                  >
-                    <span className="w-full truncate">{member.nickname}</span>
-                  </button>
-                )
-              })}
+          {showWhoIsUsing && (
+            <div>
+              <label className={fieldLabelClass}>Who's using this?</label>
+              {isFinalized ? (
+                <>
+                  <p className="text-sm text-muted">
+                    {item.allowed_member_ids
+                      .map((id) => members.find((m) => m.id === id)?.nickname ?? 'Someone')
+                      .join(', ')}
+                  </p>
+                  <p className="mt-1.5 text-xs text-faint">
+                    This item's cost has already been settled, so who it's split between is locked
+                    in.
+                  </p>
+                </>
+              ) : (
+                <MemberPicker
+                  mode="multi"
+                  members={activeMembers}
+                  value={draft.allowedMemberIds}
+                  onChange={(ids) => update({ allowedMemberIds: ids })}
+                />
+              )}
             </div>
-            {isFinalized && (
-              <p className="mt-1.5 text-xs text-faint">
-                This item's cost has already been settled, so who it's split between is locked in.
-              </p>
-            )}
-          </div>
+          )}
 
           <div>
             <label className={fieldLabelClass}>Storage location</label>
             <select
+              aria-label="Storage location"
               className={inputClass}
-              value={item.storage_location_id}
-              onChange={(e) => void moveTo(e.target.value)}
+              value={draft.storageLocationId}
+              onChange={(e) => update({ storageLocationId: e.target.value })}
             >
               {storageLocations.map((loc) => (
                 <option key={loc.id} value={loc.id}>
@@ -298,45 +335,61 @@ export function InventoryItemDetailPage() {
                 </option>
               ))}
             </select>
-            {moveNote && (
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
-                {moveNote.text}
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => void moveTo(moveNote.undoTo, false)}
-                  className="font-medium text-primary hover:underline disabled:opacity-50"
-                >
-                  Undo
-                </button>
+            {draft.storageLocationId !== item.storage_location_id && (
+              <p className="mt-1.5 text-xs text-faint">
+                Its expiry date will adjust for the new place when you save.
               </p>
             )}
           </div>
 
-          <ItemExpirySection item={item} householdId={householdId!} onChanged={reload} />
+          <div className="rounded-control border border-subtle">
+            <button
+              type="button"
+              aria-expanded={showMore}
+              onClick={() => setShowMore((open) => !open)}
+              className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
+            >
+              <span className="text-sm font-medium text-muted">More details</span>
+              <ChevronDown
+                size={16}
+                strokeWidth={1.75}
+                className={`shrink-0 text-faint transition-transform ${showMore ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {showMore && (
+              <div className="flex flex-col gap-3 border-t border-subtle p-3">
+                <div>
+                  <label className={fieldLabelClass}>Nickname (optional)</label>
+                  <input
+                    type="text"
+                    className={inputClass}
+                    placeholder={item.food_type_name}
+                    value={draft.nickname}
+                    onChange={(e) => update({ nickname: e.target.value })}
+                  />
+                </div>
 
-          <div>
-            <label className={fieldLabelClass}>Best-by date</label>
-            <input
-              type="date"
-              className={inputClass}
-              defaultValue={item.best_by_date ?? ''}
-              onBlur={(e) => {
-                const value = e.target.value || null
-                if (value !== item.best_by_date) void patch({ best_by_date: value })
-              }}
-            />
+                <ItemExpirySection
+                  ref={expiryRef}
+                  item={item}
+                  householdId={householdId!}
+                  onChanged={reload}
+                />
+              </div>
+            )}
           </div>
+
           <p className="text-xs text-muted">
             Dates are suggestions. Check the package and the food itself before eating.
           </p>
 
           <button
             type="button"
-            onClick={() => navigate(`/households/${householdId}`)}
-            className="rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover"
+            disabled={saving}
+            onClick={() => void saveChanges()}
+            className="rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-60"
           >
-            Done
+            {saving ? 'Saving…' : 'Save Changes'}
           </button>
 
           {!isFinalized && (
@@ -597,7 +650,8 @@ function CostAndQuantitySection({
   householdId,
   itemId,
   dimension,
-  saving,
+  draft,
+  onDraft,
   buyerNickname,
   onChanged,
 }: {
@@ -605,7 +659,8 @@ function CostAndQuantitySection({
   householdId: string
   itemId: string
   dimension: ReturnType<typeof guessDimension>
-  saving: boolean
+  draft: Pick<Draft, 'quantity' | 'unit' | 'cost'>
+  onDraft: (changes: Partial<Draft>) => void
   buyerNickname: string
   onChanged: () => void
 }) {
@@ -616,21 +671,6 @@ function CostAndQuantitySection({
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-
-  const saveDirectEdit = async (
-    field: 'cost' | 'total_quantity' | 'preferred_unit',
-    value: string,
-  ) => {
-    setError(null)
-    try {
-      await apiClient.patch(`/api/households/${householdId}/inventory-items/${itemId}`, {
-        [field]: value,
-      })
-      onChanged()
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong')
-    }
-  }
 
   const submitCorrection = async () => {
     setError(null)
@@ -659,48 +699,40 @@ function CostAndQuantitySection({
   return (
     <>
       <div className="flex gap-3">
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <label className={fieldLabelClass}>Quantity</label>
           <NumberInput
             decimals={3}
             disabled={isFinalized}
             className={isFinalized ? disabledInputClass : inputClass}
-            defaultValue={item.total_quantity}
-            onBlur={(e) => {
-              if (e.target.value && e.target.value !== item.total_quantity) {
-                void saveDirectEdit('total_quantity', e.target.value)
-              }
-            }}
+            value={draft.quantity}
+            onChange={(e) => onDraft({ quantity: e.target.value })}
           />
         </div>
-        <div className="w-32">
+        <div className="w-32 shrink-0">
           <label className={fieldLabelClass}>Unit</label>
           <UnitSelect
-            disabled={isFinalized || saving}
+            disabled={isFinalized}
             dimensions={[dimension]}
             className={isFinalized ? disabledInputClass : inputClass}
-            value={item.preferred_unit}
-            onChange={(unit) => void saveDirectEdit('preferred_unit', unit)}
+            value={draft.unit}
+            onChange={(unit) => onDraft({ unit })}
           />
         </div>
       </div>
 
       <div className="flex gap-3">
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <label className={fieldLabelClass}>Cost</label>
           <NumberInput
             decimals={2}
             disabled={isFinalized}
             className={isFinalized ? disabledInputClass : inputClass}
-            defaultValue={item.cost}
-            onBlur={(e) => {
-              if (e.target.value && e.target.value !== item.cost) {
-                void saveDirectEdit('cost', e.target.value)
-              }
-            }}
+            value={draft.cost}
+            onChange={(e) => onDraft({ cost: e.target.value })}
           />
         </div>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <label className={fieldLabelClass}>Buyer</label>
           <input
             type="text"
@@ -732,7 +764,7 @@ function CostAndQuantitySection({
           ) : (
             <div className="mt-3 flex flex-col gap-2 rounded-card border border-subtle bg-surface p-3">
               <div className="flex gap-2">
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   <label className={fieldLabelClass}>Actual cost</label>
                   <NumberInput
                     decimals={2}
@@ -741,7 +773,7 @@ function CostAndQuantitySection({
                     onChange={(e) => setNewCost(e.target.value)}
                   />
                 </div>
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   <label className={fieldLabelClass}>Actual amount</label>
                   <NumberInput
                     decimals={3}

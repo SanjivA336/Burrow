@@ -129,7 +129,7 @@ export function SettlementsSection({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted">Every payment recorded between members, newest first.</p>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={openBlankForm}

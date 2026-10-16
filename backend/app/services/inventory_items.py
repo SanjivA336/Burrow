@@ -280,7 +280,6 @@ def create_manual(
             "p_preferred_unit": body.preferred_unit.value,
             "p_cost": str(body.cost),
             "p_expiry_date": expiry_date.isoformat() if expiry_date else None,
-            "p_best_by_date": body.best_by_date.isoformat() if body.best_by_date else None,
             "p_allowed_member_ids": [str(m) for m in body.allowed_member_ids],
             "p_accounting_type": accounting_type.value,
             "p_receipt_image_path": receipt_image_path,
@@ -494,7 +493,7 @@ def update_item(
     household_id: UUID, item_id: UUID, body: UpdateInventoryItemRequest
 ) -> InventoryItem:
     """A genuine partial update (model_fields_set, not None-checks --
-    expiry_date/best_by_date/name_override/storage_location_id are all
+    expiry_date/name_override/storage_location_id are all
     legitimately clearable-or-settable). Dates, storage, nickname, and a
     same-dimension unit-system swap are always editable; cost,
     total_quantity, and allowed_member_ids are rejected once the item's
@@ -507,8 +506,6 @@ def update_item(
     fields = body.model_fields_set
     updates: dict = {}
 
-    if "best_by_date" in fields:
-        updates["best_by_date"] = body.best_by_date.isoformat() if body.best_by_date else None
     now = datetime.now(UTC)
     clock = _clock_from_item(current)
     clock_changed = False

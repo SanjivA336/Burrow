@@ -82,7 +82,6 @@ class InventoryItem(BaseModel):
     cost: Decimal
     purchased_at: datetime
     expiry_date: date | None
-    best_by_date: date | None
     # Storage-aware expiry (see services/expiry.py). The item's own copy of
     # the three place values (days, or -1 never expires / -2 not recommended /
     # -3 unknown), how much of its life is left as of `moved_at` (None = never
@@ -141,7 +140,6 @@ class CreateInventoryItemRequest(BaseModel):
     preferred_unit: Unit
     cost: Decimal = Field(default=Decimal(0), ge=0)
     expiry_date: date | None = None
-    best_by_date: date | None = None
     allowed_member_ids: list[UUID] = Field(min_length=1)
     # Optional: falls back to the chosen food definition's accounting_type_default
     # when omitted (resolved in the service layer, not the RPC -- this is a
@@ -169,7 +167,7 @@ class ConsumeInventoryItemRequest(BaseModel):
 
 class UpdateInventoryItemRequest(BaseModel):
     """A genuine partial update -- only fields the caller actually sent are
-    applied (model_fields_set, not None-checks: expiry_date/best_by_date/
+    applied (model_fields_set, not None-checks: expiry_date/
     name_override/storage_location_id are all legitimately clearable-or-
     settable to a real value, same reasoning as UpdateRecipeRequest).
 
@@ -184,7 +182,6 @@ class UpdateInventoryItemRequest(BaseModel):
     # being changed: FIX_RULE ("the default was wrong") or THIS_ITEM ("this item
     # will expire then"). Omitted means THIS_ITEM, which always honors the date.
     expiry_edit_meaning: EditMeaning | None = None
-    best_by_date: date | None = None
     storage_location_id: UUID | None = None
     name_override: str | None = Field(default=None, max_length=200)
     # Same-dimension system swap only (e.g. oz -> g) -- resolved server-side

@@ -55,7 +55,6 @@ interface Draft {
   buyerId: string
   allowedMemberIds: string[]
   expiryDate: string
-  bestByDate: string
 }
 
 type AutofillField = 'nickname' | 'expiry_date' | 'allowed_member_ids' | 'cost'
@@ -118,7 +117,6 @@ function draftFromItem(
     allowedMemberIds:
       item.allowed_member_ids.length > 0 ? item.allowed_member_ids : activeMemberIds,
     expiryDate: item.expiry_date ?? '',
-    bestByDate: item.best_by_date ?? '',
   }
 }
 
@@ -180,7 +178,6 @@ function buildManualPatchBody(draft: Draft): Record<string, unknown> {
   }
   if (draft.buyerId) body.buyer_member_id = draft.buyerId
   if (draft.expiryDate) body.expiry_date = draft.expiryDate
-  if (draft.bestByDate) body.best_by_date = draft.bestByDate
   return body
 }
 
@@ -191,8 +188,7 @@ function moreSummary(draft: Draft): string {
   const nickname = draft.nickname.trim()
   if (nickname && nickname !== draft.food?.name) parts.push(`"${nickname}"`)
   if (draft.expiryDate) parts.push(`Expires ${shortDate(draft.expiryDate)}`)
-  if (draft.bestByDate) parts.push(`Best by ${shortDate(draft.bestByDate)}`)
-  return parts.length > 0 ? parts.join(' · ') : 'Nickname, dates'
+  return parts.length > 0 ? parts.join(' · ') : 'Nickname, expiry date'
 }
 
 export function PurchaseWizardModal({
@@ -367,8 +363,7 @@ export function PurchaseWizardModal({
   // Same idea for expiry date, off the food's shelf life for the place it's
   // going into (so picking the freezer instead of the fridge changes the
   // suggestion until the user types a date themselves). A place with no
-  // number of its own suggests nothing. There's no separate "best by"
-  // duration on a food definition, so that field stays manual-entry-only.
+  // number of its own suggests nothing.
   useEffect(() => {
     if (!draft?.food || customized.expiry_date) return
     const type = storageLocations.find((loc) => loc.id === draft.storageLocationId)?.type ?? 'PANTRY'
@@ -501,7 +496,6 @@ export function PurchaseWizardModal({
         accounting_type: draft.allowedMemberIds.length <= 1 ? 'PERSONAL' : 'SHARED',
         buyer_member_id: draft.buyerId || null,
         expiry_date: draft.expiryDate || null,
-        best_by_date: draft.bestByDate || null,
         status: 'COMPLETE',
       })
       if (draft.buyerId) setStickyBuyer(draft.buyerId)
@@ -997,19 +991,22 @@ export function PurchaseWizardModal({
                       </div>
 
 
-                      <div>
-                        <label className={fieldLabelClass}>Who's using this?</label>
-                        <MemberPicker
-                          mode="multi"
-                          members={activeMembers}
-                          value={draft.allowedMemberIds}
-                          autofilled={!customized.allowed_member_ids && !!draft.food}
-                          onChange={(ids) => {
-                            setDraft({ ...draft, allowedMemberIds: ids })
-                            markCustomized('allowed_member_ids')
-                          }}
-                        />
-                      </div>
+                      {/* With one person in the burrow there is nobody to choose between. */}
+                      {activeMembers.length > 1 && (
+                        <div>
+                          <label className={fieldLabelClass}>Who's using this?</label>
+                          <MemberPicker
+                            mode="multi"
+                            members={activeMembers}
+                            value={draft.allowedMemberIds}
+                            autofilled={!customized.allowed_member_ids && !!draft.food}
+                            onChange={(ids) => {
+                              setDraft({ ...draft, allowedMemberIds: ids })
+                              markCustomized('allowed_member_ids')
+                            }}
+                          />
+                        </div>
+                      )}
 
                       <div>
                         <label className={fieldLabelClass}>Storage location</label>
@@ -1107,26 +1104,6 @@ export function PurchaseWizardModal({
                                 !!draft.expiryDate,
                               )}
                             </p>
-                          </div>
-                          <div className="flex-1">
-                            <label className={fieldLabelClass}>Best-by date (optional)</label>
-                            <div className="flex items-center gap-1.5">
-                              <input
-                                type="date"
-                                className={inputClass}
-                                value={draft.bestByDate}
-                                onChange={(e) => setDraft({ ...draft, bestByDate: e.target.value })}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setDraft({ ...draft, bestByDate: '' })}
-                                title="Clear"
-                                aria-label="Clear best-by date"
-                                className="shrink-0 rounded-control p-2 text-faint transition-colors hover:bg-surface-hover hover:text-text"
-                              >
-                                <X size={16} strokeWidth={1.75} />
-                              </button>
-                            </div>
                           </div>
                         </div>
                         </div>

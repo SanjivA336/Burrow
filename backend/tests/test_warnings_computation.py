@@ -20,7 +20,6 @@ def _item(*, variant_id=None, purchased_at=None, **overrides) -> InventoryItem:
         cost=Decimal("4.99"),
         purchased_at=purchased_at or now,
         expiry_date=None,
-        best_by_date=None,
         status="ACTIVE",
         accounting_type="PERSONAL",
         split_member_count=None,
@@ -113,17 +112,6 @@ def test_non_active_item_is_not_flagged_even_if_expired(monkeypatch) -> None:
     result = _compute(monkeypatch, [item])
 
     assert result.expiry_warnings == []
-
-
-def test_uses_earlier_of_expiry_and_best_by_date(monkeypatch) -> None:
-    item = _item(
-        expiry_date=date.today() + timedelta(days=10),
-        best_by_date=date.today() + timedelta(days=1),
-    )
-    result = _compute(monkeypatch, [item])
-
-    assert len(result.expiry_warnings) == 1
-    assert result.expiry_warnings[0].relevant_date == date.today() + timedelta(days=1)
 
 
 def test_zero_active_quantity_is_out_of_stock(monkeypatch) -> None:

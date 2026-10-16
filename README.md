@@ -19,7 +19,7 @@ A home for your food: shared-household kitchen/pantry management system.
 ### Inventory tracking
 - Shared global food catalog, with per-household variants so two households
   track the same food ("Milk") independently
-- Manual item entry: quantity + unit, expiry/best-by date, cost, storage
+- Manual item entry: quantity + unit, expiry date, cost, storage
   location, allowed members
 - Per-item nicknames to tell apart two purchases of the same food (e.g. "HEB
   milk" vs "Costco milk")
@@ -53,7 +53,7 @@ A home for your food: shared-household kitchen/pantry management system.
   settled-vs-outstanding breakdown, and a per-member transaction drill-down
 
 ### Warnings
-- Expiry warnings (expiring soon / expired), from expiry or best-by date
+- Expiry warnings (expiring soon / expired), from the expiry date
 - Stock warnings (low stock / out of stock), relative to the most recent
   purchase size
 - Per-warning dismissal that self-clears automatically once the underlying
@@ -336,6 +336,18 @@ leaving localhost.
   person through the app yet. Not designed yet: the approach (coach marks, a
   checklist, an empty-state walkthrough, a sample burrow) still has to be
   chosen before anything is built. Added 2026-10-06.
+- [ ] **Moving an item between storage places, and choosing where a new item
+  goes.** Today the only way to move an item is to open it and change its
+  storage location, and choosing a place when adding is a plain dropdown. Both
+  should feel quicker. Higher priority: moving. The idea is a swipe on the left
+  side of an item card (marking expired and empty are already on the right) that
+  moves it between places without opening it. Choosing a place when adding is
+  second. Not designed yet. Added 2026-10-15.
+- [ ] **Update the Terms and Privacy Policy wording about dates.** The Terms
+  still say "Expiry and best-by dates ... are suggestions only", but the app no
+  longer has a best-by date. Reword to expiry dates only, then decide whether a
+  wording change like this needs a new version date and a fresh acceptance.
+  Added 2026-10-15.
 - [ ] **Tester kit.** The invite message, a short "what to try" list, and
   check-in questions for the first testers. Added 2026-10-08.
 - [ ] **API rate limit + retry.** The API allows 120 requests per minute per

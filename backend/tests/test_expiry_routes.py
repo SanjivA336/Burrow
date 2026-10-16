@@ -31,7 +31,6 @@ def _item(household_id: uuid.UUID, **overrides) -> InventoryItem:
         cost=Decimal("3"),
         purchased_at=NOW - timedelta(days=4),
         expiry_date=(NOW + timedelta(days=6)).date(),
-        best_by_date=None,
         status="ACTIVE",
         accounting_type="SHARED",
         split_member_count=1,

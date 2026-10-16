@@ -127,7 +127,6 @@ function downloadInventoryAsCsv(items: InventoryItem[], members: Member[]) {
     'Cost',
     'Status',
     'Expiry date',
-    'Best-by date',
     'Buyer',
     'Shared with',
     'Purchased at',
@@ -143,7 +142,6 @@ function downloadInventoryAsCsv(items: InventoryItem[], members: Member[]) {
     item.cost,
     item.status,
     item.expiry_date ?? '',
-    item.best_by_date ?? '',
     nameById.get(item.buyer_member_id) ?? '',
     item.allowed_member_ids.map((id) => nameById.get(id) ?? '').join('; '),
     item.purchased_at,
@@ -432,7 +430,7 @@ export function InventoryPage() {
       itemPlaceValues(item)[placeForStorageType(item.storage_location_type ?? 'PANTRY')]
     const expiryState: ExpiryState =
       warning?.state ??
-      (item.expiry_date || item.best_by_date
+      (item.expiry_date
         ? 'ok'
         : placeValue === NEVER_EXPIRES
           ? 'none'

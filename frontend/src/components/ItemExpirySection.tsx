@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { CalendarOff, ChevronDown, ChevronRight, Snowflake } from 'lucide-react'
 import { apiClient, ApiError } from '../lib/apiClient'
 import { shortDate } from '../lib/formatDate'
@@ -30,14 +30,30 @@ interface Props {
   onChanged: () => void
 }
 
+// What the parent's "Save Changes" asks of this section: apply the expiry date
+// that was typed (if any), asking "which date is this?" first when it matters.
+export interface ItemExpiryHandle {
+  commit: (
+    latest?: InventoryItem,
+  ) => Promise<{ status: 'none' | 'saved' | 'cancelled'; item?: InventoryItem }>
+}
+
 type PlaceAction = 'SET_DATE' | 'REMOVE' | 'ADD_BACK'
 
 // The expiry part of an item's page: the date for the place it is kept in now,
 // and a collapsed list of the other places, each with its own shelf life. A
 // place with no number is hidden until you choose to add one, and a place can
-// be removed again. Dates are suggestions; the explanation of what happens when
-// an item moves lives in the backend (services/expiry.py).
-export function ItemExpirySection({ item, householdId, onChanged }: Props) {
+// be removed again.
+//
+// The date box for the current place is a draft: typing there changes nothing
+// until the page's Save Changes calls commit(). The buttons here (Remove, Add,
+// and everything under Other places) are actions and apply straight away, like
+// Mark expired does. The rules behind all of it live in the backend
+// (services/expiry.py).
+export const ItemExpirySection = forwardRef<ItemExpiryHandle, Props>(function ItemExpirySection(
+  { item, householdId, onChanged },
+  ref,
+) {
   const current = placeForStorageType(item.storage_location_type ?? 'PANTRY')
   const values = itemPlaceValues(item)
   const createdDate = utcDate(item.created_at)
@@ -48,10 +64,18 @@ export function ItemExpirySection({ item, householdId, onChanged }: Props) {
   // The place whose empty date box is open because "Add" was chosen.
   const [adding, setAdding] = useState<Place | null>(null)
   const [showOthers, setShowOthers] = useState(false)
-  // Bumped to throw away what was typed in a date box (a cleared or refused edit).
+  // Bumped to throw away what was typed in a date box (a refused edit).
   const [resetKey, setResetKey] = useState(0)
   const [prompt, setPrompt] = useState<{ date: string; preview: ExpiryPreview } | null>(null)
   const [meaning, setMeaning] = useState<ExpiryEditMeaning>('THIS_ITEM')
+  // The date typed into the current place's box, waiting for commit().
+  const pendingDate = useRef<string | null>(null)
+  const promptDone = useRef<((status: 'saved' | 'cancelled') => void) | null>(null)
+
+  // A new date from the server (an action above, a refresh) replaces the box.
+  useEffect(() => {
+    pendingDate.current = null
+  }, [item.expiry_date, resetKey])
 
   const paused = current === 'freezer' && values.freezer <= 0 && item.remaining_fraction !== null
 
@@ -93,47 +117,60 @@ export function ItemExpirySection({ item, householdId, onChanged }: Props) {
     if (restored <= 0) setAdding(place)
   }
 
-  // A date typed for the place the item is in. If it has moved since it was
-  // added, the same date can mean two things, so ask first (only when the two
-  // answers actually differ).
-  const commitCurrentDate = async (value: string) => {
-    if (!value) {
-      setResetKey((k) => k + 1)
-      return
-    }
-    if (value === item.expiry_date) return
-    if (item.has_moved && item.remaining_fraction !== null) {
-      setBusy(true)
-      try {
-        const preview = await apiClient.post<ExpiryPreview>(`${baseUrl}/expiry-preview`, {
-          expiry_date: value,
-        })
+  // Applies the typed date for the place the item is in (after any move the
+  // page just saved, which is why it can be handed the latest item). If the
+  // item has moved since it was added, the same date can mean two things, so
+  // ask first, but only when the two answers actually differ.
+  useImperativeHandle(ref, () => ({
+    commit: async (latest) => {
+      const date = pendingDate.current
+      const now = latest ?? item
+      if (!date || date === now.expiry_date) return { status: 'none' }
+      const place = placeForStorageType(now.storage_location_type ?? 'PANTRY')
+
+      if (now.has_moved && now.remaining_fraction !== null) {
+        let preview: ExpiryPreview
+        setBusy(true)
+        try {
+          preview = await apiClient.post<ExpiryPreview>(`${baseUrl}/expiry-preview`, {
+            expiry_date: date,
+          })
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : 'Something went wrong')
+          setResetKey((k) => k + 1)
+          return { status: 'cancelled' }
+        } finally {
+          // Before the question is shown, so its Save button isn't left disabled.
+          setBusy(false)
+        }
         if (preview.needs_choice) {
           setMeaning('THIS_ITEM')
-          setPrompt({ date: value, preview })
-          return
+          const status = await new Promise<'saved' | 'cancelled'>((resolve) => {
+            promptDone.current = resolve
+            setPrompt({ date, preview })
+          })
+          return { status }
         }
-      } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Something went wrong')
-        setResetKey((k) => k + 1)
-        return
-      } finally {
-        setBusy(false)
       }
-    }
-    await send(current, 'SET_DATE', { expiry_date: value })
-  }
+      const updated = await send(place, 'SET_DATE', { expiry_date: date })
+      return updated ? { status: 'saved', item: updated } : { status: 'cancelled' }
+    },
+  }))
 
   const confirmPrompt = async () => {
     if (!prompt) return
     const { date } = prompt
     setPrompt(null)
-    await send(current, 'SET_DATE', { expiry_date: date, expiry_edit_meaning: meaning })
+    const updated = await send(current, 'SET_DATE', { expiry_date: date, expiry_edit_meaning: meaning })
+    promptDone.current?.(updated ? 'saved' : 'cancelled')
+    promptDone.current = null
   }
 
   const cancelPrompt = () => {
     setPrompt(null)
     setResetKey((k) => k + 1)
+    promptDone.current?.('cancelled')
+    promptDone.current = null
   }
 
   const currentHasNumber = values[current] > 0
@@ -151,10 +188,12 @@ export function ItemExpirySection({ item, householdId, onChanged }: Props) {
             key={`${item.expiry_date}-${resetKey}`}
             type="date"
             aria-label={`Expiry date in the ${PLACE_LABELS[current]}`}
-            className={inputClass}
+            className={`${inputClass} min-w-0`}
             defaultValue={item.expiry_date ?? ''}
             disabled={busy}
-            onBlur={(e) => void commitCurrentDate(e.target.value)}
+            onChange={(e) => {
+              pendingDate.current = e.target.value || null
+            }}
           />
           {currentHasNumber ? (
             <button
@@ -173,11 +212,13 @@ export function ItemExpirySection({ item, householdId, onChanged }: Props) {
         </div>
       ) : (
         <div className="flex items-center justify-between gap-3 rounded-control border border-subtle bg-surface px-3 py-2.5">
-          <p className="flex items-center gap-2 text-sm text-muted">
+          <p className="flex min-w-0 items-center gap-2 text-sm text-muted">
             {paused ? (
               <>
                 <Snowflake size={15} strokeWidth={1.9} className="shrink-0 text-info" />
-                Frozen. The expiry clock is paused until it moves out of the freezer.
+                <span className="min-w-0">
+                  Frozen. The expiry clock is paused until it moves out of the freezer.
+                </span>
               </>
             ) : values[current] === NEVER_EXPIRES ? (
               <>Never expires in the {PLACE_LABELS[current]}.</>
@@ -192,7 +233,7 @@ export function ItemExpirySection({ item, householdId, onChanged }: Props) {
             type="button"
             disabled={busy}
             onClick={() => void startAdding(current)}
-            className={linkButtonClass}
+            className={`${linkButtonClass} shrink-0`}
           >
             Add
           </button>
@@ -234,7 +275,7 @@ export function ItemExpirySection({ item, householdId, onChanged }: Props) {
                       key={`${place}-${value}-${resetKey}`}
                       type="date"
                       aria-label={`Expiry date in the ${PLACE_LABELS[place]}`}
-                      className={inputClass}
+                      className={`${inputClass} min-w-0`}
                       defaultValue={value > 0 ? addDays(createdDate, value) : ''}
                       disabled={busy}
                       onBlur={(e) => {
@@ -354,4 +395,4 @@ export function ItemExpirySection({ item, householdId, onChanged }: Props) {
       )}
     </div>
   )
-}
+})

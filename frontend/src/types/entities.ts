@@ -132,7 +132,6 @@ export interface InventoryItem {
   cost: string
   purchased_at: string
   expiry_date: string | null
-  best_by_date: string | null
   // Storage-aware expiry: this item's own copy of the three place values
   // (days or the same codes as a food), how much of its life is left as of
   // moved_at (null = never tracked), and whether it has ever changed place.
@@ -431,7 +430,6 @@ export interface PurchaseSessionItem {
   preferred_unit: Unit | null
   cost: string | null
   expiry_date: string | null
-  best_by_date: string | null
   name_override: string | null
   accounting_type: AccountingType | null
   allowed_member_ids: string[]

@@ -30,11 +30,6 @@ EXPIRY_WARNING_DAYS = 5
 LOW_STOCK_FRACTION = Decimal("0.2")
 
 
-def _relevant_expiry_date(expiry_date: date | None, best_by_date: date | None) -> date | None:
-    dates = [d for d in (expiry_date, best_by_date) if d is not None]
-    return min(dates) if dates else None
-
-
 # Split out from compute_warnings() so unit tests can monkeypatch these two
 # lookups alone (same pattern as the existing list_for_household monkeypatch)
 # instead of needing a real Supabase client just to exercise the pure
@@ -130,7 +125,7 @@ def compute_warnings(household_id: UUID) -> HouseholdWarnings:
             continue
         if item.id in ignored_expiry_item_ids:
             continue
-        relevant_date = _relevant_expiry_date(item.expiry_date, item.best_by_date)
+        relevant_date = item.expiry_date
         if relevant_date is None:
             continue
         days_until = (relevant_date - today).days

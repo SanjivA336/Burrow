@@ -46,7 +46,6 @@ def _item(**overrides) -> InventoryItem:
         cost=Decimal("10.00"),
         purchased_at=now,
         expiry_date=None,
-        best_by_date=None,
         status="ACTIVE",
         accounting_type="SHARED",
         split_member_count=2,
