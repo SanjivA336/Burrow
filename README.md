@@ -343,11 +343,22 @@ leaving localhost.
   side of an item card (marking expired and empty are already on the right) that
   moves it between places without opening it. Choosing a place when adding is
   second. Not designed yet. Added 2026-10-15.
-- [ ] **Update the Terms and Privacy Policy wording about dates.** The Terms
-  still say "Expiry and best-by dates ... are suggestions only", but the app no
-  longer has a best-by date. Reword to expiry dates only, then decide whether a
-  wording change like this needs a new version date and a fresh acceptance.
-  Added 2026-10-15.
+- [ ] **Update the Terms about expiry dates (Privacy needs no change).**
+  Checked 2026-10-16. The Terms "Expiry and freshness" paragraph
+  (frontend/src/legal/terms.ts) is out of date in three ways: (1) it says
+  "Expiry and best-by dates", but the best-by date is gone, so say expiry dates
+  only; (2) it says dates are "estimated automatically from a food's typical
+  shelf life", but they now come from the official list of foods, whose numbers
+  are taken from the USDA FoodKeeper guidance, and they are recalculated when an
+  item moves between pantry, fridge and freezer, so say so; (3) it should say
+  that a place marked "not recommended" or a date for a cooked food is general
+  guidance, not a safety guarantee. Keep the existing "not a food-safety
+  determination, check the package and the food" sentence. The Privacy Policy
+  needs nothing: no new personal data is collected, and expiry dates and storage
+  locations are already listed. Both pages say "Last updated October 6, 2026";
+  decide whether this wording change needs a new date and a fresh acceptance.
+  The USDA data is public domain, so no credit is required. Added 2026-10-15,
+  expanded 2026-10-16.
 - [ ] **Tester kit.** The invite message, a short "what to try" list, and
   check-in questions for the first testers. Added 2026-10-08.
 - [ ] **API rate limit + retry.** The API allows 120 requests per minute per
