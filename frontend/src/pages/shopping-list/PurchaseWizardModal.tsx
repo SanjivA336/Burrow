@@ -1112,7 +1112,7 @@ export function PurchaseWizardModal({
                     </fieldset>
                   </div>
 
-                  <div className="shrink-0 border-t border-subtle bg-surface-2 px-4 pb-3 pt-3 max-md:pb-[var(--bottom-bar-gap)]">
+                  <div className="shrink-0 border-t border-subtle bg-surface-2 px-4 pb-3 pt-3 max-md:pb-[calc(var(--bottom-bar-gap)+0.75rem)]">
                     {error && <p className="mb-2 text-sm text-danger">{error}</p>}
                     <div className="flex flex-col gap-2">
 
