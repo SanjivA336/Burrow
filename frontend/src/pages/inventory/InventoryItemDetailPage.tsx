@@ -3,6 +3,7 @@ import { NumberInput } from '../../components/NumberInput'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ChevronDown, Hourglass, PackageX } from 'lucide-react'
 import { formatQuantity } from '../../lib/formatQuantity'
+import { shortDate } from '../../lib/formatDate'
 import { apiClient, ApiError } from '../../lib/apiClient'
 import { CategoryDot } from '../../components/CategoryDot'
 import { ItemExpirySection, type ItemExpiryHandle } from '../../components/ItemExpirySection'
@@ -11,7 +12,7 @@ import { UnitSelect } from '../../components/UnitSelect'
 import { useHouseholdResource } from '../../hooks/useHouseholdResource'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { FOOD_CATEGORY_LABELS } from '../../lib/foodCategories'
-import { DIMENSION_LABELS, UNIT_LABELS, UNITS_BY_DIMENSION, guessDimension } from '../../lib/units'
+import { UNIT_LABELS, UNITS_BY_DIMENSION, guessDimension } from '../../lib/units'
 import type {
   ConsumptionEvent,
   InventoryItem,
@@ -82,7 +83,7 @@ export function InventoryItemDetailPage() {
   const [confirmingVoid, setConfirmingVoid] = useState(false)
   const [voiding, setVoiding] = useState(false)
   const [removing, setRemoving] = useState<'EXPIRED' | 'EMPTY' | null>(null)
-  const [showMore, setShowMore] = useState(true)
+  const [showMore, setShowMore] = useState(false)
   const expiryRef = useRef<ItemExpiryHandle>(null)
 
   // The draft starts from the saved item, and follows it (a refresh, a change
@@ -236,162 +237,244 @@ export function InventoryItemDetailPage() {
     }
   }
 
+  // The title follows the nickname box as it is typed.
+  const nicknameTyped = draft.nickname.trim()
+  const title = nicknameTyped ? `${nicknameTyped} (${item.food_type_name})` : item.food_type_name
+
   return (
-    <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-col gap-6">
-      <div>
-        <Link
-          to={`/households/${householdId}`}
-          className="mb-1 flex items-center gap-1 text-xs font-medium text-muted hover:text-text"
-        >
-          <ArrowLeft size={14} strokeWidth={2} />
-          Inventory
-        </Link>
-        <div className="flex items-center gap-2">
-          <CategoryDot category={item.category} />
-          <h2 className="min-w-0 break-words text-xl font-semibold">{item.food_name}</h2>
-        </div>
-        <p className="mt-1 text-xs text-faint">
-          {item.category && FOOD_CATEGORY_LABELS[item.category]} · {DIMENSION_LABELS[dimension]}
-          {item.food_name !== item.food_type_name && <> · {item.food_type_name}</>}
-        </p>
-      </div>
-
-      {actionError && <p className="text-sm text-danger">{actionError}</p>}
-
-      <div className="flex gap-2">
-        {(
-          [
-            { key: 'details', label: 'Details' },
-            { key: 'history', label: 'Usage history' },
-          ] as const
-        ).map(({ key, label }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            className={`rounded-control border px-3 py-1.5 text-sm font-medium transition-colors ${
-              tab === key
-                ? 'border-primary bg-primary-soft text-primary'
-                : 'border-subtle bg-surface-2 text-muted hover:bg-surface-hover'
-            }`}
+    <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-col gap-4">
+      {/* Same card as the add-item sheet: raised background, a header bar, the
+          fields, then the action bar. The back arrow and the Details / Usage
+          history switch live in the header so the fields start right below it. */}
+      <div className="overflow-hidden rounded-card border border-subtle bg-surface-2 shadow-raised">
+        <div className="flex items-center gap-2 border-b border-subtle px-3 py-2.5">
+          <Link
+            to={`/households/${householdId}`}
+            aria-label="Back to inventory"
+            title="Back to inventory"
+            className="shrink-0 rounded-control p-1.5 text-muted transition-colors hover:bg-surface-hover hover:text-text"
           >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'details' ? (
-        <>
-          <CostAndQuantitySection
-            item={item}
-            householdId={householdId!}
-            itemId={itemId!}
-            dimension={dimension}
-            draft={draft}
-            onDraft={update}
-            buyerNickname={
-              members.find((m) => m.id === item.buyer_member_id)?.nickname ?? 'Unknown'
-            }
-            onChanged={reload}
-          />
-
-          {showWhoIsUsing && (
-            <div>
-              <label className={fieldLabelClass}>Who's using this?</label>
-              {isFinalized ? (
-                <>
-                  <p className="text-sm text-muted">
-                    {item.allowed_member_ids
-                      .map((id) => members.find((m) => m.id === id)?.nickname ?? 'Someone')
-                      .join(', ')}
-                  </p>
-                  <p className="mt-1.5 text-xs text-faint">
-                    This item's cost has already been settled, so who it's split between is locked
-                    in.
-                  </p>
-                </>
-              ) : (
-                <MemberPicker
-                  mode="multi"
-                  members={activeMembers}
-                  value={draft.allowedMemberIds}
-                  onChange={(ids) => update({ allowedMemberIds: ids })}
-                />
-              )}
-            </div>
-          )}
-
-          <div>
-            <label className={fieldLabelClass}>Storage location</label>
-            <select
-              aria-label="Storage location"
-              className={inputClass}
-              value={draft.storageLocationId}
-              onChange={(e) => update({ storageLocationId: e.target.value })}
-            >
-              {storageLocations.map((loc) => (
-                <option key={loc.id} value={loc.id}>
-                  {loc.name}
-                </option>
-              ))}
-            </select>
-            {draft.storageLocationId !== item.storage_location_id && (
-              <p className="mt-1.5 text-xs text-faint">
-                Its expiry date will adjust for the new place when you save.
-              </p>
-            )}
+            <ArrowLeft size={18} strokeWidth={1.75} />
+          </Link>
+          <CategoryDot category={item.category} />
+          <h2 className="min-w-0 flex-1 truncate text-base font-semibold">{title}</h2>
+          <div className="flex shrink-0 gap-1">
+            {(
+              [
+                { key: 'details', label: 'Details' },
+                { key: 'history', label: 'History' },
+              ] as const
+            ).map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                className={`rounded-control px-2 py-1 text-xs font-medium transition-colors ${
+                  tab === key ? 'bg-primary-soft text-primary' : 'text-muted hover:bg-surface-hover'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
+        </div>
 
-          <div className="rounded-control border border-subtle">
-            <button
-              type="button"
-              aria-expanded={showMore}
-              onClick={() => setShowMore((open) => !open)}
-              className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
-            >
-              <span className="text-sm font-medium text-muted">More details</span>
-              <ChevronDown
-                size={16}
-                strokeWidth={1.75}
-                className={`shrink-0 text-faint transition-transform ${showMore ? 'rotate-180' : ''}`}
-              />
-            </button>
-            {showMore && (
-              <div className="flex flex-col gap-3 border-t border-subtle p-3">
-                <div>
-                  <label className={fieldLabelClass}>Nickname (optional)</label>
-                  <input
-                    type="text"
-                    className={inputClass}
-                    placeholder={item.food_type_name}
-                    value={draft.nickname}
-                    onChange={(e) => update({ nickname: e.target.value })}
-                  />
-                </div>
+        <div className="flex flex-col gap-3 p-4">
+          {actionError && <p className="text-sm text-danger">{actionError}</p>}
 
-                <ItemExpirySection
-                  ref={expiryRef}
-                  item={item}
-                  householdId={householdId!}
-                  onChanged={reload}
+          {tab === 'details' ? (
+            <>
+              <div>
+                <label className={fieldLabelClass}>
+                  Food type
+                  {item.category && (
+                    <span className="font-normal text-faint">
+                      {' '}
+                      · {FOOD_CATEGORY_LABELS[item.category]}
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  disabled
+                  readOnly
+                  title="An item's food type can't be changed"
+                  value={item.food_type_name}
+                  className={disabledInputClass}
                 />
               </div>
-            )}
+
+              <CostAndQuantitySection
+                item={item}
+                householdId={householdId!}
+                itemId={itemId!}
+                dimension={dimension}
+                draft={draft}
+                onDraft={update}
+                buyerNickname={
+                  members.find((m) => m.id === item.buyer_member_id)?.nickname ?? 'Unknown'
+                }
+                onChanged={reload}
+              />
+
+              {showWhoIsUsing && (
+                <div>
+                  <label className={fieldLabelClass}>Who's using this?</label>
+                  {isFinalized ? (
+                    <>
+                      <p className="text-sm text-muted">
+                        {item.allowed_member_ids
+                          .map((id) => members.find((m) => m.id === id)?.nickname ?? 'Someone')
+                          .join(', ')}
+                      </p>
+                      <p className="mt-1.5 text-xs text-faint">
+                        This item's cost has already been settled, so who it's split between is
+                        locked in.
+                      </p>
+                    </>
+                  ) : (
+                    <MemberPicker
+                      mode="multi"
+                      members={activeMembers}
+                      value={draft.allowedMemberIds}
+                      onChange={(ids) => update({ allowedMemberIds: ids })}
+                    />
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className={fieldLabelClass}>Storage location</label>
+                <select
+                  aria-label="Storage location"
+                  className={inputClass}
+                  value={draft.storageLocationId}
+                  onChange={(e) => update({ storageLocationId: e.target.value })}
+                >
+                  {storageLocations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </option>
+                  ))}
+                </select>
+                {draft.storageLocationId !== item.storage_location_id && (
+                  <p className="mt-1.5 text-xs text-faint">
+                    Its expiry date will adjust for the new place when you save.
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-control border border-subtle">
+                <button
+                  type="button"
+                  aria-expanded={showMore}
+                  onClick={() => setShowMore((open) => !open)}
+                  className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
+                >
+                  <span className="text-sm font-medium text-muted">More details</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    {!showMore && (
+                      <span className="truncate text-xs text-faint">
+                        {item.expiry_date
+                          ? `Expires ${shortDate(item.expiry_date)}`
+                          : 'No expiry date'}
+                      </span>
+                    )}
+                    <ChevronDown
+                      size={16}
+                      strokeWidth={1.75}
+                      className={`shrink-0 text-faint transition-transform ${showMore ? 'rotate-180' : ''}`}
+                    />
+                  </span>
+                </button>
+                {/* Hidden rather than unmounted, so a date typed before collapsing still saves. */}
+                {
+                  <div
+                    className={
+                      showMore ? 'flex flex-col gap-3 border-t border-subtle p-3' : 'hidden'
+                    }
+                  >
+                    <div>
+                      <label className={fieldLabelClass}>Nickname (optional)</label>
+                      <input
+                        type="text"
+                        className={inputClass}
+                        placeholder={item.food_type_name}
+                        value={draft.nickname}
+                        onChange={(e) => update({ nickname: e.target.value })}
+                      />
+                    </div>
+
+                    <ItemExpirySection
+                      ref={expiryRef}
+                      item={item}
+                      householdId={householdId!}
+                      onChanged={reload}
+                    />
+
+                    <p className="text-xs text-muted">
+                      Dates are suggestions. Check the package and the food itself before eating.
+                    </p>
+                  </div>
+                }
+              </div>
+            </>
+          ) : (
+            <>
+              <UsageSection
+                householdId={householdId!}
+                itemId={itemId!}
+                displayUnit={item.preferred_unit}
+                members={members}
+                onChanged={reload}
+              />
+
+              {corrections.length > 0 && (
+                <div>
+                  <label className={fieldLabelClass}>Correction history</label>
+                  <ul className="flex flex-col gap-2">
+                    {corrections.map((c) => (
+                      <li
+                        key={c.id}
+                        className="rounded-control border border-subtle bg-surface-2 px-3 py-2 text-xs text-muted"
+                      >
+                        {c.new_cost !== null && (
+                          <p>
+                            Cost: {c.previous_cost} → {c.new_cost}
+                          </p>
+                        )}
+                        {c.new_total_quantity !== null && (
+                          <p>
+                            Amount: {formatQuantity(c.previous_total_quantity)} →{' '}
+                            {formatQuantity(c.new_total_quantity)}
+                          </p>
+                        )}
+                        {c.note && <p className="italic">"{c.note}"</p>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {tab === 'details' && (
+          <div className="border-t border-subtle bg-surface-2 px-4 py-3">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void saveChanges()}
+              className="w-full rounded-control bg-primary px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-60"
+            >
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
           </div>
+        )}
+      </div>
 
-          <p className="text-xs text-muted">
-            Dates are suggestions. Check the package and the food itself before eating.
-          </p>
-
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => void saveChanges()}
-            className="rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-60"
-          >
-            {saving ? 'Saving…' : 'Save Changes'}
-          </button>
-
+      {tab === 'details' && (
+        <>
           {!isFinalized && (
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -451,42 +534,6 @@ export function InventoryItemDetailPage() {
                 Void this item
               </button>
             ))}
-        </>
-      ) : (
-        <>
-          <UsageSection
-            householdId={householdId!}
-            itemId={itemId!}
-            displayUnit={item.preferred_unit}
-            members={members}
-            onChanged={reload}
-          />
-
-          {corrections.length > 0 && (
-            <div>
-              <label className={fieldLabelClass}>Correction history</label>
-              <ul className="flex flex-col gap-2">
-                {corrections.map((c) => (
-                  <li
-                    key={c.id}
-                    className="rounded-control border border-subtle bg-surface-2 px-3 py-2 text-xs text-muted"
-                  >
-                    {c.new_cost !== null && (
-                      <p>
-                        Cost: {c.previous_cost} → {c.new_cost}
-                      </p>
-                    )}
-                    {c.new_total_quantity !== null && (
-                      <p>
-                        Amount: {formatQuantity(c.previous_total_quantity)} → {formatQuantity(c.new_total_quantity)}
-                      </p>
-                    )}
-                    {c.note && <p className="italic">"{c.note}"</p>}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </>
       )}
     </div>
