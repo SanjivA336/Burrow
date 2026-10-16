@@ -23,7 +23,7 @@ import { SettingsLayout } from './pages/settings/SettingsLayout'
 import { ActivityPage } from './pages/activity/ActivityPage'
 import { AccountPage } from './pages/account/AccountPage'
 import { InventoryPage } from './pages/inventory/InventoryPage'
-import { InventoryItemDetailPage } from './pages/inventory/InventoryItemDetailPage'
+import { ItemLinkRedirect } from './pages/inventory/ItemLinkRedirect'
 import { BalancesPage } from './pages/ledger/BalancesPage'
 import { ShoppingListPage } from './pages/shopping-list'
 import { RecipesPage } from './pages/recipes'
@@ -69,7 +69,7 @@ function App() {
             <Route path="/households/join" element={<JoinHouseholdPage />} />
             <Route path="/households/:householdId" element={<HouseholdShell />}>
               <Route index element={<InventoryPage />} />
-              <Route path="inventory-items/:itemId" element={<InventoryItemDetailPage />} />
+              <Route path="inventory-items/:itemId" element={<ItemLinkRedirect />} />
               <Route path="balances" element={<BalancesPage />} />
               <Route path="settings" element={<SettingsLayout />}>
                 <Route path="burrow" element={<BurrowDetails />} />

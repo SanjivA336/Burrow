@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, NavLink, Outlet, useNavigate, useParams } from 'react-router-dom'
 import {
-  ChefHat,
-  Home,
-  Receipt,
-  Scale,
-  Settings,
-  ShoppingCart,
-} from 'lucide-react'
+  Link,
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom'
+import { ChefHat, Home, Receipt, Scale, Settings, ShoppingCart } from 'lucide-react'
 import { apiClient, ApiError } from '../../lib/apiClient'
 import { BurrowLogo } from '../../components/BurrowLogo'
 import { CopyButton } from '../../components/CopyButton'
@@ -18,6 +19,8 @@ import { SupportLink } from '../../components/SupportLink'
 import { AddItemWizardContext } from '../../context/addItemWizard'
 import { ShellChromeContext } from '../../context/shellChrome'
 import { useAddItemWizard } from '../../hooks/useAddItemWizard'
+import { ITEM_PARAM } from '../../hooks/useItemEditor'
+import { ItemEditModal } from '../inventory/ItemEditModal'
 import { useIsDeveloper } from '../../hooks/useIsDeveloper'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { invalidateResources } from '../../lib/resourceCache'
@@ -77,6 +80,28 @@ export function HouseholdShell() {
   // order from the address.
   const onAddItemChanged = useRef<(() => void) | null>(null)
   const addItemWizard = useAddItemWizard(householdId, () => onAddItemChanged.current?.())
+
+  // The item editor sheet. Which item is in the address (?item=<id>); it opens
+  // over whatever page is showing and never replaces it.
+  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const editingItemId = searchParams.get(ITEM_PARAM)
+  const closeItemEditor = () => {
+    // If opening added a history entry, step back over it; if the link was
+    // followed straight in (a refresh, a bookmark), just drop the parameter.
+    if ((location.state as { itemEditor?: boolean } | null)?.itemEditor) {
+      navigate(-1)
+      return
+    }
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete(ITEM_PARAM)
+        return next
+      },
+      { replace: true },
+    )
+  }
   const openAddItem = useRef(addItemWizard.open)
   useEffect(() => {
     openAddItem.current = addItemWizard.open
@@ -295,6 +320,15 @@ export function HouseholdShell() {
         )}
 
         {addItemWizard.modal}
+        {editingItemId && householdId && (
+          <ItemEditModal
+            key={editingItemId}
+            householdId={householdId}
+            itemId={editingItemId}
+            onClose={closeItemEditor}
+            onChanged={() => onAddItemChanged.current?.()}
+          />
+        )}
         {addItemWizard.error && (
           <Modal title="Can't add an item yet" onClose={addItemWizard.dismissError}>
             <p className="text-sm text-muted">{addItemWizard.error}</p>

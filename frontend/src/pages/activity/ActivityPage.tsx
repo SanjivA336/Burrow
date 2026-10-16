@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { OPENED_BY_APP } from '../../hooks/useItemEditor'
 import {
   ArrowRightLeft,
   Handshake,
@@ -136,7 +137,9 @@ function describe(event: ActivityEvent, subject: ReactNode): ReactNode {
       return (
         <>
           <b>{actor}</b> added {subject}
-          {d.quantity ? ` · ${formatQuantity(d.quantity as string | number)} ${unitLabel(d.unit)}` : ''}
+          {d.quantity
+            ? ` · ${formatQuantity(d.quantity as string | number)} ${unitLabel(d.unit)}`
+            : ''}
           {d.storage_location ? ` to ${d.storage_location}` : ''}
         </>
       )
@@ -296,15 +299,14 @@ export function ActivityPage() {
             {events.map((event) => {
               const Icon = iconFor(event)
               const itemHref =
-                typeof event.detail.item_id === 'string'
-                  ? `/households/${householdId}/inventory-items/${event.detail.item_id}`
-                  : null
+                typeof event.detail.item_id === 'string' ? `?item=${event.detail.item_id}` : null
               // Only the item's own name is a click target -- linking the
               // whole row made it too easy to navigate away by accident
               // when all you meant to do was scan the feed.
               const subject = itemHref ? (
                 <Link
                   to={itemHref}
+                  state={OPENED_BY_APP}
                   className="font-bold text-text hover:text-primary hover:underline"
                 >
                   {event.subject_name ?? 'an item'}

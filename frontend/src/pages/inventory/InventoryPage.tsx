@@ -26,6 +26,7 @@ import { Modal } from '../../components/Modal'
 import { SwipeActionRow } from '../../components/SwipeActionRow'
 import { WarningCounts } from '../../components/WarningCounts'
 import { useAddItemFlow } from '../../hooks/useAddItemFlow'
+import { useItemEditor } from '../../hooks/useItemEditor'
 import { useAuth } from '../../hooks/useAuth'
 import {
   FOOD_CATEGORIES,
@@ -83,7 +84,6 @@ interface SwipeAction {
   className: string
   run: () => void
 }
-
 
 const inputClass =
   'w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field outline-none placeholder:text-faint focus:border-primary'
@@ -172,6 +172,7 @@ export function InventoryPage() {
     storageLocationId?: string
   }>()
   const navigate = useNavigate()
+  const { open: openItem } = useItemEditor()
   const { user } = useAuth()
   const itemsUrl = householdId
     ? `/api/households/${householdId}/inventory-items?status=ACTIVE${
@@ -422,7 +423,6 @@ export function InventoryPage() {
   }
 
   const renderItemCard = (item: InventoryItem) => {
-    const itemHref = `/households/${householdId}/inventory-items/${item.id}`
     // A warning wins; otherwise a plain blue calendar if any date is set.
     const warning = expiryWarningByItemId.get(item.id)
     // No date at all: say so quietly, unless it never expires where it's kept.
@@ -430,11 +430,7 @@ export function InventoryPage() {
       itemPlaceValues(item)[placeForStorageType(item.storage_location_type ?? 'PANTRY')]
     const expiryState: ExpiryState =
       warning?.state ??
-      (item.expiry_date
-        ? 'ok'
-        : placeValue === NEVER_EXPIRES
-          ? 'none'
-          : 'unknown')
+      (item.expiry_date ? 'ok' : placeValue === NEVER_EXPIRES ? 'none' : 'unknown')
     const swipeActions: SwipeAction[] = [
       {
         key: 'EMPTY',
@@ -488,11 +484,11 @@ export function InventoryPage() {
           <div
             role="button"
             tabIndex={0}
-            onClick={() => navigate(itemHref)}
+            onClick={() => openItem(item.id)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault()
-                navigate(itemHref)
+                openItem(item.id)
               }
             }}
             className="flex cursor-pointer items-center gap-3 rounded-card p-3 transition-colors hover:bg-surface-hover md:p-4"
@@ -815,10 +811,10 @@ export function InventoryPage() {
       {voidTarget && (
         <Modal title="Void this item?" onClose={() => setVoidTarget(null)}>
           <p className="mb-4 text-sm text-muted">
-            Void this when {voidTarget.food_name} shouldn't count for some reason other than
-            running out, going bad, or getting lost, like a duplicate entry or someone else taking
-            it. If nothing's been used from it yet, this removes it completely. Otherwise it's kept
-            and marked voided in the activity feed.
+            Void this when {voidTarget.food_name} shouldn't count for some reason other than running
+            out, going bad, or getting lost, like a duplicate entry or someone else taking it. If
+            nothing's been used from it yet, this removes it completely. Otherwise it's kept and
+            marked voided in the activity feed.
           </p>
           <div className="flex gap-2">
             <button
@@ -926,7 +922,6 @@ export function InventoryPage() {
           onConsumed={reloadAll}
         />
       )}
-
     </div>
   )
 }
