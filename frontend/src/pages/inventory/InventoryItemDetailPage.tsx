@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NumberInput } from '../../components/NumberInput'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, Hourglass, PackageX } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { ChevronDown, Hourglass, PackageX, Trash2, X } from 'lucide-react'
 import { formatQuantity } from '../../lib/formatQuantity'
 import { shortDate } from '../../lib/formatDate'
 import { apiClient, ApiError } from '../../lib/apiClient'
@@ -241,24 +241,28 @@ export function InventoryItemDetailPage() {
   const nicknameTyped = draft.nickname.trim()
   const title = nicknameTyped ? `${nicknameTyped} (${item.food_type_name})` : item.food_type_name
 
+  const goBack = () => navigate(`/households/${householdId}`)
+  const rowButton =
+    'flex items-center justify-center gap-1.5 rounded-control border px-2 py-2 text-xs font-medium transition-colors disabled:opacity-50'
+
+  // Laid out like the add-item sheet: a full-screen sheet on phones, a centred
+  // card from the desktop breakpoint up, a header bar, scrolling fields, and
+  // the actions pinned underneath.
   return (
-    <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-col gap-4">
-      {/* Same card as the add-item sheet: raised background, a header bar, the
-          fields, then the action bar. The back arrow and the Details / Usage
-          history switch live in the header so the fields start right below it. */}
-      <div className="overflow-hidden rounded-card border border-subtle bg-surface-2 shadow-raised">
-        <div className="flex items-center gap-2 border-b border-subtle px-3 py-2.5">
-          <Link
-            to={`/households/${householdId}`}
-            aria-label="Back to inventory"
-            title="Back to inventory"
-            className="shrink-0 rounded-control p-1.5 text-muted transition-colors hover:bg-surface-hover hover:text-text"
-          >
-            <ArrowLeft size={18} strokeWidth={1.75} />
-          </Link>
-          <CategoryDot category={item.category} />
-          <h2 className="min-w-0 flex-1 truncate text-base font-semibold">{title}</h2>
-          <div className="flex shrink-0 gap-1">
+    <div className="fixed inset-x-0 top-0 z-40 flex h-[var(--app-height)] items-center justify-center md:inset-0 md:h-auto md:p-4">
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={goBack}
+        className="absolute inset-0 bg-black/60"
+      />
+      <div className="relative flex h-full w-full max-w-4xl flex-col overflow-hidden bg-surface-2 md:h-[85vh] md:rounded-card md:border md:border-subtle md:shadow-raised">
+        <div className="flex items-center justify-between gap-2 border-b border-subtle px-4 pb-3 pt-[calc(0.75rem+var(--safe-top)+var(--offline-banner-h,0px))] md:py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <CategoryDot category={item.category} />
+            <h3 className="min-w-0 truncate text-base font-semibold">{title}</h3>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
             {(
               [
                 { key: 'details', label: 'Details' },
@@ -276,266 +280,271 @@ export function InventoryItemDetailPage() {
                 {label}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={goBack}
+              aria-label="Close"
+              className="rounded-control p-1.5 text-muted transition-colors hover:bg-surface-hover hover:text-text"
+            >
+              <X size={18} strokeWidth={1.75} />
+            </button>
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 p-4">
-          {actionError && <p className="text-sm text-danger">{actionError}</p>}
+        <div data-sheet-scroll className="min-h-0 flex-1 overflow-y-auto p-4">
+          <div className="flex flex-col gap-3">
+            {actionError && <p className="text-sm text-danger">{actionError}</p>}
 
-          {tab === 'details' ? (
-            <>
-              <div>
-                <label className={fieldLabelClass}>
-                  Food type
-                  {item.category && (
-                    <span className="font-normal text-faint">
-                      {' '}
-                      · {FOOD_CATEGORY_LABELS[item.category]}
-                    </span>
-                  )}
-                </label>
-                <input
-                  type="text"
-                  disabled
-                  readOnly
-                  title="An item's food type can't be changed"
-                  value={item.food_type_name}
-                  className={disabledInputClass}
-                />
-              </div>
-
-              <CostAndQuantitySection
-                item={item}
-                householdId={householdId!}
-                itemId={itemId!}
-                dimension={dimension}
-                draft={draft}
-                onDraft={update}
-                buyerNickname={
-                  members.find((m) => m.id === item.buyer_member_id)?.nickname ?? 'Unknown'
-                }
-                onChanged={reload}
-              />
-
-              {showWhoIsUsing && (
+            {tab === 'details' ? (
+              <>
                 <div>
-                  <label className={fieldLabelClass}>Who's using this?</label>
-                  {isFinalized ? (
-                    <>
-                      <p className="text-sm text-muted">
-                        {item.allowed_member_ids
-                          .map((id) => members.find((m) => m.id === id)?.nickname ?? 'Someone')
-                          .join(', ')}
-                      </p>
-                      <p className="mt-1.5 text-xs text-faint">
-                        This item's cost has already been settled, so who it's split between is
-                        locked in.
-                      </p>
-                    </>
-                  ) : (
-                    <MemberPicker
-                      mode="multi"
-                      members={activeMembers}
-                      value={draft.allowedMemberIds}
-                      onChange={(ids) => update({ allowedMemberIds: ids })}
-                    />
-                  )}
-                </div>
-              )}
-
-              <div>
-                <label className={fieldLabelClass}>Storage location</label>
-                <select
-                  aria-label="Storage location"
-                  className={inputClass}
-                  value={draft.storageLocationId}
-                  onChange={(e) => update({ storageLocationId: e.target.value })}
-                >
-                  {storageLocations.map((loc) => (
-                    <option key={loc.id} value={loc.id}>
-                      {loc.name}
-                    </option>
-                  ))}
-                </select>
-                {draft.storageLocationId !== item.storage_location_id && (
-                  <p className="mt-1.5 text-xs text-faint">
-                    Its expiry date will adjust for the new place when you save.
-                  </p>
-                )}
-              </div>
-
-              <div className="rounded-control border border-subtle">
-                <button
-                  type="button"
-                  aria-expanded={showMore}
-                  onClick={() => setShowMore((open) => !open)}
-                  className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
-                >
-                  <span className="text-sm font-medium text-muted">More details</span>
-                  <span className="flex min-w-0 items-center gap-2">
-                    {!showMore && (
-                      <span className="truncate text-xs text-faint">
-                        {item.expiry_date
-                          ? `Expires ${shortDate(item.expiry_date)}`
-                          : 'No expiry date'}
+                  <label className={fieldLabelClass}>
+                    Food type
+                    {item.category && (
+                      <span className="font-normal text-faint">
+                        {' '}
+                        · {FOOD_CATEGORY_LABELS[item.category]}
                       </span>
                     )}
-                    <ChevronDown
-                      size={16}
-                      strokeWidth={1.75}
-                      className={`shrink-0 text-faint transition-transform ${showMore ? 'rotate-180' : ''}`}
-                    />
-                  </span>
-                </button>
-                {/* Hidden rather than unmounted, so a date typed before collapsing still saves. */}
-                {
-                  <div
-                    className={
-                      showMore ? 'flex flex-col gap-3 border-t border-subtle p-3' : 'hidden'
-                    }
-                  >
-                    <div>
-                      <label className={fieldLabelClass}>Nickname (optional)</label>
-                      <input
-                        type="text"
-                        className={inputClass}
-                        placeholder={item.food_type_name}
-                        value={draft.nickname}
-                        onChange={(e) => update({ nickname: e.target.value })}
-                      />
-                    </div>
-
-                    <ItemExpirySection
-                      ref={expiryRef}
-                      item={item}
-                      householdId={householdId!}
-                      onChanged={reload}
-                    />
-
-                    <p className="text-xs text-muted">
-                      Dates are suggestions. Check the package and the food itself before eating.
-                    </p>
-                  </div>
-                }
-              </div>
-            </>
-          ) : (
-            <>
-              <UsageSection
-                householdId={householdId!}
-                itemId={itemId!}
-                displayUnit={item.preferred_unit}
-                members={members}
-                onChanged={reload}
-              />
-
-              {corrections.length > 0 && (
-                <div>
-                  <label className={fieldLabelClass}>Correction history</label>
-                  <ul className="flex flex-col gap-2">
-                    {corrections.map((c) => (
-                      <li
-                        key={c.id}
-                        className="rounded-control border border-subtle bg-surface-2 px-3 py-2 text-xs text-muted"
-                      >
-                        {c.new_cost !== null && (
-                          <p>
-                            Cost: {c.previous_cost} → {c.new_cost}
-                          </p>
-                        )}
-                        {c.new_total_quantity !== null && (
-                          <p>
-                            Amount: {formatQuantity(c.previous_total_quantity)} →{' '}
-                            {formatQuantity(c.new_total_quantity)}
-                          </p>
-                        )}
-                        {c.note && <p className="italic">"{c.note}"</p>}
-                      </li>
-                    ))}
-                  </ul>
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    readOnly
+                    title="An item's food type can't be changed"
+                    value={item.food_type_name}
+                    className={disabledInputClass}
+                  />
                 </div>
-              )}
-            </>
-          )}
+
+                <CostAndQuantitySection
+                  item={item}
+                  householdId={householdId!}
+                  itemId={itemId!}
+                  dimension={dimension}
+                  draft={draft}
+                  onDraft={update}
+                  buyerNickname={
+                    members.find((m) => m.id === item.buyer_member_id)?.nickname ?? 'Unknown'
+                  }
+                  onChanged={reload}
+                />
+
+                {showWhoIsUsing && (
+                  <div>
+                    <label className={fieldLabelClass}>Who's using this?</label>
+                    {isFinalized ? (
+                      <>
+                        <p className="text-sm text-muted">
+                          {item.allowed_member_ids
+                            .map((id) => members.find((m) => m.id === id)?.nickname ?? 'Someone')
+                            .join(', ')}
+                        </p>
+                        <p className="mt-1.5 text-xs text-faint">
+                          This item's cost has already been settled, so who it's split between is
+                          locked in.
+                        </p>
+                      </>
+                    ) : (
+                      <MemberPicker
+                        mode="multi"
+                        members={activeMembers}
+                        value={draft.allowedMemberIds}
+                        onChange={(ids) => update({ allowedMemberIds: ids })}
+                      />
+                    )}
+                  </div>
+                )}
+
+                <div>
+                  <label className={fieldLabelClass}>Storage location</label>
+                  <select
+                    aria-label="Storage location"
+                    className={inputClass}
+                    value={draft.storageLocationId}
+                    onChange={(e) => update({ storageLocationId: e.target.value })}
+                  >
+                    {storageLocations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>
+                        {loc.name}
+                      </option>
+                    ))}
+                  </select>
+                  {draft.storageLocationId !== item.storage_location_id && (
+                    <p className="mt-1.5 text-xs text-faint">
+                      Its expiry date will adjust for the new place when you save.
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-control border border-subtle">
+                  <button
+                    type="button"
+                    aria-expanded={showMore}
+                    onClick={() => setShowMore((open) => !open)}
+                    className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
+                  >
+                    <span className="text-sm font-medium text-muted">More details</span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      {!showMore && (
+                        <span className="truncate text-xs text-faint">
+                          {item.expiry_date
+                            ? `Expires ${shortDate(item.expiry_date)}`
+                            : 'No expiry date'}
+                        </span>
+                      )}
+                      <ChevronDown
+                        size={16}
+                        strokeWidth={1.75}
+                        className={`shrink-0 text-faint transition-transform ${showMore ? 'rotate-180' : ''}`}
+                      />
+                    </span>
+                  </button>
+                  {/* Hidden rather than unmounted, so a date typed before collapsing still saves. */}
+                  {
+                    <div
+                      className={
+                        showMore ? 'flex flex-col gap-3 border-t border-subtle p-3' : 'hidden'
+                      }
+                    >
+                      <div>
+                        <label className={fieldLabelClass}>Nickname (optional)</label>
+                        <input
+                          type="text"
+                          className={inputClass}
+                          placeholder={item.food_type_name}
+                          value={draft.nickname}
+                          onChange={(e) => update({ nickname: e.target.value })}
+                        />
+                      </div>
+
+                      <ItemExpirySection
+                        ref={expiryRef}
+                        item={item}
+                        householdId={householdId!}
+                        onChanged={reload}
+                      />
+
+                      <p className="text-xs text-muted">
+                        Dates are suggestions. Check the package and the food itself before eating.
+                      </p>
+                    </div>
+                  }
+                </div>
+              </>
+            ) : (
+              <>
+                <UsageSection
+                  householdId={householdId!}
+                  itemId={itemId!}
+                  displayUnit={item.preferred_unit}
+                  members={members}
+                  onChanged={reload}
+                />
+
+                {corrections.length > 0 && (
+                  <div>
+                    <label className={fieldLabelClass}>Correction history</label>
+                    <ul className="flex flex-col gap-2">
+                      {corrections.map((c) => (
+                        <li
+                          key={c.id}
+                          className="rounded-control border border-subtle bg-surface-2 px-3 py-2 text-xs text-muted"
+                        >
+                          {c.new_cost !== null && (
+                            <p>
+                              Cost: {c.previous_cost} → {c.new_cost}
+                            </p>
+                          )}
+                          {c.new_total_quantity !== null && (
+                            <p>
+                              Amount: {formatQuantity(c.previous_total_quantity)} →{' '}
+                              {formatQuantity(c.new_total_quantity)}
+                            </p>
+                          )}
+                          {c.note && <p className="italic">"{c.note}"</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         {tab === 'details' && (
-          <div className="border-t border-subtle bg-surface-2 px-4 py-3">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void saveChanges()}
-              className="w-full rounded-control bg-primary px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-60"
-            >
-              {saving ? 'Saving…' : 'Save Changes'}
-            </button>
+          <div className="shrink-0 border-t border-subtle bg-surface-2 px-4 pb-3 pt-3 max-md:pb-[var(--bottom-bar-gap)]">
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void saveChanges()}
+                className="w-full rounded-control bg-primary px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-60"
+              >
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+              {!isFinalized &&
+                (confirmingVoid ? (
+                  <div className="rounded-control border border-danger/30 bg-danger-soft p-3">
+                    <p className="mb-2 text-xs text-muted">
+                      Void this when {item.food_name} shouldn't count for some reason other than
+                      running out, going bad, or getting lost, like a duplicate entry or someone
+                      else taking it. If nothing's been used from it yet, this removes it
+                      completely. Otherwise it's kept and marked voided in the activity feed.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={voiding}
+                        onClick={() => void voidItem()}
+                        className="rounded-control bg-danger px-2 py-1.5 text-xs font-semibold text-bg transition-colors hover:bg-danger/90 disabled:opacity-50"
+                      >
+                        {voiding ? 'Voiding…' : 'Yes, void it'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingVoid(false)}
+                        className="rounded-control px-2 py-1.5 text-xs font-medium text-muted hover:bg-surface-hover"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      disabled={removing !== null}
+                      onClick={() => void removeAs('EXPIRED')}
+                      className={`${rowButton} border-subtle text-muted hover:bg-surface-hover hover:text-text`}
+                    >
+                      <Hourglass size={14} strokeWidth={1.75} />
+                      {removing === 'EXPIRED' ? 'Marking…' : 'Mark expired'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={removing !== null}
+                      onClick={() => void removeAs('EMPTY')}
+                      className={`${rowButton} border-subtle text-muted hover:bg-surface-hover hover:text-text`}
+                    >
+                      <PackageX size={14} strokeWidth={1.75} />
+                      {removing === 'EMPTY' ? 'Marking…' : 'Mark empty'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingVoid(true)}
+                      className={`${rowButton} border-danger/40 text-danger hover:bg-danger-soft`}
+                    >
+                      <Trash2 size={14} strokeWidth={1.75} />
+                      Void
+                    </button>
+                  </div>
+                ))}
+            </div>
           </div>
         )}
       </div>
-
-      {tab === 'details' && (
-        <>
-          {!isFinalized && (
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                disabled={removing !== null}
-                onClick={() => void removeAs('EXPIRED')}
-                className="flex items-center justify-center gap-2 rounded-control border border-subtle px-2 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-50"
-              >
-                <Hourglass size={16} strokeWidth={1.75} />
-                {removing === 'EXPIRED' ? 'Marking…' : 'Mark expired'}
-              </button>
-              <button
-                type="button"
-                disabled={removing !== null}
-                onClick={() => void removeAs('EMPTY')}
-                className="flex items-center justify-center gap-2 rounded-control border border-subtle px-2 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-50"
-              >
-                <PackageX size={16} strokeWidth={1.75} />
-                {removing === 'EMPTY' ? 'Marking…' : 'Mark empty'}
-              </button>
-            </div>
-          )}
-
-          {!isFinalized &&
-            (confirmingVoid ? (
-              <div className="rounded-control border border-danger/30 bg-danger-soft p-3">
-                <p className="mb-2 text-xs text-muted">
-                  Void this when {item.food_name} shouldn't count for some reason other than running
-                  out, going bad, or getting lost, like a duplicate entry or someone else taking it.
-                  If nothing's been used from it yet, this removes it completely. Otherwise it's
-                  kept and marked voided in the activity feed.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={voiding}
-                    onClick={() => void voidItem()}
-                    className="rounded-control bg-danger px-2 py-1.5 text-xs font-semibold text-bg transition-colors hover:bg-danger/90 disabled:opacity-50"
-                  >
-                    {voiding ? 'Voiding…' : 'Yes, void it'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmingVoid(false)}
-                    className="rounded-control px-2 py-1.5 text-xs font-medium text-muted hover:bg-surface-hover"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirmingVoid(true)}
-                className="rounded-control bg-danger px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-danger/90"
-              >
-                Void this item
-              </button>
-            ))}
-        </>
-      )}
     </div>
   )
 }
