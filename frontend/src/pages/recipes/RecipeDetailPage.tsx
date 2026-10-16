@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { NumberInput } from '../../components/NumberInput'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Download } from 'lucide-react'
 import { formatQuantity } from '../../lib/formatQuantity'
@@ -189,9 +190,8 @@ export function RecipeDetailPage() {
 
       <div className="flex items-center gap-2">
         <label className="text-sm font-medium text-muted">Servings</label>
-        <input
-          type="number"
-          min={1}
+        <NumberInput
+          decimals={0}
           className="w-20 rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field outline-none focus:border-primary"
           value={servings ?? recipe.servings}
           onChange={(e) => setServings(Math.max(1, Number(e.target.value) || 1))}

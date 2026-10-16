@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { NumberInput } from '../../components/NumberInput'
 import { ArrowRight, PartyPopper, Plus, RotateCcw, Sparkles } from 'lucide-react'
 import { apiClient, ApiError } from '../../lib/apiClient'
 import { EmptyState } from '../../components/EmptyState'
@@ -234,10 +235,8 @@ export function SettlementsSection({
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-muted">Amount</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
+              <NumberInput
+                decimals={2}
                 autoFocus
                 className={inputClass}
                 value={form.amount}

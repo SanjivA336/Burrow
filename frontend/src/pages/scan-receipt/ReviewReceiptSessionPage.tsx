@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { NumberInput } from '../../components/NumberInput'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Check, X } from 'lucide-react'
 import { apiClient, ApiError } from '../../lib/apiClient'
@@ -269,9 +270,8 @@ export function ReviewReceiptSessionPage() {
                     onChange={(food) => updateEdit(item.id, { food })}
                   />
                   <div className="flex flex-wrap gap-2">
-                    <input
-                      type="number"
-                      step="any"
+                    <NumberInput
+                      decimals={3}
                       placeholder="Qty"
                       className={`w-20 ${inputClass}`}
                       value={edit.quantity}
@@ -293,9 +293,8 @@ export function ReviewReceiptSessionPage() {
                         </optgroup>
                       ))}
                     </select>
-                    <input
-                      type="number"
-                      step="0.01"
+                    <NumberInput
+                      decimals={2}
                       placeholder="Cost"
                       className={`w-24 ${inputClass}`}
                       value={edit.cost}

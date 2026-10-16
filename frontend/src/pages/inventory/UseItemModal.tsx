@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { NumberInput } from '../../components/NumberInput'
 import { Minus, Plus } from 'lucide-react'
 import { formatQuantity } from '../../lib/formatQuantity'
 import { apiClient, ApiError } from '../../lib/apiClient'
@@ -268,10 +269,8 @@ export function UseItemModal({ item, householdId, myMemberId, onClose, onConsume
               >
                 <Minus size={14} strokeWidth={2} />
               </button>
-              <input
-                type="number"
-                step="any"
-                min="0"
+              <NumberInput
+                decimals={3}
                 autoFocus
                 className="w-full rounded-control border border-subtle bg-field px-2 py-2 text-center text-sm text-text shadow-field outline-none focus:border-primary"
                 value={amount}

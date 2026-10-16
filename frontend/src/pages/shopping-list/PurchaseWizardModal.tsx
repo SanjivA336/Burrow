@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { NumberInput } from '../../components/NumberInput'
 import { ChevronDown, ChevronLeft, ChevronRight, Check, Plus, Trash2, X } from 'lucide-react'
 import { apiClient, ApiError } from '../../lib/apiClient'
 import { CategoryDot } from '../../components/CategoryDot'
@@ -926,10 +927,8 @@ export function PurchaseWizardModal({
                             Quantity
                             <FieldTooltip text="This becomes both the amount you have right now and the 100% mark it's tracked against as you use it up." />
                           </label>
-                          <input
-                            type="number"
-                            step="any"
-                            min="0"
+                          <NumberInput
+                            decimals={3}
                             placeholder="Amount"
                             className={inputClass}
                             value={draft.quantity}
@@ -955,10 +954,8 @@ export function PurchaseWizardModal({
                             <FieldTooltip text="Auto-filled from the last time you bought this exact food and quantity, if we've seen it before. Edit or clear it any time." />
                           </label>
                           <div className="flex items-center gap-1.5">
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
+                            <NumberInput
+                              decimals={2}
                               placeholder="0.00"
                               className={fieldClass(!customized.cost && !!draft.cost)}
                               value={draft.cost}

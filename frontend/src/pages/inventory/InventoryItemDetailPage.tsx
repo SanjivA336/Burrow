@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { NumberInput } from '../../components/NumberInput'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Hourglass, PackageX } from 'lucide-react'
 import { formatQuantity } from '../../lib/formatQuantity'
@@ -543,10 +544,8 @@ function UsageSection({
               {fixing === event.id && (
                 <div className="mt-2 flex flex-col gap-2 border-t border-subtle pt-2">
                   <div className="flex gap-2">
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
+                    <NumberInput
+                      decimals={3}
                       autoFocus
                       className={inputClass}
                       value={amount}
@@ -662,9 +661,8 @@ function CostAndQuantitySection({
       <div className="flex gap-3">
         <div className="flex-1">
           <label className={fieldLabelClass}>Quantity</label>
-          <input
-            type="number"
-            step="any"
+          <NumberInput
+            decimals={3}
             disabled={isFinalized}
             className={isFinalized ? disabledInputClass : inputClass}
             defaultValue={item.total_quantity}
@@ -690,9 +688,8 @@ function CostAndQuantitySection({
       <div className="flex gap-3">
         <div className="flex-1">
           <label className={fieldLabelClass}>Cost</label>
-          <input
-            type="number"
-            step="0.01"
+          <NumberInput
+            decimals={2}
             disabled={isFinalized}
             className={isFinalized ? disabledInputClass : inputClass}
             defaultValue={item.cost}
@@ -737,9 +734,8 @@ function CostAndQuantitySection({
               <div className="flex gap-2">
                 <div className="flex-1">
                   <label className={fieldLabelClass}>Actual cost</label>
-                  <input
-                    type="number"
-                    step="0.01"
+                  <NumberInput
+                    decimals={2}
                     className={inputClass}
                     value={newCost}
                     onChange={(e) => setNewCost(e.target.value)}
@@ -747,9 +743,8 @@ function CostAndQuantitySection({
                 </div>
                 <div className="flex-1">
                   <label className={fieldLabelClass}>Actual amount</label>
-                  <input
-                    type="number"
-                    step="any"
+                  <NumberInput
+                    decimals={3}
                     className={inputClass}
                     value={newQuantity}
                     onChange={(e) => setNewQuantity(e.target.value)}

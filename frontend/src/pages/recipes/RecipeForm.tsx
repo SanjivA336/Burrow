@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { NumberInput } from '../../components/NumberInput'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, X } from 'lucide-react'
@@ -180,7 +181,7 @@ export function RecipeForm({ initial, submitLabel, onSubmit }: Props) {
       <div className="grid grid-cols-3 gap-2">
         <div>
           <label className="mb-1.5 block text-sm font-medium text-muted">Serves</label>
-          <input type="number" min={1} className={inputClass} {...register('servings')} />
+          <NumberInput decimals={0} className={inputClass} {...register('servings')} />
           {errors.servings && (
             <p className="mt-1.5 text-sm text-danger">{errors.servings.message}</p>
           )}
@@ -188,9 +189,8 @@ export function RecipeForm({ initial, submitLabel, onSubmit }: Props) {
         <div>
           <label className="mb-1.5 block text-sm font-medium text-muted">Prep</label>
           <div className="relative">
-            <input
-              type="number"
-              min={0}
+            <NumberInput
+              decimals={0}
               className={`${inputClass} pr-10`}
               {...register('prep_time_minutes')}
             />
@@ -202,9 +202,8 @@ export function RecipeForm({ initial, submitLabel, onSubmit }: Props) {
         <div>
           <label className="mb-1.5 block text-sm font-medium text-muted">Cook</label>
           <div className="relative">
-            <input
-              type="number"
-              min={0}
+            <NumberInput
+              decimals={0}
               className={`${inputClass} pr-10`}
               {...register('cook_time_minutes')}
             />
@@ -229,9 +228,8 @@ export function RecipeForm({ initial, submitLabel, onSubmit }: Props) {
                 initialQuery={row.suggestedName}
               />
               <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  step="any"
+                <NumberInput
+                  decimals={3}
                   placeholder="Qty"
                   className={`w-20 shrink-0 ${fieldClass}`}
                   value={row.quantity}
