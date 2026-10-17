@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
+  ArrowRightLeft,
   ChevronDown,
   ChevronRight,
   Download,
@@ -21,6 +22,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { apiClient, ApiError } from '../../lib/apiClient'
 import { CategoryDot } from '../../components/CategoryDot'
 import { ExpiryIcon, type ExpiryState } from '../../components/ExpiryIcon'
+import { ItemActionsMenu } from '../../components/ItemActionsMenu'
+import { MoveItemModal } from '../../components/MoveItemModal'
 import { NEVER_EXPIRES, itemPlaceValues, placeForStorageType } from '../../lib/shelfLife'
 import { Modal } from '../../components/Modal'
 import { SwipeActionRow } from '../../components/SwipeActionRow'
@@ -57,19 +60,6 @@ import type {
 } from '../../types/entities'
 import { storageLocationSchema, type StorageLocationForm } from '../storage/schema'
 import { WarningsButton } from './WarningsButton'
-
-// Just the two reasons that come up often enough to earn their own button.
-// DISCARDED and LOST still work as API-level reasons (nothing stops a
-// future UI from offering them again), they just don't have a dedicated
-// control here -- to the backend all removal reasons are identical (a
-// status change with no consumption_events row, so whatever's left splits
-// equally across the item's allowed members rather than being billed to
-// whoever clicked the button); the only real difference is which word shows
-// up afterward, on the item and in the activity feed.
-const REMOVAL_REASONS: { reason: RemovalReason; label: string; icon: typeof Package }[] = [
-  { reason: 'EXPIRED', label: 'Mark expired', icon: Hourglass },
-  { reason: 'EMPTY', label: 'Mark empty', icon: PackageX },
-]
 
 // One swipe-revealed button (phones), and the gap before each.
 const SWIPE_ACTION_WIDTH = 72
@@ -198,8 +188,10 @@ export function InventoryPage() {
   const { data: warnings, reload: reloadWarnings } = useHouseholdResource<HouseholdWarnings>(
     householdId ? `/api/households/${householdId}/warnings` : null,
   )
-  // Which row's swipe actions are showing (one at a time), phones only.
-  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
+  // Which row's swipe actions are showing, and on which side (one at a time), phones only.
+  const [openSwipe, setOpenSwipe] = useState<{ id: string; side: 'left' | 'right' } | null>(null)
+  // The item whose "Move" is waiting for a place to be picked.
+  const [movingItem, setMovingItem] = useState<InventoryItem | null>(null)
   // The item whose "Void" swipe action is waiting on a confirmation.
   const [voidTarget, setVoidTarget] = useState<InventoryItem | null>(null)
   // Expiry state per item, straight from the warnings the page already loads
@@ -459,9 +451,25 @@ export function InventoryPage() {
       <li key={item.id}>
         <SwipeActionRow
           tileClassName="rounded-card border border-subtle shadow-card"
-          open={openSwipeId === item.id}
-          onOpenChange={(open) => setOpenSwipeId(open ? item.id : null)}
+          open={openSwipe?.id === item.id ? openSwipe.side : null}
+          onOpenChange={(side) => setOpenSwipe(side ? { id: item.id, side } : null)}
           actionsWidth={swipeActions.length * (SWIPE_ACTION_WIDTH + SWIPE_ACTION_GAP)}
+          leftActionsWidth={SWIPE_ACTION_WIDTH + SWIPE_ACTION_GAP}
+          leftActions={({ tabIndex }) => (
+            <button
+              type="button"
+              tabIndex={tabIndex}
+              onClick={() => {
+                setOpenSwipe(null)
+                setMovingItem(item)
+              }}
+              style={{ width: SWIPE_ACTION_WIDTH }}
+              className="flex flex-col items-center justify-center gap-1 rounded-card border border-primary/35 bg-primary-soft text-xs font-semibold text-primary"
+            >
+              <ArrowRightLeft size={20} strokeWidth={1.9} />
+              Move
+            </button>
+          )}
           actions={({ tabIndex }) =>
             swipeActions.map(({ key, label, icon: Icon, className, run }) => (
               <button
@@ -469,7 +477,7 @@ export function InventoryPage() {
                 type="button"
                 tabIndex={tabIndex}
                 onClick={() => {
-                  setOpenSwipeId(null)
+                  setOpenSwipe(null)
                   run()
                 }}
                 style={{ width: SWIPE_ACTION_WIDTH }}
@@ -524,23 +532,16 @@ export function InventoryPage() {
               >
                 Use
               </button>
-              {/* Desktop: room for the buttons inline. On phones the same actions
-                  (plus Void) live behind a swipe (see SwipeActionRow), and on every
-                  screen size on the item's own page. */}
-              <div className="hidden items-center gap-0.5 md:flex">
-                {REMOVAL_REASONS.map(({ reason, label, icon: Icon }) => (
-                  <button
-                    key={reason}
-                    type="button"
-                    title={label}
-                    aria-label={label}
-                    onClick={() => void discard(item, reason)}
-                    className="rounded-control p-1.5 text-faint transition-colors hover:bg-danger-soft hover:text-danger"
-                  >
-                    <Icon size={16} strokeWidth={1.75} />
-                  </button>
-                ))}
-              </div>
+              {/* Desktop: one menu for moving the item and taking it out. On phones the
+                  same actions are behind a swipe (see SwipeActionRow), and the item's
+                  own page has them on every screen size. */}
+              <ItemActionsMenu
+                itemName={item.food_name}
+                onMove={() => setMovingItem(item)}
+                onExpired={() => void discard(item, 'EXPIRED')}
+                onEmpty={() => void discard(item, 'EMPTY')}
+                onVoid={() => setVoidTarget(item)}
+              />
             </div>
           </div>
         </SwipeActionRow>
@@ -808,6 +809,16 @@ export function InventoryPage() {
         <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map(renderItemCard)}
         </ul>
+      )}
+
+      {movingItem && householdId && (
+        <MoveItemModal
+          householdId={householdId}
+          item={movingItem}
+          locations={allStorageLocations ?? []}
+          onClose={() => setMovingItem(null)}
+          onMoved={reloadAll}
+        />
       )}
 
       {voidTarget && (

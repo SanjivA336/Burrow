@@ -336,13 +336,11 @@ leaving localhost.
   person through the app yet. Not designed yet: the approach (coach marks, a
   checklist, an empty-state walkthrough, a sample burrow) still has to be
   chosen before anything is built. Added 2026-10-06.
-- [ ] **Moving an item between storage places, and choosing where a new item
-  goes.** Today the only way to move an item is to open it and change its
-  storage location, and choosing a place when adding is a plain dropdown. Both
-  should feel quicker. Higher priority: moving. The idea is a swipe on the left
-  side of an item card (marking expired and empty are already on the right) that
-  moves it between places without opening it. Choosing a place when adding is
-  second. Not designed yet. Added 2026-10-15.
+- [ ] **Choosing where a new item goes.** Choosing a place when adding is a
+  plain dropdown, and it should feel quicker. Not designed yet. Added
+  2026-10-15. (Moving an item between places is done as of 2026-10-17: swipe an
+  item right on a phone, or use the three-dots menu on a computer; changing the
+  storage location on the item's own page still works too.)
 - [ ] **Update the Terms about expiry dates (Privacy needs no change).**
   Checked 2026-10-16. The Terms "Expiry and freshness" paragraph
   (frontend/src/legal/terms.ts) is out of date in three ways: (1) it says
