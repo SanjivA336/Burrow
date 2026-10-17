@@ -18,6 +18,7 @@ import { PullToRefreshIndicator } from '../../components/PullToRefreshIndicator'
 import { SupportLink } from '../../components/SupportLink'
 import { AddItemWizardContext } from '../../context/addItemWizard'
 import { ShellChromeContext } from '../../context/shellChrome'
+import { TourProvider } from '../../tour/TourProvider'
 import { useAddItemWizard } from '../../hooks/useAddItemWizard'
 import { ITEM_PARAM } from '../../hooks/useItemEditor'
 import { ItemEditModal } from '../inventory/ItemEditModal'
@@ -29,9 +30,9 @@ import type { Household } from '../../types/entities'
 // than as its own destination -- it's a look-back log, not a daily action,
 // so it doesn't need a permanent slot in the primary nav on either platform.
 const PRIMARY_NAV_ITEMS = [
-  { to: '', label: 'Inventory', end: true, icon: Home },
-  { to: 'shopping-list', label: 'Shopping List', icon: ShoppingCart },
-  { to: 'balances', label: 'Balances', icon: Scale },
+  { to: '', label: 'Inventory', end: true, icon: Home, tour: 'nav-inventory' },
+  { to: 'shopping-list', label: 'Shopping List', icon: ShoppingCart, tour: 'nav-shopping' },
+  { to: 'balances', label: 'Balances', icon: Scale, tour: 'nav-balances' },
 ]
 
 // Experimental (AI/OCR-backed, real inference cost) -- hidden from the nav
@@ -44,7 +45,7 @@ const SECONDARY_NAV_ITEMS = [{ to: 'scan-receipt', label: 'Scan Receipt', icon: 
 // the household's nav -- it's a personal recipe box now (see the per-user
 // recipes migration), not household data, so it reads as a separate
 // destination rather than one more of the household's daily tabs.
-const RECIPES_NAV_ITEMS = [{ to: 'recipes', label: 'Recipes', icon: ChefHat }]
+const RECIPES_NAV_ITEMS = [{ to: 'recipes', label: 'Recipes', icon: ChefHat, tour: 'nav-recipes' }]
 
 // With Activity moved into Settings, exactly 4 destinations are left
 // (Inventory, Shopping List, Balances, Recipes) -- a clean direct-tab bottom
@@ -198,7 +199,7 @@ export function HouseholdShell() {
                   {household?.name ?? 'Burrow'}
                 </p>
                 {household && (
-                  <div className="mt-0.5 flex items-center gap-1">
+                  <div data-tour="join-code" className="mt-0.5 flex items-center gap-1">
                     <p className="font-mono text-xs tracking-wide text-faint">
                       {household.join_code}
                     </p>
@@ -226,6 +227,7 @@ export function HouseholdShell() {
             <div className="flex items-center gap-2">
               <NavLink
                 to="settings"
+                data-tour="nav-settings"
                 className={({ isActive }) =>
                   `flex flex-1 items-center gap-2 rounded-control px-2 py-2 text-sm font-medium transition-colors ${
                     isActive
@@ -262,7 +264,7 @@ export function HouseholdShell() {
                 {household?.name ?? 'Burrow'}
               </p>
               {household && (
-                <div className="mt-0.5 flex items-center gap-1">
+                <div data-tour="join-code" className="mt-0.5 flex items-center gap-1">
                   <p className="font-mono text-[11px] tracking-wide text-faint">
                     {household.join_code}
                   </p>
@@ -274,6 +276,7 @@ export function HouseholdShell() {
           <div className="flex shrink-0 items-center gap-1">
             <NavLink
               to="settings"
+              data-tour="nav-settings"
               aria-label="Settings"
               className={({ isActive }) =>
                 `rounded-control p-2 transition-colors ${
@@ -286,11 +289,16 @@ export function HouseholdShell() {
           </div>
         </header>
 
-        <main className="flex-1 px-4 pb-[calc(6rem+var(--bottom-bar-gap))] pt-5 md:overflow-y-auto md:px-8 md:pb-8 md:pt-8">
+        <main
+          data-tour="page"
+          className="flex-1 px-4 pb-[calc(6rem+var(--bottom-bar-gap))] pt-5 md:overflow-y-auto md:px-8 md:pb-8 md:pt-8"
+        >
           <PullToRefreshIndicator pull={pull} dragging={dragging} refreshing={refreshing} />
           <div className="mx-auto w-full max-w-5xl">
             <ShellChromeContext.Provider value={chrome}>
-              <Outlet key={refreshKey} />
+              <TourProvider householdId={householdId ?? ''}>
+                <Outlet key={refreshKey} />
+              </TourProvider>
             </ShellChromeContext.Provider>
           </div>
         </main>
@@ -345,14 +353,17 @@ interface NavItemProps {
   end?: boolean
   icon: typeof Home
   onClick?: () => void
+  // Marks the link for the guided tour (see src/tour).
+  tour?: string
 }
 
-function SidebarLink({ to, label, end, icon: Icon, onClick }: NavItemProps) {
+function SidebarLink({ to, label, end, icon: Icon, onClick, tour }: NavItemProps) {
   return (
     <NavLink
       to={to}
       end={end}
       onClick={onClick}
+      data-tour={tour}
       className={({ isActive }) =>
         `flex items-center gap-3 rounded-control px-2 py-2 text-sm font-medium transition-colors ${
           isActive
@@ -370,11 +381,12 @@ function SidebarLink({ to, label, end, icon: Icon, onClick }: NavItemProps) {
 // Icon-only on purpose. The text label is kept as the accessible name (and a
 // tooltip on hover/long-press), so screen readers still announce each tab, and
 // NavLink marks the current page with aria-current.
-function BottomTabLink({ to, label, end, icon: Icon }: NavItemProps) {
+function BottomTabLink({ to, label, end, icon: Icon, tour }: NavItemProps) {
   return (
     <NavLink
       to={to}
       end={end}
+      data-tour={tour}
       aria-label={label}
       title={label}
       className={({ isActive }) =>

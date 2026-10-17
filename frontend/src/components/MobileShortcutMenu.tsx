@@ -184,6 +184,7 @@ export function MobileShortcutMenu({ householdId }: Props) {
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? 'Close shortcuts' : 'Open shortcuts'}
           aria-expanded={open}
+          data-tour="add-fab"
           // shrink-0 matters here: this button is a normal-flow flex item
           // of the fixed-56px-wide anchor box below it, and width is the
           // main axis for a row-direction flex container -- without this,

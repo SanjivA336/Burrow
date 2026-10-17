@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   ChevronRight,
   CircleHelp,
+  Compass,
   ExternalLink,
   FileText,
   History,
@@ -19,6 +20,7 @@ import { DeleteBurrowModal } from '../../components/DeleteBurrowModal'
 import { LogoutConfirmModal } from '../../components/LogoutConfirmModal'
 import { ShellChromeContext } from '../../context/shellChrome'
 import { useAuth } from '../../hooks/useAuth'
+import { useTour } from '../../tour/useTour'
 import { InviteCard } from './InviteCard'
 import type { SettingsContext } from './settingsContext'
 
@@ -58,10 +60,11 @@ function RowBody({
 
 // A row that opens one of the Settings screens (highlighted on desktop when it
 // is the one showing).
-function ScreenRow(props: RowProps & { to: string }) {
+function ScreenRow(props: RowProps & { to: string; tour?: string }) {
   return (
     <NavLink
       to={props.to}
+      data-tour={props.tour}
       className={({ isActive }) =>
         `${rowClass} ${isActive ? 'bg-primary-soft text-primary' : 'text-text hover:bg-surface-hover'}`
       }
@@ -143,6 +146,7 @@ export function SettingsList({ ctx }: { ctx: SettingsContext }) {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const shell = useContext(ShellChromeContext)
+  const tour = useTour()
   const [logoutOpen, setLogoutOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -181,7 +185,7 @@ export function SettingsList({ ctx }: { ctx: SettingsContext }) {
           label="Members"
           value={members ? memberCount : undefined}
         />
-        <ScreenRow to="activity" icon={History} label="Activity" />
+        <ScreenRow to="activity" icon={History} label="Activity" tour="settings-activity" />
       </Group>
 
       <Group title="You">
@@ -190,6 +194,7 @@ export function SettingsList({ ctx }: { ctx: SettingsContext }) {
       </Group>
 
       <Group title="Help and about">
+        <ActionRow icon={Compass} label="Take the tour" onClick={tour.start} />
         {SUPPORT_URL && <LinkRow href={SUPPORT_URL} icon={CircleHelp} label="Contact support" />}
         <LinkRow href="/terms" icon={FileText} label="Terms of Service" />
         <LinkRow href="/privacy" icon={ShieldCheck} label="Privacy Policy" />

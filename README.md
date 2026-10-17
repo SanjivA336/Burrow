@@ -359,6 +359,13 @@ leaving localhost.
   decide whether this wording change needs a new date and a fresh acceptance.
   The USDA data is public domain, so no credit is required. Added 2026-10-15,
   expanded 2026-10-16.
+- [ ] **Give every new burrow a pantry, a fridge and a freezer.** Today a new
+  burrow starts with no storage places, and adding the first item stops with
+  "Add a fridge, freezer, or pantry first". Create the three when a burrow is
+  created so a new person can add an item straight away. Storage-aware expiry
+  already treats those three types specially. Decide whether burrows that
+  already exist should get them too (only when they have none). Added
+  2026-10-17.
 - [ ] **Tester kit.** The invite message, a short "what to try" list, and
   check-in questions for the first testers. Added 2026-10-08.
 - [ ] **API rate limit + retry.** The API allows 120 requests per minute per

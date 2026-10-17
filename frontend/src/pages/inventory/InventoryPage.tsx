@@ -576,6 +576,7 @@ export function InventoryPage() {
             type="button"
             onClick={() => (storageLocationId ? openAddItem() : setAddPickerOpen(true))}
             aria-label="Add item"
+            data-tour="add"
             className="flex items-center gap-1.5 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover"
           >
             <Plus size={16} strokeWidth={2.25} />
@@ -642,6 +643,7 @@ export function InventoryPage() {
                 onClick={() => setOpenFilter(openFilter === 'storage' ? null : 'storage')}
                 title="Filter by storage type"
                 aria-label="Filter by storage type"
+                data-tour="storage-filter"
                 className={`rounded-control border p-2 shadow-field transition-colors ${
                   storageTypeFilter
                     ? STORAGE_TYPE_BORDER_CLASSES[storageTypeFilter]

@@ -154,6 +154,7 @@ export function WarningsButton({ householdId, stockWarnings, expiryWarnings, onI
         type="button"
         onClick={() => setOpen(true)}
         aria-label={hasWarnings ? 'View warnings' : 'No warnings'}
+        data-tour="warnings"
         className={`flex items-center gap-2 rounded-control border border-subtle px-2 py-2 text-sm font-semibold transition-colors ${
           hasWarnings
             ? 'bg-surface hover:bg-surface-hover'
