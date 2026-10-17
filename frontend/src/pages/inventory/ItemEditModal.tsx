@@ -502,24 +502,14 @@ export function ItemEditModal({
           {tab === 'details' && (
             <div className="shrink-0 border-t border-subtle bg-surface-2 px-4 pb-3 pt-3 max-md:pb-[calc(var(--bottom-bar-gap)+0.75rem)]">
               <div className="flex flex-col gap-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={onClose}
-                    className="rounded-control border border-subtle px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-50"
-                  >
-                    Discard Changes
-                  </button>
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={() => void saveChanges()}
-                    className="rounded-control bg-primary px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-60"
-                  >
-                    {saving ? 'Saving…' : 'Save Changes'}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void saveChanges()}
+                  className="w-full rounded-control bg-primary px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-60"
+                >
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
                 {!isFinalized && (
                   <div className="grid grid-cols-3 gap-2">
                     <button
