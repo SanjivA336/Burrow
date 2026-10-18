@@ -10,6 +10,7 @@ import { ItemExpirySection, type ItemExpiryHandle } from '../../components/ItemE
 import { MemberPicker } from '../../components/MemberPicker'
 import { UnitSelect } from '../../components/UnitSelect'
 import { useHouseholdResource } from '../../hooks/useHouseholdResource'
+import { useDialog } from '../../hooks/useDialog'
 import { FOOD_CATEGORY_LABELS } from '../../lib/foodCategories'
 import { UNIT_LABELS, UNITS_BY_DIMENSION, guessDimension } from '../../lib/units'
 import type {
@@ -579,15 +580,24 @@ export function ItemEditModal({
 
 // The dimmed backdrop and the sheet itself, shared with the add-item sheet's look.
 function SheetFrame({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+  const boxRef = useDialog<HTMLDivElement>(onClose)
   return (
     <div className="fixed inset-x-0 top-0 z-40 flex h-[var(--app-height)] items-center justify-center md:inset-0 md:h-auto md:p-4">
       <button
         type="button"
         aria-label="Close"
+        tabIndex={-1}
         onClick={onClose}
         className="absolute inset-0 bg-black/60"
       />
-      <div className="relative flex h-full w-full max-w-4xl flex-col overflow-hidden bg-surface-2 md:h-[85vh] md:rounded-card md:border md:border-subtle md:shadow-raised">
+      <div
+        ref={boxRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Edit item"
+        tabIndex={-1}
+        className="relative flex h-full w-full max-w-4xl flex-col overflow-hidden bg-surface-2 outline-none md:h-[85vh] md:rounded-card md:border md:border-subtle md:shadow-raised"
+      >
         {children}
       </div>
     </div>
