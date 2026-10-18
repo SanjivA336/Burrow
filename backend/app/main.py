@@ -59,6 +59,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Retry-After is not one of the headers a browser lets a page read by default.
+    # The app reads it after a 429 to know how long to wait before trying again.
+    expose_headers=["Retry-After"],
 )
 
 app.include_router(api_router)

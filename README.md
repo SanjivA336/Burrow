@@ -149,8 +149,8 @@ leaving localhost.
 
 ### Phase 2: Security & compliance basics
 
-- [x] Add basic API rate limiting: a per-client-IP fixed-window cap
-  (`app/core/rate_limit.py`, 120 requests/minute by default, configurable
+- [x] Add basic API rate limiting: a per-client-IP token-bucket cap
+  (`app/core/rate_limit.py`, 300 requests/minute by default, configurable
   via `RATE_LIMIT_MAX_REQUESTS`/`RATE_LIMIT_WINDOW_SECONDS`), hand-rolled
   rather than pulled from a library after discovering `slowapi` silently
   no-ops against this project's FastAPI/Starlette version. `/health` stays
@@ -341,22 +341,18 @@ leaving localhost.
   2026-10-15. (Moving an item between places is done as of 2026-10-17: swipe an
   item right on a phone, or use the three-dots menu on a computer; changing the
   storage location on the item's own page still works too.)
-- [ ] **Update the Terms about expiry dates (Privacy needs no change).**
-  Checked 2026-10-16. The Terms "Expiry and freshness" paragraph
-  (frontend/src/legal/terms.ts) is out of date in three ways: (1) it says
-  "Expiry and best-by dates", but the best-by date is gone, so say expiry dates
-  only; (2) it says dates are "estimated automatically from a food's typical
-  shelf life", but they now come from the official list of foods, whose numbers
-  are taken from the USDA FoodKeeper guidance, and they are recalculated when an
-  item moves between pantry, fridge and freezer, so say so; (3) it should say
-  that a place marked "not recommended" or a date for a cooked food is general
-  guidance, not a safety guarantee. Keep the existing "not a food-safety
-  determination, check the package and the food" sentence. The Privacy Policy
-  needs nothing: no new personal data is collected, and expiry dates and storage
-  locations are already listed. Both pages say "Last updated October 6, 2026";
-  decide whether this wording change needs a new date and a fresh acceptance.
-  The USDA data is public domain, so no credit is required. Added 2026-10-15,
-  expanded 2026-10-16.
+- [x] **Update the Terms about expiry dates (Privacy needs no change).** The
+  "Expiry and freshness" paragraph (`frontend/src/legal/terms.ts` and the Word
+  copy in `legal/`) no longer says "best-by"; it says dates come from entered
+  data or general storage-time guidance based largely on the USDA's FoodKeeper
+  data (with a line saying Burrow is not affiliated with or endorsed by the
+  USDA), are
+  recalculated when an item moves between pantry, fridge and freezer, and that
+  a "not recommended" place or a cooked-food date is guidance, not a safety
+  guarantee. Terms are dated October 17, 2026 and `LEGAL_VERSION` is
+  2026-10-17; the Privacy Policy is unchanged (still October 6). Nothing asks
+  existing users to accept the new wording again (no such flow exists yet; fine
+  with no real users). Added 2026-10-15, done 2026-10-17.
 - [ ] **Give every new burrow a pantry, a fridge and a freezer.** Today a new
   burrow starts with no storage places, and adding the first item stops with
   "Add a fridge, freezer, or pantry first". Create the three when a burrow is
@@ -366,12 +362,16 @@ leaving localhost.
   2026-10-17.
 - [ ] **Tester kit.** The invite message, a short "what to try" list, and
   check-in questions for the first testers. Added 2026-10-08.
-- [ ] **API rate limit + retry.** The API allows 120 requests per minute per
-  IP address, and roommates on one home network share one IP. A live test with
-  four simulated roommates reached 122 to 127 in a minute and was refused
-  (HTTP 429), after which the burrow page shows a hard "couldn't load" error
-  with no retry. Raise the limit (about 300 per minute) and make the page retry
-  after a 429 instead of giving up. Added 2026-10-08.
+- [x] **API rate limit + retry.** The limit was 120 requests per minute per IP
+  address, and roommates on one home network share one IP. A live test with
+  four simulated roommates reached 122 to 127 in a minute and was refused (HTTP
+  429), after which the burrow page showed a hard "couldn't load" error. The
+  limit is now 300 per minute as a token bucket (a burst of 300, then about 5 a
+  second, so a refused request waits about a second, not for the end of a
+  minute), the server tells the browser how long to wait (`Retry-After`), and
+  the app waits and retries a refused request up to three times (any request,
+  since a refused one never ran), giving up at once if told to wait more than 15
+  seconds. Added 2026-10-08, done 2026-10-17.
 - [ ] Invite real users. That's v1.
 
 ### Deferred past v1 (developer-gated; not required for launch)

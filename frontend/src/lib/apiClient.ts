@@ -149,21 +149,80 @@ export class ApiError extends Error {
 // reached the server, and blindly retrying a mutation risks duplicating it.
 const GET_RETRY_ATTEMPTS = 2
 
+// When the server says "too many requests" (HTTP 429) the app waits and asks again
+// instead of showing an error: roommates on one network share one allowance, and a
+// burst that goes over it clears within the minute. This is safe for every method,
+// not just GET, because the limiter refuses a request before anything runs, so
+// nothing was saved and nothing can be duplicated. It waits as long as the server
+// says (the Retry-After header; the server refills one request's worth about every
+// fifth of a second, so that is usually a second or two), with a little jitter so
+// several refused requests do not all come back at the same instant, and gives up
+// if the server asks for more than the cap (that wait is judged without the jitter).
+const RATE_LIMIT_RETRIES = 3
+const RATE_LIMIT_MAX_WAIT_MS = 15_000
+const RATE_LIMIT_MIN_WAIT_MS = 250
+const RATE_LIMIT_FALLBACK_WAITS_MS = [1_000, 2_000, 4_000]
+
+// How long to wait before asking again, before jitter: what the server said, or a
+// growing guess when it said nothing readable (no header, or a date instead of a
+// number of seconds).
+function rateLimitBaseWaitMs(response: Response, retry: number): number {
+  const header = Number(response.headers.get('Retry-After'))
+  if (response.headers.has('Retry-After') && Number.isFinite(header) && header >= 0) {
+    return Math.max(header * 1000, RATE_LIMIT_MIN_WAIT_MS)
+  }
+  return RATE_LIMIT_FALLBACK_WAITS_MS[retry] ?? RATE_LIMIT_MAX_WAIT_MS
+}
+
+// A wait that stops the moment the request is cancelled (the person left the page, or
+// the request's own timeout fired) instead of sleeping on regardless.
+function sleep(ms: number, signal?: AbortSignal | null): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'))
+      return
+    }
+    const onAbort = () => {
+      clearTimeout(timer)
+      reject(new DOMException('Aborted', 'AbortError'))
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    signal?.addEventListener('abort', onAbort, { once: true })
+  })
+}
+
 async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
-  for (let attempt = 0; ; attempt += 1) {
+  let rateLimited = 0
+  // Counted apart from rateLimited: a wait for a 429 must not use up the retries
+  // kept for a dropped connection.
+  let networkFailures = 0
+  for (;;) {
     try {
-      return await fetch(url, init)
+      const response = await fetch(url, init)
+      if (response.status === 429 && rateLimited < RATE_LIMIT_RETRIES) {
+        const base = rateLimitBaseWaitMs(response, rateLimited)
+        // Too long to sit on a loading screen: hand the 429 back as the error.
+        if (base > RATE_LIMIT_MAX_WAIT_MS) return response
+        rateLimited += 1
+        await sleep(base + Math.random() * 500, init.signal)
+        continue
+      }
+      return response
     } catch (err) {
       // An aborted request (our own timeout firing) should never be
       // retried: retrying would just wait out a second full timeout
       // before the caller ever sees an error.
       if (
         init.method !== 'GET' ||
-        attempt >= GET_RETRY_ATTEMPTS ||
+        networkFailures >= GET_RETRY_ATTEMPTS ||
         (err as Error)?.name === 'AbortError'
       ) {
         throw err
       }
+      networkFailures += 1
       await new Promise((resolve) => setTimeout(resolve, 300))
     }
   }

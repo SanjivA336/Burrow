@@ -13,5 +13,6 @@
 // History: 2026-10-01 (first version), 2026-10-01.2 (named Cloudflare and
 // Render as hosting providers before launch), 2026-10-06 (age and parental-consent
 // wording, expiry dates described as suggestions, conspicuous warranty and liability
-// clauses, Do Not Track statement).
-export const LEGAL_VERSION = '2026-10-06'
+// clauses, Do Not Track statement), 2026-10-17 (expiry wording: best-by date removed, where
+// dates come from, "not recommended" places and cooked-food dates are guidance).
+export const LEGAL_VERSION = '2026-10-17'

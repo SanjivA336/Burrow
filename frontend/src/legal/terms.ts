@@ -4,7 +4,7 @@ import type { LegalDocument } from './types'
 // here, update the Word file (and the "updated" date) to match.
 export const termsOfService: LegalDocument = {
   title: 'Terms of Service',
-  updated: 'October 6, 2026',
+  updated: 'October 17, 2026',
   blocks: [
     {
       type: 'p',
@@ -108,7 +108,7 @@ export const termsOfService: LegalDocument = {
     },
     {
       type: 'bullet',
-      text: "**Expiry and freshness.** Expiry and best-by dates, and related warnings, are suggestions only. They come from data you or your household entered, or are estimated automatically from a food's typical shelf life, and they may be wrong. They are not a food-safety determination. Always check the package and the food itself, and use your own judgment (and your senses) about whether food is safe to eat, regardless of what the Service displays.",
+      text: '**Expiry and freshness.** Expiry dates, and related warnings, are suggestions only. They come from data you or your household entered, or are estimated automatically from general storage-time guidance for the type of food, based largely on FoodKeeper data published by the U.S. Department of Agriculture (USDA), and they are recalculated when an item is moved between the pantry, fridge and freezer. They may be wrong: how long food really lasts depends on how it was handled before you bought it, how it has been stored, and whether it has been opened or cooked. A storage place marked "not recommended", and any date shown for cooked or prepared food, are general guidance and not a guarantee that food kept that way is safe. None of this is a food-safety determination, and Burrow is independent and is not affiliated with or endorsed by the USDA. Always check the package and the food itself, and use your own judgment (and your senses) about whether food is safe to eat, regardless of what the Service displays.',
     },
     {
       type: 'bullet',

@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -70,8 +71,15 @@ class Settings(BaseSettings):
     # nothing here has a meaningfully different abuse profile from anything
     # else (all of it sits behind Supabase JWT auth + household-membership
     # checks already).
-    rate_limit_max_requests: int = 120
-    rate_limit_window_seconds: float = 60.0
+    #
+    # 300 a minute, not 120: roommates share one home-network IP, and the
+    # pages here load several things at once, so four people on one network
+    # reached 122 to 127 in a minute during a live test and were refused.
+    #
+    # gt=0 so a typo like RATE_LIMIT_MAX_REQUESTS=0 stops the app at startup with a
+    # message naming the variable, instead of failing every request later.
+    rate_limit_max_requests: int = Field(default=300, gt=0)
+    rate_limit_window_seconds: float = Field(default=60.0, gt=0)
 
     # Comma-separated Supabase auth user ids allowed to use AI/OCR-backed
     # features (recipe generate/import-by-text-or-url/substitutions, receipt
