@@ -55,7 +55,6 @@ def _household(**overrides) -> Household:
     defaults = dict(
         id=uuid.uuid4(),
         name="3BR Apartment",
-        address=None,
         join_code="ABCD1234",
         owner_id=uuid.uuid4(),
         preferred_unit_system="CUSTOMARY",
@@ -74,7 +73,6 @@ def _food(**overrides) -> FoodDefinition:
         preferred_unit="ml",
         category="DAIRY_ALTERNATIVES",
         accounting_type_default="SHARED",
-        created_by_user_id=None,
         is_verified=True,
         usage_count=0,
         duplicate_of_id=None,

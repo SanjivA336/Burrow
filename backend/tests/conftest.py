@@ -192,7 +192,6 @@ def make_household(household_id: uuid.UUID, **overrides) -> Household:
     defaults = dict(
         id=household_id,
         name="3BR Apartment",
-        address=None,
         join_code="ABCD1234",
         owner_id=uuid.uuid4(),
         preferred_unit_system="CUSTOMARY",

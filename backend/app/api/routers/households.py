@@ -30,7 +30,7 @@ def create_household(
     body: CreateHouseholdRequest, user_id: UUID = Depends(get_current_user_id)
 ) -> Envelope[Household]:
     household = households_service.create_household_and_join(
-        user_id=user_id, name=body.name, address=body.address, nickname=body.nickname
+        user_id=user_id, name=body.name, nickname=body.nickname
     )
     return ok(household)
 

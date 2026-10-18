@@ -4,7 +4,7 @@ import type { LegalDocument } from './types'
 // here, update the Word file (and the "updated" date) to match.
 export const privacyPolicy: LegalDocument = {
   title: 'Privacy Policy',
-  updated: 'October 6, 2026',
+  updated: 'October 18, 2026',
   blocks: [
     {
       type: 'p',
@@ -20,11 +20,15 @@ export const privacyPolicy: LegalDocument = {
     },
     {
       type: 'bullet',
-      text: '**Profile information:** a nickname you choose for each household you join, and your role (admin or regular member).',
+      text: '**Profile information:** a nickname you choose for each household you join, your role (admin or regular member), and whether you have finished the in-app tour.',
     },
     {
       type: 'bullet',
-      text: '**Household data you or your household members enter:** foods and inventory items, quantities, units, costs, expiry dates, storage locations, who bought and who may use an item, shopping lists, recipes, usage and consumption logs, and the resulting balances and settlements between members.',
+      text: "**Acceptance records:** when you sign up, we record that you accepted the Terms of Service and this Privacy Policy (which version, and the date and time) and that you confirmed your age or your parent's or guardian's permission.",
+    },
+    {
+      type: 'bullet',
+      text: "**Household data you or your household members enter:** foods and inventory items, quantities, units, costs, expiry dates, storage locations, who bought and who may use an item, shopping lists, recipes, usage and consumption logs, and the resulting balances and settlements between members. If you add a custom food to Burrow's shared food list, we also record which account added it; this is not shown to other users.",
     },
     {
       type: 'bullet',
@@ -137,6 +141,10 @@ export const privacyPolicy: LegalDocument = {
     {
       type: 'bullet',
       text: "**What stays:** your household memberships are deactivated, but the nickname you used and the records tied to it (purchases, usage, cost splits, settlements and activity entries) remain in the household's history, so other members' balances and records stay accurate. After deletion these are no longer linked to a login or an email address, but your nickname may still appear in them. If you want a nickname changed before you leave, do that first.",
+    },
+    {
+      type: 'bullet',
+      text: "**Shared foods you added:** a custom food you added to Burrow's shared food list stays in the list after you delete your account, because other households may be using it. The record of which account added it is cleared, so it is no longer linked to you.",
     },
     {
       type: 'bullet',

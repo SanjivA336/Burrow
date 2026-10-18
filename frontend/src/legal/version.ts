@@ -14,5 +14,7 @@
 // Render as hosting providers before launch), 2026-10-06 (age and parental-consent
 // wording, expiry dates described as suggestions, conspicuous warranty and liability
 // clauses, Do Not Track statement), 2026-10-17 (expiry wording: best-by date removed, where
-// dates come from, "not recommended" places and cooked-food dates are guidance).
-export const LEGAL_VERSION = '2026-10-17'
+// dates come from, "not recommended" places and cooked-food dates are guidance),
+// 2026-10-18 (Privacy: the acceptance record kept at signup and the tour-finished marker
+// are now listed under what we collect).
+export const LEGAL_VERSION = '2026-10-18'

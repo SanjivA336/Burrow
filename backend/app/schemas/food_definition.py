@@ -43,7 +43,9 @@ class FoodDefinition(BaseModel):
     pantry_shelf_life_days: int = UNKNOWN
     fridge_shelf_life_days: int = UNKNOWN
     freezer_shelf_life_days: int = UNKNOWN
-    created_by_user_id: UUID | None
+    # The account that added a custom food is kept in the database but not sent
+    # out: this model is what the search returns to every signed-in user, and
+    # nobody should be able to tell who made a food.
     is_verified: bool
     usage_count: int
     duplicate_of_id: UUID | None

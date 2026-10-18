@@ -23,7 +23,6 @@ export type Unit =
 export interface Household {
   id: string
   name: string
-  address: string | null
   join_code: string
   owner_id: string
   preferred_unit_system: UnitSystem
@@ -82,7 +81,6 @@ export interface FoodDefinition {
   pantry_shelf_life_days: number
   fridge_shelf_life_days: number
   freezer_shelf_life_days: number
-  created_by_user_id: string | null
   is_verified: boolean
   usage_count: number
   duplicate_of_id: string | null

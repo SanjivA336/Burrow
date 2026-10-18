@@ -37,16 +37,13 @@ def get_household(household_id: UUID) -> Household | None:
     return Household(**result.data) if result and result.data else None
 
 
-def create_household_and_join(
-    user_id: UUID, name: str, address: str | None, nickname: str
-) -> Household:
+def create_household_and_join(user_id: UUID, name: str, nickname: str) -> Household:
     client = get_service_client()
     result = client.rpc(
         "create_household_and_join",
         {
             "p_user_id": str(user_id),
             "p_name": name,
-            "p_address": address,
             "p_nickname": nickname,
         },
     ).execute()

@@ -2,14 +2,12 @@ import { z } from 'zod'
 
 export const createHouseholdSchema = z.object({
   name: z.string().min(1, 'Give your household a name'),
-  address: z.string().optional(),
   nickname: z.string().min(1, 'Enter a nickname for yourself'),
 })
 export type CreateHouseholdForm = z.infer<typeof createHouseholdSchema>
 
 export const updateHouseholdSchema = z.object({
   name: z.string().min(1, 'Give your household a name'),
-  address: z.string().optional(),
 })
 export type UpdateHouseholdForm = z.infer<typeof updateHouseholdSchema>
 

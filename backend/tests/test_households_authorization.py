@@ -51,6 +51,7 @@ async def test_admin_can_update_household(client, fake_members, fake_households)
 
     response = await client.patch(
         f"/api/households/{household_id}",
+        # An old copy of the app may still send an address; it is simply ignored.
         json={"name": "New Name", "address": "123 Main St"},
         headers=auth_header(user_id),
     )
@@ -58,7 +59,7 @@ async def test_admin_can_update_household(client, fake_members, fake_households)
     assert response.status_code == 200
     body = response.json()["data"]
     assert body["name"] == "New Name"
-    assert body["address"] == "123 Main St"
+    assert "address" not in body
 
 
 async def test_updating_nonexistent_household_returns_404(

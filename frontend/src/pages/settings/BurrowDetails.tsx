@@ -13,7 +13,7 @@ import type { SettingsContext } from './settingsContext'
 const inputClass =
   'w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field outline-none placeholder:text-faint focus:border-primary'
 
-// The "Burrow details" screen: name, address and the default measurement system.
+// The "Burrow details" screen: name and the default measurement system.
 // (The join code lives on the Invite card, deleting on the list's red row.)
 // Admins get editable fields and a Save bar that appears only once something
 // has actually changed; everyone else sees the same facts read-only.
@@ -44,7 +44,7 @@ export function BurrowDetails() {
   }, [isDirty])
   useEffect(() => {
     if (household && !dirtyRef.current) {
-      reset({ name: household.name, address: household.address ?? '' })
+      reset({ name: household.name })
     }
   }, [household, reset])
 
@@ -83,10 +83,6 @@ export function BurrowDetails() {
           <p className="text-text">{household.name}</p>
         </div>
         <div>
-          <p className="text-sm font-medium text-muted">Address</p>
-          <p className="text-text">{household.address || 'Not set'}</p>
-        </div>
-        <div>
           <p className="text-sm font-medium text-muted">Default measurement system</p>
           <p className="text-text">
             {UNIT_SYSTEM_LABELS[household.preferred_unit_system]} (
@@ -106,12 +102,6 @@ export function BurrowDetails() {
         </label>
         <input type="text" className={inputClass} id="burrow-name" {...register('name')} />
         {errors.name && <p className="mt-1.5 text-sm text-danger">{errors.name.message}</p>}
-      </div>
-      <div>
-        <label htmlFor="burrow-address" className="mb-1.5 block text-sm font-medium text-muted">
-          Address (optional)
-        </label>
-        <input type="text" className={inputClass} id="burrow-address" {...register('address')} />
       </div>
 
       <div>
@@ -142,7 +132,7 @@ export function BurrowDetails() {
 
       {!isDirty && actionError && <p className="text-sm text-danger">{actionError}</p>}
 
-      {/* Appears only when the name or address has changed. Pinned to the bottom
+      {/* Appears only when the name has changed. Pinned to the bottom
           on a phone (in the tab bar's place); inline from the desktop breakpoint up. */}
       {isDirty && (
         <div className="pin-bottom fixed inset-x-0 bottom-0 z-20 border-t border-subtle bg-surface px-4 pb-[var(--bottom-bar-gap)] pt-3 md:static md:z-auto md:border-0 md:bg-transparent md:p-0">
@@ -153,7 +143,7 @@ export function BurrowDetails() {
               disabled={isSubmitting}
               onClick={() => {
                 setActionError(null)
-                reset({ name: household.name, address: household.address ?? '' })
+                reset({ name: household.name })
               }}
               className="rounded-control border border-subtle px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-50 md:py-2"
             >

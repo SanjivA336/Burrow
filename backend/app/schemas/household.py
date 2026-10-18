@@ -9,7 +9,6 @@ from app.schemas.units import UnitSystem
 class Household(BaseModel):
     id: UUID
     name: str
-    address: str | None
     join_code: str
     # The current owner -- distinct from who originally created the
     # household, since ownership is transferable (see
@@ -27,7 +26,6 @@ class Household(BaseModel):
 
 class CreateHouseholdRequest(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    address: str | None = None
     nickname: str = Field(min_length=1, max_length=100)
 
 
@@ -38,7 +36,6 @@ class JoinHouseholdRequest(BaseModel):
 
 class UpdateHouseholdRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
-    address: str | None = None
     preferred_unit_system: UnitSystem | None = None
 
 

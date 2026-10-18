@@ -45,16 +45,6 @@ export function CreateHouseholdPage() {
             {errors.name && <p className="mt-1.5 text-sm text-danger">{errors.name.message}</p>}
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-muted">
-              Address (optional)
-            </label>
-            <input
-              type="text"
-              className="w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field outline-none placeholder:text-faint focus:border-primary"
-              {...register('address')}
-            />
-          </div>
-          <div>
             <label className="mb-1.5 block text-sm font-medium text-muted">Your nickname</label>
             <input
               type="text"
