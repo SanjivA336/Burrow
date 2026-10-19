@@ -154,6 +154,9 @@ export interface InventoryItem {
   food_name: string
   food_type_name: string
   category: FoodCategory | null
+  // True when this item's food type was removed. It keeps its name and needs a
+  // new type chosen (listed under Warnings, chosen in the item's editor).
+  food_type_missing: boolean
   storage_location_name: string
   allowed_member_ids: string[]
   // Set once at creation, never editable afterward -- who's on the hook as
@@ -295,9 +298,16 @@ export interface StockWarning {
   reference_purchased_at: string
 }
 
+export interface FoodTypeWarning {
+  inventory_item_id: string
+  food_name: string
+  storage_location_name: string
+}
+
 export interface HouseholdWarnings {
   expiry_warnings: ExpiryWarning[]
   stock_warnings: StockWarning[]
+  food_type_warnings: FoodTypeWarning[]
 }
 
 export type ShoppingListItemSource = 'MANUAL' | 'SUGGESTED'

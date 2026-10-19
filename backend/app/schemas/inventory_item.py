@@ -119,6 +119,10 @@ class InventoryItem(BaseModel):
     # global_food_definition_id can be null'd out (food deleted upstream),
     # in which case the enrichment join comes back empty.
     category: FoodCategory | None
+    # True when this item's food type was removed (the type link is empty). The
+    # item still has its name (see migration 0048) and is listed under Warnings
+    # until someone picks a new type.
+    food_type_missing: bool = False
     storage_location_name: str
     # FRIDGE / FREEZER / PANTRY / OTHER -- which shelf life applies to this item.
     storage_location_type: str | None = None
@@ -191,6 +195,9 @@ class UpdateInventoryItemRequest(BaseModel):
     cost: Decimal | None = Field(default=None, ge=0)
     total_quantity: Decimal | None = Field(default=None, gt=0)
     allowed_member_ids: list[UUID] | None = Field(default=None, min_length=1)
+    # Only for an item whose food type was removed: gives it a new one. Rejected for
+    # an item that still has a type (changing a working type is not supported).
+    global_food_definition_id: UUID | None = None
 
 
 class PlaceExpiryAction(StrEnum):

@@ -75,6 +75,11 @@ class ItemNotFinalizedError(Exception):
     pass
 
 
+class ItemHasFoodTypeError(Exception):
+    """Raised when a new food type is chosen for an item that still has one: only an
+    item whose type was removed can be given a new type."""
+
+
 class UnitDimensionMismatchError(Exception):
     """Raised when a preferred_unit edit would change the item's dimension
     (weight/volume/count) -- only a same-dimension system swap (e.g. oz -> g)
@@ -122,6 +127,7 @@ def _flatten(row: dict) -> InventoryItem:
     row["food_name"] = row.get("name_override") or global_definition.get("name") or "Unknown food"
     row["food_type_name"] = global_definition.get("name") or "Unknown food"
     row["category"] = global_definition.get("category")
+    row["food_type_missing"] = not global_definition
     row["storage_location_name"] = storage.get("name") or "Unknown location"
     row["storage_location_type"] = storage.get("type")
     row["allowed_member_ids"] = [a["member_id"] for a in allowed]
@@ -489,6 +495,33 @@ def _void(household_id: UUID, item_id: UUID) -> InventoryItem:
     return item.model_copy(update={"status": "VOIDED"})
 
 
+def _relink_food_type(household_id: UUID, item: InventoryItem, food_definition_id: UUID) -> None:
+    """Gives an item whose food type was removed a new one. The database does the
+    work in one step (migration 0048): find or make this household's variant for the
+    new type, point the item at it, and drop a nickname that now only repeats the new
+    type's name."""
+    if not item.food_type_missing:
+        raise ItemHasFoodTypeError
+    try:
+        get_service_client().rpc(
+            "relink_inventory_item_food_type",
+            {
+                "p_household_id": str(household_id),
+                "p_item_id": str(item.id),
+                "p_global_food_definition_id": str(food_definition_id),
+            },
+        ).execute()
+    except APIError as exc:
+        message = str(exc)
+        if "item_has_food_type" in message:
+            raise ItemHasFoodTypeError from exc
+        if "food_type_not_found" in message:
+            raise FoodDefinitionNotFoundError from exc
+        if "item_not_found" in message:
+            raise ItemNotFoundError from exc
+        raise
+
+
 def update_item(
     household_id: UUID, item_id: UUID, body: UpdateInventoryItemRequest
 ) -> InventoryItem:
@@ -505,6 +538,9 @@ def update_item(
 
     fields = body.model_fields_set
     updates: dict = {}
+
+    if "global_food_definition_id" in fields and body.global_food_definition_id is not None:
+        _relink_food_type(household_id, current, body.global_food_definition_id)
 
     now = datetime.now(UTC)
     clock = _clock_from_item(current)

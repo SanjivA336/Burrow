@@ -6,15 +6,17 @@ import { shortDate } from '../../lib/formatDate'
 import { apiClient, ApiError } from '../../lib/apiClient'
 import { CategoryDot } from '../../components/CategoryDot'
 import { Modal } from '../../components/Modal'
+import { FoodSearchInput } from '../../components/FoodSearchInput'
 import { ItemExpirySection, type ItemExpiryHandle } from '../../components/ItemExpirySection'
 import { MemberPicker } from '../../components/MemberPicker'
 import { UnitSelect } from '../../components/UnitSelect'
 import { useHouseholdResource } from '../../hooks/useHouseholdResource'
 import { useDialog } from '../../hooks/useDialog'
 import { FOOD_CATEGORY_LABELS } from '../../lib/foodCategories'
-import { UNIT_LABELS, UNITS_BY_DIMENSION, guessDimension } from '../../lib/units'
+import { DIMENSION_LABELS, UNIT_LABELS, UNITS_BY_DIMENSION, guessDimension } from '../../lib/units'
 import type {
   ConsumptionEvent,
+  FoodDefinition,
   InventoryItem,
   Member,
   PurchaseCorrection,
@@ -99,6 +101,10 @@ export function ItemEditModal({
   const [voiding, setVoiding] = useState(false)
   const [removing, setRemoving] = useState<'EXPIRED' | 'EMPTY' | null>(null)
   const [showMore, setShowMore] = useState(false)
+  // The new food type picked for an item whose type was removed, while it is being saved.
+  const [pickedType, setPickedType] = useState<FoodDefinition | null>(null)
+  // A chosen type whose usual measurement differs from the item's, waiting for a yes.
+  const [mismatchedType, setMismatchedType] = useState<FoodDefinition | null>(null)
   const expiryRef = useRef<ItemExpiryHandle>(null)
 
   // The draft starts from the saved item, and follows it (a refresh, a change
@@ -160,6 +166,44 @@ export function ItemEditModal({
       setActionError(err instanceof ApiError ? err.message : 'Something went wrong')
       setVoiding(false)
       setConfirmingVoid(false)
+    }
+  }
+
+  // An item whose food type was removed gets a new one the moment it is chosen (like Use
+  // or Move, not held back for "Save Changes"): the server links it to the right food
+  // for this burrow, and the item then reloads as an ordinary typed item.
+  //
+  // A relink can't be undone (a typed item's type is locked), so if the chosen food is
+  // usually measured another way than this item ("Milk" is by volume, the item is in
+  // grams) it asks first instead of linking straight away.
+  const chooseFoodType = (food: FoodDefinition | null) => {
+    setActionError(null)
+    if (
+      food &&
+      item &&
+      guessDimension(food.preferred_unit) !== guessDimension(item.preferred_unit)
+    ) {
+      setMismatchedType(food)
+      return
+    }
+    setMismatchedType(null)
+    void applyFoodType(food)
+  }
+
+  const applyFoodType = async (food: FoodDefinition | null) => {
+    setPickedType(food)
+    if (!food) return
+    setActionError(null)
+    try {
+      await apiClient.patch(`/api/households/${householdId}/inventory-items/${itemId}`, {
+        global_food_definition_id: food.id,
+      })
+      reload()
+      onChanged()
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Something went wrong')
+    } finally {
+      setPickedType(null)
     }
   }
 
@@ -333,14 +377,55 @@ export function ItemEditModal({
                         </span>
                       )}
                     </label>
-                    <input
-                      type="text"
-                      disabled
-                      readOnly
-                      title="An item's food type can't be changed"
-                      value={item.food_type_name}
-                      className={disabledInputClass}
-                    />
+                    {item.food_type_missing ? (
+                      <>
+                        <p className="mb-2 text-xs text-warning">
+                          This food&apos;s type was removed. Choose a new one.
+                        </p>
+                        <FoodSearchInput value={pickedType} onChange={chooseFoodType} />
+                        {mismatchedType && (
+                          <div className="mt-2 rounded-control border border-warning/40 p-3 text-sm">
+                            <p className="text-text">
+                              {mismatchedType.name} is usually measured by{' '}
+                              {DIMENSION_LABELS[
+                                guessDimension(mismatchedType.preferred_unit)
+                              ].toLowerCase()}
+                              , but this item is in {UNIT_LABELS[item.preferred_unit]}. The food
+                              type can&apos;t be changed afterwards. Link it anyway?
+                            </p>
+                            <div className="mt-2 flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const food = mismatchedType
+                                  setMismatchedType(null)
+                                  void applyFoodType(food)
+                                }}
+                                className="rounded-control bg-primary px-3 py-1.5 text-sm font-medium text-white"
+                              >
+                                Link anyway
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setMismatchedType(null)}
+                                className="rounded-control px-3 py-1.5 text-sm font-medium text-muted hover:bg-surface-hover"
+                              >
+                                Choose another
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <input
+                        type="text"
+                        disabled
+                        readOnly
+                        title="An item's food type can't be changed"
+                        value={item.food_type_name}
+                        className={disabledInputClass}
+                      />
+                    )}
                   </div>
 
                   <CostAndQuantitySection

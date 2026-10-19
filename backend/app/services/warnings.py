@@ -8,6 +8,7 @@ from app.schemas.units import Dimension, Unit
 from app.schemas.warning import (
     ExpiryWarning,
     ExpiryWarningType,
+    FoodTypeWarning,
     HouseholdWarnings,
     StockWarning,
     StockWarningType,
@@ -154,6 +155,10 @@ def compute_warnings(household_id: UUID) -> HouseholdWarnings:
     # lines" -- see the 0022 migration).
     by_variant_dimension: dict[tuple[UUID, Dimension], list[InventoryItem]] = {}
     for item in items:
+        # Items whose food type was removed all share one leftover variant, whatever
+        # they were (chicken and milk alike), so their quantities mean nothing together.
+        if item.food_type_missing:
+            continue
         dimension = units_service.guess_dimension(item.preferred_unit)
         by_variant_dimension.setdefault((item.household_food_variant_id, dimension), []).append(
             item
@@ -183,7 +188,21 @@ def compute_warnings(household_id: UUID) -> HouseholdWarnings:
             )
         )
 
-    return HouseholdWarnings(expiry_warnings=expiry_warnings, stock_warnings=stock_warnings)
+    food_type_warnings = [
+        FoodTypeWarning(
+            inventory_item_id=item.id,
+            food_name=item.food_name,
+            storage_location_name=item.storage_location_name,
+        )
+        for item in items
+        if item.status == "ACTIVE" and item.food_type_missing
+    ]
+
+    return HouseholdWarnings(
+        expiry_warnings=expiry_warnings,
+        stock_warnings=stock_warnings,
+        food_type_warnings=food_type_warnings,
+    )
 
 
 def ignore_expiry_warning(household_id: UUID, inventory_item_id: UUID) -> None:

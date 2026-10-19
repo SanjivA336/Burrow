@@ -45,6 +45,16 @@ class StockWarning(BaseModel):
     reference_purchased_at: datetime
 
 
+class FoodTypeWarning(BaseModel):
+    """An item whose food type was removed and which needs a new one (see
+    migration 0048). No "ignore": it goes away by choosing a type."""
+
+    inventory_item_id: UUID
+    food_name: str
+    storage_location_name: str
+
+
 class HouseholdWarnings(BaseModel):
     expiry_warnings: list[ExpiryWarning]
     stock_warnings: list[StockWarning]
+    food_type_warnings: list[FoodTypeWarning] = []

@@ -41,7 +41,7 @@ async def test_member_can_view_warnings(client, fake_members, fake_warnings) -> 
 
     assert response.status_code == 200
     body = response.json()["data"]
-    assert body == {"expiry_warnings": [], "stock_warnings": []}
+    assert body == {"expiry_warnings": [], "stock_warnings": [], "food_type_warnings": []}
 
 
 async def test_non_member_cannot_ignore_stock_warning(client, fake_members) -> None:

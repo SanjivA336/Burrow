@@ -5,30 +5,44 @@ import { apiClient, ApiError } from '../../lib/apiClient'
 import { Modal } from '../../components/Modal'
 import { WarningCounts } from '../../components/WarningCounts'
 import { UNIT_LABELS } from '../../lib/units'
-import type { ExpiryWarning, StockWarning } from '../../types/entities'
+import type { ExpiryWarning, FoodTypeWarning, StockWarning } from '../../types/entities'
 
 interface Props {
   householdId: string
   stockWarnings: StockWarning[]
   expiryWarnings: ExpiryWarning[]
+  // Items whose food type was removed: they need a new one chosen, which happens in
+  // the item's editor (so these rows open it instead of offering "Ignore").
+  foodTypeWarnings: FoodTypeWarning[]
+  onOpenItem: (itemId: string) => void
   onIgnored: () => void
 }
 
-type GroupKey = 'OUT_OF_STOCK' | 'EXPIRED' | 'LOW_STOCK' | 'EXPIRING_SOON'
+type GroupKey = 'OUT_OF_STOCK' | 'EXPIRED' | 'NEEDS_FOOD_TYPE' | 'LOW_STOCK' | 'EXPIRING_SOON'
 
 interface Row {
   key: string
   name: string
   description: string
+  // What the row's button does and what it says: "Ignore" for most warnings, "Choose"
+  // for a missing food type (which can only be fixed, not ignored).
+  actionLabel?: string
   onIgnore: () => void
 }
 
 // Critical groups (red) always sort ahead of regular ones (yellow); within
 // each severity there's no further ordering the user specified.
-const GROUP_ORDER: GroupKey[] = ['OUT_OF_STOCK', 'EXPIRED', 'LOW_STOCK', 'EXPIRING_SOON']
+const GROUP_ORDER: GroupKey[] = [
+  'OUT_OF_STOCK',
+  'EXPIRED',
+  'NEEDS_FOOD_TYPE',
+  'LOW_STOCK',
+  'EXPIRING_SOON',
+]
 const GROUP_SEVERITY: Record<GroupKey, 'critical' | 'regular'> = {
   OUT_OF_STOCK: 'critical',
   EXPIRED: 'critical',
+  NEEDS_FOOD_TYPE: 'regular',
   LOW_STOCK: 'regular',
   EXPIRING_SOON: 'regular',
 }
@@ -40,6 +54,8 @@ function groupLabel(key: GroupKey, n: number): string {
       return `${n} ${item} out of stock`
     case 'EXPIRED':
       return `${n} ${item} expired`
+    case 'NEEDS_FOOD_TYPE':
+      return n === 1 ? '1 item needs a food type' : `${n} items need a food type`
     case 'LOW_STOCK':
       return `${n} ${item} running low`
     case 'EXPIRING_SOON':
@@ -47,7 +63,14 @@ function groupLabel(key: GroupKey, n: number): string {
   }
 }
 
-export function WarningsButton({ householdId, stockWarnings, expiryWarnings, onIgnored }: Props) {
+export function WarningsButton({
+  householdId,
+  stockWarnings,
+  expiryWarnings,
+  foodTypeWarnings,
+  onOpenItem,
+  onIgnored,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [expanded, setExpanded] = useState<Set<GroupKey>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
@@ -57,7 +80,8 @@ export function WarningsButton({ householdId, stockWarnings, expiryWarnings, onI
     expiryWarnings.filter((w) => w.type === 'EXPIRED').length
   const regularCount =
     stockWarnings.filter((w) => w.type === 'LOW_STOCK').length +
-    expiryWarnings.filter((w) => w.type === 'EXPIRING_SOON').length
+    expiryWarnings.filter((w) => w.type === 'EXPIRING_SOON').length +
+    foodTypeWarnings.length
   const hasWarnings = criticalCount + regularCount > 0
 
   const toggleGroup = (key: GroupKey) =>
@@ -117,6 +141,18 @@ export function WarningsButton({ householdId, stockWarnings, expiryWarnings, onI
           description: `You had ${formatQuantity(w.reference_quantity)} ${UNIT_LABELS[w.preferred_unit]} last time -- none left now.`,
           onIgnore: () => ignoreStock(w.household_food_variant_id, w.preferred_unit),
         })),
+      NEEDS_FOOD_TYPE: foodTypeWarnings.map((w) => ({
+        key: w.inventory_item_id,
+        name: w.food_name,
+        description: `Pick a food type for ${w.food_name} · ${w.storage_location_name}`,
+        actionLabel: 'Choose',
+        onIgnore: () => {
+          // The item's editor opens over the page; close this list so it is not left
+          // underneath it.
+          setOpen(false)
+          onOpenItem(w.inventory_item_id)
+        },
+      })),
       LOW_STOCK: stockWarnings
         .filter((w) => w.type === 'LOW_STOCK')
         .map((w) => ({
@@ -145,7 +181,7 @@ export function WarningsButton({ householdId, stockWarnings, expiryWarnings, onI
           onIgnore: () => ignoreExpiry(w.inventory_item_id),
         })),
     }),
-    [stockWarnings, expiryWarnings, ignoreStock, ignoreExpiry],
+    [stockWarnings, expiryWarnings, foodTypeWarnings, onOpenItem, ignoreStock, ignoreExpiry],
   )
 
   return (
@@ -215,7 +251,7 @@ export function WarningsButton({ householdId, stockWarnings, expiryWarnings, onI
                             onClick={row.onIgnore}
                             className="shrink-0 rounded-control px-2 py-1 text-xs font-medium text-faint transition-colors hover:bg-surface-hover hover:text-text"
                           >
-                            Ignore
+                            {row.actionLabel ?? 'Ignore'}
                           </button>
                         </li>
                       ))}

@@ -156,6 +156,12 @@ def update_inventory_item(
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "That storage location couldn't be found"
         ) from exc
+    except inventory_service.ItemHasFoodTypeError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This item already has a food type") from exc
+    except inventory_service.FoodDefinitionNotFoundError as exc:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "That food type couldn't be found"
+        ) from exc
     except inventory_service.UnitDimensionMismatchError as exc:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,

@@ -571,6 +571,8 @@ export function InventoryPage() {
             householdId={householdId ?? ''}
             stockWarnings={warnings?.stock_warnings ?? []}
             expiryWarnings={warnings?.expiry_warnings ?? []}
+            foodTypeWarnings={warnings?.food_type_warnings ?? []}
+            onOpenItem={openItem}
             onIgnored={reloadWarnings}
           />
           <button

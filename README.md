@@ -358,21 +358,19 @@ leaving localhost.
   create-burrow function without it, but the `households.address` column and the
   old four-argument `create_household_and_join` still exist so the backend that
   was live during the deploy kept working. Once the new backend is live, write
-  migration 0048 to drop the old function and then the column. This permanently
+  migration 0049 to drop the old function and then the column. This permanently
   deletes the one address saved today (checked 2026-10-18: 1 of 2 live burrows).
   Added 2026-10-18.
-- [ ] **Re-matching foods when a food type is deleted or retired.** Today, if a
-  food type is removed, the items in people's burrows that used it lose their type
-  (the link is cleared) and turn into unknown foods, and the original name is
-  lost. Instead: keep each item as an "unknown food" but copy the old type's
-  name into the item's nickname, so nothing disappears. Then list those items
-  under Warnings as foods that need a new type, with a quick way to pick one.
-  Needs: the copy step when a type is deleted, a way to find "unknown type with
-  a leftover name", the Warnings entry, and a picker. Open question: the
-  wording shown to people. It has to be plain and short. Candidates: "Pick a
-  food type for Chicken" / "Needs a food type" / "We lost track of this food's
-  type". Also decide whether items with an unknown type still get an expiry
-  date (they have none from the type). Added 2026-10-18.
+- [x] **Re-matching foods when a food type is deleted or retired.** Built
+  2026-10-18 (migration 0048). Removing a food type used to turn the items that
+  used it into "Unknown food" and lose their name. Now a database trigger copies
+  the old type's name into each item's nickname, the item is listed under
+  Warnings as "N items need a food type" ("Pick a food type for Chicken"), and
+  opening it shows a search box in place of the greyed Food type field;
+  choosing a type links it at once (and drops the nickname if it now only repeats
+  the type's name). Items with no type are left out of the low-stock warnings.
+  Still to do: the optional "apply to every item called X" shortcut, and
+  trying it on the live database after the migration is pushed.
 - [ ] **Give every new burrow a pantry, a fridge and a freezer.** Today a new
   burrow starts with no storage places, and adding the first item stops with
   "Add a fridge, freezer, or pantry first". Create the three when a burrow is
