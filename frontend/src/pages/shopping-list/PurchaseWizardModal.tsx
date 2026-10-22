@@ -15,6 +15,7 @@ import { PLACE_LABELS, placeForStorageType, shelfLifeDays } from '../../lib/shel
 import type {
   FoodDefinition,
   InventoryItem,
+  LastPurchase,
   MeasurementPreference,
   Member,
   PurchaseSessionItem,
@@ -57,7 +58,14 @@ interface Draft {
   expiryDate: string
 }
 
-type AutofillField = 'nickname' | 'expiry_date' | 'allowed_member_ids' | 'cost'
+type AutofillField =
+  | 'nickname'
+  | 'expiry_date'
+  | 'allowed_member_ids'
+  | 'cost'
+  | 'quantity'
+  | 'unit'
+  | 'storage_location'
 
 const inputClass =
   'w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field outline-none placeholder:text-faint focus:border-primary'
@@ -126,8 +134,17 @@ function draftFromItem(
 // former is the safer default (never silently overwrite data that's
 // already there). An empty field stays open to autofill, same as on a
 // brand new blank line.
-function initialCustomized(item: PurchaseSessionItem): Record<AutofillField, boolean> {
+function initialCustomized(
+  item: PurchaseSessionItem,
+  stickyStorageLocationId: string,
+): Record<AutofillField, boolean> {
   return {
+    // The place carried over from the previous line is a deliberate choice (a
+    // shelf-by-shelf pass), so it counts as chosen. The unit never counts: it follows
+    // the food, until the person picks one by hand.
+    quantity: !!item.quantity && Number(item.quantity) > 0,
+    unit: false,
+    storage_location: !!item.storage_location_id || !!stickyStorageLocationId,
     nickname: !!item.name_override,
     expiry_date: !!item.expiry_date,
     allowed_member_ids: item.allowed_member_ids.length > 0,
@@ -223,7 +240,13 @@ export function PurchaseWizardModal({
     expiry_date: false,
     allowed_member_ids: false,
     cost: false,
+    quantity: false,
+    unit: false,
+    storage_location: false,
   })
+  // The latest flags, for answers that arrive after the person has already typed.
+  const customizedRef = useRef(customized)
+  customizedRef.current = customized
   const markCustomized = (field: AutofillField) =>
     setCustomized((prev) => (prev[field] ? prev : { ...prev, [field]: true }))
   // Both carry over to the next *new* blank line only -- a shelf-by-shelf
@@ -316,7 +339,7 @@ export function PurchaseWizardModal({
     const item = session.items.find((i) => i.id === selectedId)
     if (item) {
       setDraft(draftFromItem(item, activeMemberIds, stickyBuyer, stickyStorageLocationId))
-      setCustomized(initialCustomized(item))
+      setCustomized(initialCustomized(item, stickyStorageLocationId))
     }
   }, [session, selectedId, activeMemberIds, stickyBuyer, stickyStorageLocationId])
 
@@ -374,24 +397,59 @@ export function PurchaseWizardModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft?.food?.id, draft?.storageLocationId])
 
-  // The unit isn't gated on "customized" at all -- unlike the other fields,
-  // there's no sense in which a unit choice for one food should survive a
-  // switch to a different food (3 "cup" of flour and 3 "cup" of milk aren't
-  // even the same kind of amount), so this always just resets to whatever
-  // this household remembers (or defaults to) for the newly picked food.
+  // Starts a food from "same as last time", only when the food is picked: the quantity,
+  // unit, place, nickname and people of its last purchase in this burrow (cost then
+  // follows by itself, see the "Same as last time" effect below). A nickname already
+  // typed is sent along, so the purchase with that nickname is the one used. Nothing the
+  // person edited by hand is ever replaced; what the app filled in earlier can be. That is
+  // checked when the answer arrives (customizedRef), not when it was asked for, in case
+  // they typed in between. Expiry date is never taken from a past purchase. A food never
+  // bought here falls back to the unit this household remembers (or defaults to) for it.
   useEffect(() => {
     if (!draft?.food || !householdId) return
     const foodId = draft.food.id
+    const base = `/api/households/${householdId}/inventory-items`
+    const typedNickname =
+      customizedRef.current.nickname && draft.nickname.trim() ? draft.nickname.trim() : ''
+    const nicknameQuery = typedNickname ? `&nickname=${encodeURIComponent(typedNickname)}` : ''
     apiClient
-      .get<MeasurementPreference>(
-        `/api/households/${householdId}/inventory-items/measurement-preference?global_food_definition_id=${foodId}`,
+      .get<LastPurchase | null>(
+        `${base}/last-purchase?global_food_definition_id=${foodId}${nicknameQuery}`,
       )
-      .then((preference) => {
-        setDraft((prev) => (prev ? { ...prev, unit: preference.unit } : prev))
+      .then(async (last) => {
+        if (!last) {
+          const preference = await apiClient.get<MeasurementPreference>(
+            `${base}/measurement-preference?global_food_definition_id=${foodId}`,
+          )
+          if (!customizedRef.current.unit) {
+            setDraft((prev) => (prev ? { ...prev, unit: preference.unit } : prev))
+          }
+          return
+        }
+        const mine = customizedRef.current
+        const knownPlace = storageLocations.some((loc) => loc.id === last.storage_location_id)
+        setDraft((prev) =>
+          prev
+            ? {
+                ...prev,
+                unit: mine.unit ? prev.unit : last.unit,
+                quantity: mine.quantity ? prev.quantity : String(Number(last.quantity)),
+                storageLocationId:
+                  mine.storage_location || !knownPlace
+                    ? prev.storageLocationId
+                    : last.storage_location_id,
+                nickname: mine.nickname || !last.nickname ? prev.nickname : last.nickname,
+                allowedMemberIds:
+                  mine.allowed_member_ids || last.allowed_member_ids.length === 0
+                    ? prev.allowedMemberIds
+                    : last.allowed_member_ids,
+              }
+            : prev,
+        )
       })
       .catch(() => {
-        // Best-effort -- worst case the unit picker stays on its default
-        // and the user picks manually.
+        // Best-effort -- worst case the fields stay on their defaults and the user
+        // fills them in.
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft?.food?.id, householdId])
@@ -927,7 +985,10 @@ export function PurchaseWizardModal({
                             placeholder="Amount"
                             className={inputClass}
                             value={draft.quantity}
-                            onChange={(e) => setDraft({ ...draft, quantity: e.target.value })}
+                            onChange={(e) => {
+                              setDraft({ ...draft, quantity: e.target.value })
+                              markCustomized('quantity')
+                            }}
                           />
                         </div>
                         <div className="w-32">
@@ -939,7 +1000,10 @@ export function PurchaseWizardModal({
                             className={inputClass}
                             value={draft.unit}
                             placeholder="Unit…"
-                            onChange={(unit) => setDraft({ ...draft, unit })}
+                            onChange={(unit) => {
+                              setDraft({ ...draft, unit })
+                              markCustomized('unit')
+                            }}
                           />
                         </div>
                       </div>
@@ -1020,9 +1084,10 @@ export function PurchaseWizardModal({
                           aria-label="Storage location"
                           className={inputClass}
                           value={draft.storageLocationId}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             setDraft({ ...draft, storageLocationId: e.target.value })
-                          }
+                            markCustomized('storage_location')
+                          }}
                         >
                           <option value="">Storage…</option>
                           {storageLocations.map((loc) => (

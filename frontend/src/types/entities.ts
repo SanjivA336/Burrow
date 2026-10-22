@@ -90,6 +90,16 @@ export interface FoodDefinition {
 
 export type Dimension = 'WEIGHT' | 'VOLUME' | 'COUNT'
 
+// What the last real purchase of a food in this burrow looked like (null if never bought).
+export interface LastPurchase {
+  quantity: string
+  unit: Unit
+  cost: string
+  storage_location_id: string
+  allowed_member_ids: string[]
+  nickname: string | null
+}
+
 export interface MeasurementPreference {
   dimension: Dimension
   // null only for COUNT, which has no metric/customary distinction.

@@ -13,6 +13,7 @@ from app.schemas.inventory_item import (
     CreateInventoryItemRequest,
     ExpiryPreview,
     InventoryItem,
+    LastPurchase,
     PlaceExpiryAction,
     PlaceExpiryRequest,
     PurchaseCorrection,
@@ -1170,6 +1171,7 @@ def find_last_cost(
         .select("cost, total_quantity")
         .eq("household_id", str(household_id))
         .eq("household_food_variant_id", variant_result.data["id"])
+        .neq("status", "VOIDED")
         .order("purchased_at", desc=True)
         .limit(20)
         .execute()
@@ -1180,6 +1182,68 @@ def find_last_cost(
         if stored == target:
             return Decimal(str(row["cost"]))
     return None
+
+
+def find_last_purchase(
+    household_id: UUID, global_food_definition_id: UUID, nickname: str | None = None
+) -> LastPurchase | None:
+    """The most recent real purchase (not a voided one) of this food in this household:
+    how much, in which unit, at what cost, put where, and for whom. Powers the Add Item
+    form starting from "same as last time". People who have since left are dropped.
+
+    With a nickname, the most recent purchase that had that same nickname wins (ignoring
+    capitals); with none, or no match, it is simply the most recent purchase."""
+    client = get_service_client()
+    variant_result = (
+        client.table("household_food_variants")
+        .select("id")
+        .eq("household_id", str(household_id))
+        .eq("global_food_definition_id", str(global_food_definition_id))
+        .maybe_single()
+        .execute()
+    )
+    if not variant_result or not variant_result.data:
+        return None
+
+    item_result = (
+        client.table(_TABLE)
+        .select(
+            "total_quantity, display_unit, cost, storage_location_id, name_override, "
+            "inventory_item_allowed_members(member_id)"
+        )
+        .eq("household_id", str(household_id))
+        .eq("household_food_variant_id", variant_result.data["id"])
+        .neq("status", "VOIDED")
+        .order("purchased_at", desc=True)
+        .limit(20)
+        .execute()
+    )
+    if not item_result.data:
+        return None
+    wanted = (nickname or "").strip().lower()
+    row = next(
+        (
+            r
+            for r in item_result.data
+            if wanted and (r.get("name_override") or "").strip().lower() == wanted
+        ),
+        item_result.data[0],
+    )
+    unit = Unit(row["display_unit"])
+    active = list_active_member_ids(household_id)
+    people = [
+        UUID(m["member_id"])
+        for m in row.get("inventory_item_allowed_members") or []
+        if UUID(m["member_id"]) in active
+    ]
+    return LastPurchase(
+        quantity=units_service.display_quantity(Decimal(str(row["total_quantity"])), unit),
+        unit=unit,
+        cost=Decimal(str(row["cost"])),
+        storage_location_id=UUID(row["storage_location_id"]),
+        allowed_member_ids=people,
+        nickname=row.get("name_override") or None,
+    )
 
 
 def allowed_member_ids_are_valid(household_id: UUID, member_ids: list[UUID]) -> bool:

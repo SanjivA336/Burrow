@@ -14,6 +14,7 @@ from app.schemas.inventory_item import (
     ExpiryPreview,
     ExpiryPreviewRequest,
     InventoryItem,
+    LastPurchase,
     PlaceExpiryRequest,
     PurchaseCorrection,
     RemovalReason,
@@ -50,6 +51,18 @@ def get_last_cost(
 ) -> Envelope[Decimal | None]:
     return ok(
         inventory_service.find_last_cost(household_id, global_food_definition_id, quantity, unit)
+    )
+
+
+@router.get("/last-purchase", response_model=Envelope[LastPurchase | None])
+def get_last_purchase(
+    household_id: UUID,
+    global_food_definition_id: UUID,
+    nickname: str | None = None,
+    _member: Member = Depends(require_household_membership),
+) -> Envelope[LastPurchase | None]:
+    return ok(
+        inventory_service.find_last_purchase(household_id, global_food_definition_id, nickname)
     )
 
 

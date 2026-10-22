@@ -267,3 +267,16 @@ class PurchaseCorrection(BaseModel):
     new_total_quantity: Decimal | None
     note: str | None
     created_at: datetime
+
+
+class LastPurchase(BaseModel):
+    """What the most recent purchase of a food in this household looked like, so adding
+    the same food again can start from the same quantity, cost, place and people."""
+
+    quantity: Decimal
+    unit: Unit
+    cost: Decimal
+    storage_location_id: UUID
+    allowed_member_ids: list[UUID]
+    # The nickname that purchase had, if any (e.g. "HEB milk").
+    nickname: str | None = None
