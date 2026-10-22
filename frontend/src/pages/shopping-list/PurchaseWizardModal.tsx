@@ -4,6 +4,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Check, Plus, Trash2, X } from '
 import { apiClient, ApiError } from '../../lib/apiClient'
 import { CategoryDot } from '../../components/CategoryDot'
 import { FieldTooltip } from '../../components/FieldTooltip'
+import { FillFromPreviousButton } from '../../components/FillFromPreviousButton'
 import { MemberPicker } from '../../components/MemberPicker'
 import { Modal } from '../../components/Modal'
 import { TypeSearchField, type TypeSearchFieldHandle } from '../../components/TypeSearchField'
@@ -244,6 +245,8 @@ export function PurchaseWizardModal({
     unit: false,
     storage_location: false,
   })
+  // Whether the picked food has a previous purchase in this burrow (enables the fill icons).
+  const [hasHistory, setHasHistory] = useState(false)
   // The latest flags, for answers that arrive after the person has already typed.
   const customizedRef = useRef(customized)
   customizedRef.current = customized
@@ -417,6 +420,7 @@ export function PurchaseWizardModal({
         `${base}/last-purchase?global_food_definition_id=${foodId}${nicknameQuery}`,
       )
       .then(async (last) => {
+        setHasHistory(!!last)
         if (!last) {
           const preference = await apiClient.get<MeasurementPreference>(
             `${base}/measurement-preference?global_food_definition_id=${foodId}`,
@@ -453,6 +457,54 @@ export function PurchaseWizardModal({
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft?.food?.id, householdId])
+
+  // The fill icon beside a field: asks again for the food's last purchase and replaces that
+  // one field with it, even if it was typed by hand, then marks the field as "filled by the
+  // app" again so a later food change can refresh it. The lookup ignores the nickname when
+  // refilling the nickname itself.
+  const refillField = async (field: AutofillField) => {
+    if (!draft?.food || !householdId) return
+    const typedNickname =
+      field !== 'nickname' && customizedRef.current.nickname && draft.nickname.trim()
+        ? draft.nickname.trim()
+        : ''
+    const nicknameQuery = typedNickname ? `&nickname=${encodeURIComponent(typedNickname)}` : ''
+    let last: LastPurchase | null
+    try {
+      last = await apiClient.get<LastPurchase | null>(
+        `/api/households/${householdId}/inventory-items/last-purchase?global_food_definition_id=${draft.food.id}${nicknameQuery}`,
+      )
+    } catch {
+      return
+    }
+    if (!last) return
+    const previous = last
+    const foodName = draft.food.name
+    setDraft((prev) => {
+      if (!prev) return prev
+      switch (field) {
+        case 'quantity':
+          return { ...prev, quantity: String(Number(previous.quantity)) }
+        case 'unit':
+          return { ...prev, unit: previous.unit }
+        case 'cost':
+          return { ...prev, cost: previous.cost }
+        case 'allowed_member_ids':
+          return previous.allowed_member_ids.length > 0
+            ? { ...prev, allowedMemberIds: previous.allowed_member_ids }
+            : prev
+        case 'storage_location':
+          return storageLocations.some((loc) => loc.id === previous.storage_location_id)
+            ? { ...prev, storageLocationId: previous.storage_location_id }
+            : prev
+        case 'nickname':
+          return { ...prev, nickname: previous.nickname ?? foodName }
+        default:
+          return prev
+      }
+    })
+    setCustomized((prev) => ({ ...prev, [field]: false }))
+  }
 
   // Who's using this defaults off the food's own accounting_type_default
   // (typically-personal foods start with just you picked, typically-shared
@@ -975,10 +1027,17 @@ export function PurchaseWizardModal({
 
                       <div className="flex gap-2">
                         <div className="flex-1">
-                          <label htmlFor="purchasewizardmodal-920" className={fieldLabelClass}>
-                            Quantity
-                            <FieldTooltip text="This becomes both the amount you have right now and the 100% mark it's tracked against as you use it up." />
-                          </label>
+                          <div className="flex items-start justify-start gap-1">
+                            <label htmlFor="purchasewizardmodal-920" className={fieldLabelClass}>
+                              Quantity
+                              <FieldTooltip text="This becomes both the amount you have right now and the 100% mark it's tracked against as you use it up." />
+                            </label>
+                            <FillFromPreviousButton
+                              field="quantity"
+                              disabled={!hasHistory}
+                              onClick={() => void refillField('quantity')}
+                            />
+                          </div>
                           <NumberInput
                             id="purchasewizardmodal-920"
                             decimals={3}
@@ -992,9 +1051,16 @@ export function PurchaseWizardModal({
                           />
                         </div>
                         <div className="w-32">
-                          <label htmlFor="purchasewizardmodal-933" className={fieldLabelClass}>
-                            Unit
-                          </label>
+                          <div className="flex items-start justify-start gap-1">
+                            <label htmlFor="purchasewizardmodal-933" className={fieldLabelClass}>
+                              Unit
+                            </label>
+                            <FillFromPreviousButton
+                              field="unit"
+                              disabled={!hasHistory}
+                              onClick={() => void refillField('unit')}
+                            />
+                          </div>
                           <UnitSelect
                             id="purchasewizardmodal-933"
                             className={inputClass}
@@ -1010,10 +1076,17 @@ export function PurchaseWizardModal({
 
                       <div className="grid grid-cols-2 gap-x-2">
                         <div>
-                          <label htmlFor="purchasewizardmodal-946" className={fieldLabelClass}>
-                            Cost (optional)
-                            <FieldTooltip text="Auto-filled from the last time you bought this exact food and quantity, if we've seen it before. Edit or clear it any time." />
-                          </label>
+                          <div className="flex items-start justify-start gap-1">
+                            <label htmlFor="purchasewizardmodal-946" className={fieldLabelClass}>
+                              Cost (optional)
+                              <FieldTooltip text="Auto-filled from the last time you bought this exact food and quantity, if we've seen it before. Edit or clear it any time." />
+                            </label>
+                            <FillFromPreviousButton
+                              field="cost"
+                              disabled={!hasHistory}
+                              onClick={() => void refillField('cost')}
+                            />
+                          </div>
                           <div className="flex items-center gap-1.5">
                             <NumberInput
                               id="purchasewizardmodal-946"
@@ -1061,7 +1134,14 @@ export function PurchaseWizardModal({
                       {/* With one person in the burrow there is nobody to choose between. */}
                       {activeMembers.length > 1 && (
                         <div>
-                          <p className={fieldLabelClass}>Who's using this?</p>
+                          <div className="flex items-start justify-start gap-1">
+                            <p className={fieldLabelClass}>Who's using this?</p>
+                            <FillFromPreviousButton
+                              field="people"
+                              disabled={!hasHistory}
+                              onClick={() => void refillField('allowed_member_ids')}
+                            />
+                          </div>
                           <MemberPicker
                             mode="multi"
                             members={activeMembers}
@@ -1076,9 +1156,16 @@ export function PurchaseWizardModal({
                       )}
 
                       <div>
-                        <label htmlFor="purchasewizardmodal-1012" className={fieldLabelClass}>
-                          Storage location
-                        </label>
+                        <div className="flex items-start justify-start gap-1">
+                          <label htmlFor="purchasewizardmodal-1012" className={fieldLabelClass}>
+                            Storage location
+                          </label>
+                          <FillFromPreviousButton
+                            field="storage location"
+                            disabled={!hasHistory}
+                            onClick={() => void refillField('storage_location')}
+                          />
+                        </div>
                         <select
                           id="purchasewizardmodal-1012"
                           aria-label="Storage location"
@@ -1125,9 +1212,19 @@ export function PurchaseWizardModal({
                         {showMore && (
                           <div className="flex flex-col gap-3 border-t border-subtle p-3">
                             <div>
-                              <label htmlFor="purchasewizardmodal-1054" className={fieldLabelClass}>
-                                Nickname (optional)
-                              </label>
+                              <div className="flex items-start justify-start gap-1">
+                                <label
+                                  htmlFor="purchasewizardmodal-1054"
+                                  className={fieldLabelClass}
+                                >
+                                  Nickname (optional)
+                                </label>
+                                <FillFromPreviousButton
+                                  field="nickname"
+                                  disabled={!hasHistory}
+                                  onClick={() => void refillField('nickname')}
+                                />
+                              </div>
                               <input
                                 id="purchasewizardmodal-1054"
                                 type="text"
