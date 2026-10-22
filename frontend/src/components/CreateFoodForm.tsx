@@ -10,19 +10,17 @@ import { ShelfLifeRow } from './ShelfLifeField'
 
 const DIMENSIONS: Dimension[] = ['WEIGHT', 'VOLUME', 'COUNT']
 
-// What can be changed on each item without making a new food. Shown next to the
-// reasons that do call for one, so the choice is easy to make.
-const NEW_FOOD_IF = [
-  'It keeps for a different amount of time (cooked chicken vs raw chicken)',
-  'It is a different kind of food (a different category)',
-  'You would measure it another way (by weight vs by count)',
-]
+// Short on purpose: only what cannot be changed on an item (so it needs its own food),
+// next to what can be (so it doesn't).
+const NEW_FOOD_IF = ['Measured another way (weight vs count)', 'A different kind of food']
 const SAME_FOOD_IF = [
-  'Brand, flavor or store: use the item nickname ("HEB milk")',
-  'A different size or amount: set the quantity and unit on the item',
-  'A different expiry date: set the date on the item',
-  'A different place or price: set them on the item',
+  'Brand or flavor (use a nickname)',
+  'Size or amount',
+  'Expiry date',
+  'Place or price',
 ]
+
+const MAX_SIMILAR_SHOWN = 5
 
 const selectClass =
   'w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field'
@@ -95,10 +93,10 @@ export function CreateFoodForm({ name, onCreated }: Props) {
     return (
       <div className="flex flex-col gap-3">
         <p className="text-sm font-medium text-text">
-          {exact ? 'This food already exists' : 'Is "' + name + '" really a different food?'}
+          {exact ? 'This food already exists' : 'Is one of these what you meant?'}
         </p>
         <div className="flex flex-col gap-1">
-          {similar.map(({ food }) => (
+          {similar.slice(0, MAX_SIMILAR_SHOWN).map(({ food }) => (
             <button
               key={food.id}
               type="button"
@@ -136,7 +134,7 @@ export function CreateFoodForm({ name, onCreated }: Props) {
             onClick={() => setConfirmedDifferent(true)}
             className="rounded-control border border-subtle px-2 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-text"
           >
-            It&apos;s different, continue
+            None of these, make a new one
           </button>
         )}
       </div>
