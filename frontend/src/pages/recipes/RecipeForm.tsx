@@ -166,30 +166,47 @@ export function RecipeForm({ initial, submitLabel, onSubmit }: Props) {
   return (
     <form onSubmit={handleSubmit(submit)} className="flex flex-col gap-6">
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-muted">Recipe name</label>
-        <input type="text" className={inputClass} {...register('name')} />
+        <label htmlFor="recipeform-169" className="mb-1.5 block text-sm font-medium text-muted">
+          Recipe name
+        </label>
+        <input id="recipeform-169" type="text" className={inputClass} {...register('name')} />
         {errors.name && <p className="mt-1.5 text-sm text-danger">{errors.name.message}</p>}
       </div>
 
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-muted">
+        <label htmlFor="recipeform-175" className="mb-1.5 block text-sm font-medium text-muted">
           Description (optional)
         </label>
-        <textarea rows={2} className={inputClass} {...register('description')} />
+        <textarea
+          id="recipeform-175"
+          rows={2}
+          className={inputClass}
+          {...register('description')}
+        />
       </div>
 
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-muted">Serves</label>
-          <NumberInput decimals={0} className={inputClass} {...register('servings')} />
+          <label htmlFor="recipeform-183" className="mb-1.5 block text-sm font-medium text-muted">
+            Serves
+          </label>
+          <NumberInput
+            id="recipeform-183"
+            decimals={0}
+            className={inputClass}
+            {...register('servings')}
+          />
           {errors.servings && (
             <p className="mt-1.5 text-sm text-danger">{errors.servings.message}</p>
           )}
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-muted">Prep</label>
+          <label htmlFor="recipeform-190" className="mb-1.5 block text-sm font-medium text-muted">
+            Prep
+          </label>
           <div className="relative">
             <NumberInput
+              id="recipeform-190"
               decimals={0}
               className={`${inputClass} pr-10`}
               {...register('prep_time_minutes')}
@@ -200,9 +217,12 @@ export function RecipeForm({ initial, submitLabel, onSubmit }: Props) {
           </div>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-muted">Cook</label>
+          <label htmlFor="recipeform-203" className="mb-1.5 block text-sm font-medium text-muted">
+            Cook
+          </label>
           <div className="relative">
             <NumberInput
+              id="recipeform-203"
               decimals={0}
               className={`${inputClass} pr-10`}
               {...register('cook_time_minutes')}
@@ -215,7 +235,7 @@ export function RecipeForm({ initial, submitLabel, onSubmit }: Props) {
       </div>
 
       <div>
-        <label className="mb-2 block text-sm font-medium text-muted">Ingredients</label>
+        <p className="mb-2 block text-sm font-medium text-muted">Ingredients</p>
         <div className="flex flex-col gap-2">
           {ingredients.map((row, index) => (
             <div
@@ -231,11 +251,13 @@ export function RecipeForm({ initial, submitLabel, onSubmit }: Props) {
                 <NumberInput
                   decimals={3}
                   placeholder="Qty"
+                  aria-label={`Quantity for ingredient ${index + 1}`}
                   className={`w-20 shrink-0 ${fieldClass}`}
                   value={row.quantity}
                   onChange={(e) => updateIngredient(index, { quantity: e.target.value })}
                 />
                 <select
+                  aria-label={`Unit for ingredient ${index + 1}`}
                   className={`min-w-0 flex-1 ${fieldClass}`}
                   value={row.unit}
                   onChange={(e) => updateIngredient(index, { unit: e.target.value as Unit | '' })}
@@ -298,12 +320,13 @@ export function RecipeForm({ initial, submitLabel, onSubmit }: Props) {
       </div>
 
       <div>
-        <label className="mb-2 block text-sm font-medium text-muted">Instructions</label>
+        <p className="mb-2 block text-sm font-medium text-muted">Instructions</p>
         <div className="flex flex-col gap-2">
           {instructions.map((step, index) => (
             <div key={index} className="flex items-start gap-2">
               <span className="mt-2 text-sm text-faint">{index + 1}.</span>
               <AutoGrowTextarea
+                aria-label={`Step ${index + 1}`}
                 className={`flex-1 ${inputClass}`}
                 value={step}
                 onChange={(e) => updateInstruction(index, e.target.value)}

@@ -161,7 +161,10 @@ export const ItemExpirySection = forwardRef<ItemExpiryHandle, Props>(function It
     if (!prompt) return
     const { date } = prompt
     setPrompt(null)
-    const updated = await send(current, 'SET_DATE', { expiry_date: date, expiry_edit_meaning: meaning })
+    const updated = await send(current, 'SET_DATE', {
+      expiry_date: date,
+      expiry_edit_meaning: meaning,
+    })
     promptDone.current?.(updated ? 'saved' : 'cancelled')
     promptDone.current = null
   }
@@ -178,13 +181,14 @@ export const ItemExpirySection = forwardRef<ItemExpiryHandle, Props>(function It
 
   return (
     <div>
-      <label className={fieldLabelClass}>
+      <label htmlFor="itemexpirysection-181" className={fieldLabelClass}>
         Expiry date <span className="font-normal text-faint">in the {PLACE_LABELS[current]}</span>
       </label>
 
       {showCurrentBox ? (
         <div className="flex items-center gap-2">
           <input
+            id="itemexpirysection-181"
             key={`${item.expiry_date}-${resetKey}`}
             type="date"
             aria-label={`Expiry date in the ${PLACE_LABELS[current]}`}

@@ -890,8 +890,14 @@ export function InventoryPage() {
         >
           <form onSubmit={storageForm.handleSubmit(onSaveStorage)} className="flex flex-col gap-3">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-muted">Name</label>
+              <label
+                htmlFor="inventorypage-893"
+                className="mb-1.5 block text-sm font-medium text-muted"
+              >
+                Name
+              </label>
               <input
+                id="inventorypage-893"
                 type="text"
                 placeholder="e.g. Garage Fridge"
                 className={inputClass}
@@ -904,8 +910,17 @@ export function InventoryPage() {
               )}
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-muted">Type</label>
-              <select className={inputClass} {...storageForm.register('type')}>
+              <label
+                htmlFor="inventorypage-907"
+                className="mb-1.5 block text-sm font-medium text-muted"
+              >
+                Type
+              </label>
+              <select
+                id="inventorypage-907"
+                className={inputClass}
+                {...storageForm.register('type')}
+              >
                 {STORAGE_TYPES.map((type) => (
                   <option key={type} value={type}>
                     {STORAGE_TYPE_LABELS[type]}

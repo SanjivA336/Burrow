@@ -4,6 +4,8 @@ import type { Dimension, Unit } from '../types/entities'
 const ALL_DIMENSIONS: Dimension[] = ['WEIGHT', 'VOLUME', 'COUNT']
 
 interface Props {
+  // Lets a visible <label htmlFor> point at the dropdown.
+  id?: string
   value: Unit | ''
   onChange: (unit: Unit) => void
   // Restrict which dimensions' units are offered -- omit for the full
@@ -24,6 +26,7 @@ interface Props {
 // is offered, so picking an exact unit (not just a dimension) is always a
 // single action instead of a two-step dimension-then-system chooser.
 export function UnitSelect({
+  id,
   value,
   onChange,
   dimensions = ALL_DIMENSIONS,
@@ -36,6 +39,7 @@ export function UnitSelect({
 
   return (
     <select
+      id={id}
       aria-label={label}
       disabled={disabled}
       className={className}

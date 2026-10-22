@@ -368,7 +368,7 @@ export function ItemEditModal({
               {tab === 'details' ? (
                 <>
                   <div>
-                    <label className={fieldLabelClass}>
+                    <label htmlFor="itemeditmodal-371" className={fieldLabelClass}>
                       Food type
                       {item.category && (
                         <span className="font-normal text-faint">
@@ -418,6 +418,7 @@ export function ItemEditModal({
                       </>
                     ) : (
                       <input
+                        id="itemeditmodal-371"
                         type="text"
                         disabled
                         readOnly
@@ -443,7 +444,7 @@ export function ItemEditModal({
 
                   {showWhoIsUsing && (
                     <div>
-                      <label className={fieldLabelClass}>Who's using this?</label>
+                      <p className={fieldLabelClass}>Who's using this?</p>
                       {isFinalized ? (
                         <>
                           <p className="text-sm text-muted">
@@ -468,8 +469,11 @@ export function ItemEditModal({
                   )}
 
                   <div>
-                    <label className={fieldLabelClass}>Storage location</label>
+                    <label htmlFor="itemeditmodal-471" className={fieldLabelClass}>
+                      Storage location
+                    </label>
                     <select
+                      id="itemeditmodal-471"
                       aria-label="Storage location"
                       className={inputClass}
                       value={draft.storageLocationId}
@@ -519,8 +523,11 @@ export function ItemEditModal({
                         }
                       >
                         <div>
-                          <label className={fieldLabelClass}>Nickname (optional)</label>
+                          <label htmlFor="itemeditmodal-522" className={fieldLabelClass}>
+                            Nickname (optional)
+                          </label>
                           <input
+                            id="itemeditmodal-522"
                             type="text"
                             className={inputClass}
                             placeholder={item.food_type_name}
@@ -556,7 +563,7 @@ export function ItemEditModal({
 
                   {corrections.length > 0 && (
                     <div>
-                      <label className={fieldLabelClass}>Correction history</label>
+                      <p className={fieldLabelClass}>Correction history</p>
                       <ul className="flex flex-col gap-2">
                         {corrections.map((c) => (
                           <li
@@ -759,7 +766,7 @@ function UsageSection({
 
   return (
     <div>
-      <label className={fieldLabelClass}>Usage</label>
+      <p className={fieldLabelClass}>Usage</p>
       <ul className="flex flex-col gap-1.5">
         {events.map((event) =>
           event.kind === 'CORRECTION' ? (
@@ -896,8 +903,11 @@ function CostAndQuantitySection({
     <>
       <div className="flex gap-3">
         <div className="min-w-0 flex-1">
-          <label className={fieldLabelClass}>Quantity</label>
+          <label htmlFor="itemeditmodal-899" className={fieldLabelClass}>
+            Quantity
+          </label>
           <NumberInput
+            id="itemeditmodal-899"
             decimals={3}
             disabled={isFinalized}
             className={isFinalized ? disabledInputClass : inputClass}
@@ -906,8 +916,11 @@ function CostAndQuantitySection({
           />
         </div>
         <div className="w-32 shrink-0">
-          <label className={fieldLabelClass}>Unit</label>
+          <label htmlFor="itemeditmodal-909" className={fieldLabelClass}>
+            Unit
+          </label>
           <UnitSelect
+            id="itemeditmodal-909"
             disabled={isFinalized}
             dimensions={[dimension]}
             className={isFinalized ? disabledInputClass : inputClass}
@@ -919,8 +932,11 @@ function CostAndQuantitySection({
 
       <div className="flex gap-3">
         <div className="min-w-0 flex-1">
-          <label className={fieldLabelClass}>Cost</label>
+          <label htmlFor="itemeditmodal-922" className={fieldLabelClass}>
+            Cost
+          </label>
           <NumberInput
+            id="itemeditmodal-922"
             decimals={2}
             disabled={isFinalized}
             className={isFinalized ? disabledInputClass : inputClass}
@@ -929,8 +945,11 @@ function CostAndQuantitySection({
           />
         </div>
         <div className="min-w-0 flex-1">
-          <label className={fieldLabelClass}>Buyer</label>
+          <label htmlFor="itemeditmodal-932" className={fieldLabelClass}>
+            Buyer
+          </label>
           <input
+            id="itemeditmodal-932"
             type="text"
             disabled
             readOnly
@@ -961,8 +980,11 @@ function CostAndQuantitySection({
             <div className="mt-3 flex flex-col gap-2 rounded-card border border-subtle bg-surface p-3">
               <div className="flex gap-2">
                 <div className="min-w-0 flex-1">
-                  <label className={fieldLabelClass}>Actual cost</label>
+                  <label htmlFor="itemeditmodal-964" className={fieldLabelClass}>
+                    Actual cost
+                  </label>
                   <NumberInput
+                    id="itemeditmodal-964"
                     decimals={2}
                     className={inputClass}
                     value={newCost}
@@ -970,8 +992,11 @@ function CostAndQuantitySection({
                   />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <label className={fieldLabelClass}>Actual amount</label>
+                  <label htmlFor="itemeditmodal-973" className={fieldLabelClass}>
+                    Actual amount
+                  </label>
                   <NumberInput
+                    id="itemeditmodal-973"
                     decimals={3}
                     className={inputClass}
                     value={newQuantity}

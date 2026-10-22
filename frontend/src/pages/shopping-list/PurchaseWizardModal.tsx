@@ -366,7 +366,8 @@ export function PurchaseWizardModal({
   // number of its own suggests nothing.
   useEffect(() => {
     if (!draft?.food || customized.expiry_date) return
-    const type = storageLocations.find((loc) => loc.id === draft.storageLocationId)?.type ?? 'PANTRY'
+    const type =
+      storageLocations.find((loc) => loc.id === draft.storageLocationId)?.type ?? 'PANTRY'
     const days = shelfLifeDays(draft.food, type)
     const value = days ? todayPlusDays(days) : ''
     setDraft((prev) => (prev ? { ...prev, expiryDate: value } : prev))
@@ -882,7 +883,7 @@ export function PurchaseWizardModal({
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <label className={fieldLabelClass}>Food type</label>
+                          <p className={fieldLabelClass}>Food type</p>
                           <TypeSearchField
                             ref={foodFieldRef}
                             value={draft.food}
@@ -914,14 +915,14 @@ export function PurchaseWizardModal({
                         )}
                       </div>
 
-
                       <div className="flex gap-2">
                         <div className="flex-1">
-                          <label className={fieldLabelClass}>
+                          <label htmlFor="purchasewizardmodal-920" className={fieldLabelClass}>
                             Quantity
                             <FieldTooltip text="This becomes both the amount you have right now and the 100% mark it's tracked against as you use it up." />
                           </label>
                           <NumberInput
+                            id="purchasewizardmodal-920"
                             decimals={3}
                             placeholder="Amount"
                             className={inputClass}
@@ -930,8 +931,11 @@ export function PurchaseWizardModal({
                           />
                         </div>
                         <div className="w-32">
-                          <label className={fieldLabelClass}>Unit</label>
+                          <label htmlFor="purchasewizardmodal-933" className={fieldLabelClass}>
+                            Unit
+                          </label>
                           <UnitSelect
+                            id="purchasewizardmodal-933"
                             className={inputClass}
                             value={draft.unit}
                             placeholder="Unit…"
@@ -940,15 +944,15 @@ export function PurchaseWizardModal({
                         </div>
                       </div>
 
-
                       <div className="grid grid-cols-2 gap-x-2">
                         <div>
-                          <label className={fieldLabelClass}>
+                          <label htmlFor="purchasewizardmodal-946" className={fieldLabelClass}>
                             Cost (optional)
                             <FieldTooltip text="Auto-filled from the last time you bought this exact food and quantity, if we've seen it before. Edit or clear it any time." />
                           </label>
                           <div className="flex items-center gap-1.5">
                             <NumberInput
+                              id="purchasewizardmodal-946"
                               decimals={2}
                               placeholder="0.00"
                               className={fieldClass(!customized.cost && !!draft.cost)}
@@ -978,7 +982,7 @@ export function PurchaseWizardModal({
                           </div>
                         </div>
                         <div>
-                          <label className={fieldLabelClass}>Buyer</label>
+                          <p className={fieldLabelClass}>Buyer</p>
                           <MemberPicker
                             mode="single"
                             members={activeMembers}
@@ -990,11 +994,10 @@ export function PurchaseWizardModal({
                         <div ref={setBuyerPanel} className="col-span-2 empty:hidden" />
                       </div>
 
-
                       {/* With one person in the burrow there is nobody to choose between. */}
                       {activeMembers.length > 1 && (
                         <div>
-                          <label className={fieldLabelClass}>Who's using this?</label>
+                          <p className={fieldLabelClass}>Who's using this?</p>
                           <MemberPicker
                             mode="multi"
                             members={activeMembers}
@@ -1009,12 +1012,17 @@ export function PurchaseWizardModal({
                       )}
 
                       <div>
-                        <label className={fieldLabelClass}>Storage location</label>
+                        <label htmlFor="purchasewizardmodal-1012" className={fieldLabelClass}>
+                          Storage location
+                        </label>
                         <select
+                          id="purchasewizardmodal-1012"
                           aria-label="Storage location"
                           className={inputClass}
                           value={draft.storageLocationId}
-                          onChange={(e) => setDraft({ ...draft, storageLocationId: e.target.value })}
+                          onChange={(e) =>
+                            setDraft({ ...draft, storageLocationId: e.target.value })
+                          }
                         >
                           <option value="">Storage…</option>
                           {storageLocations.map((loc) => (
@@ -1030,92 +1038,105 @@ export function PurchaseWizardModal({
                         )}
                       </div>
 
-
-                    <div className="rounded-control border border-subtle">
-                      <button
-                        type="button"
-                        aria-expanded={showMore}
-                        onClick={() => setShowMore((v) => !v)}
-                        className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
-                      >
-                        <span className="text-sm font-medium text-muted">More details</span>
-                        <span className="flex min-w-0 items-center gap-2">
-                          <span className="truncate text-xs text-faint">{moreSummary(draft)}</span>
-                          <ChevronDown
-                            size={16}
-                            strokeWidth={1.75}
-                            className={`shrink-0 text-faint transition-transform ${showMore ? 'rotate-180' : ''}`}
-                          />
-                        </span>
-                      </button>
-                      {showMore && (
-                        <div className="flex flex-col gap-3 border-t border-subtle p-3">
-                        <div>
-                          <label className={fieldLabelClass}>Nickname (optional)</label>
-                          <input
-                            type="text"
-                            placeholder={draft.food?.name ?? 'e.g. HEB milk'}
-                            className={fieldClass(!customized.nickname && draft.nickname !== '')}
-                            value={draft.nickname}
-                            onChange={(e) => {
-                              setDraft({ ...draft, nickname: e.target.value })
-                              markCustomized('nickname')
-                            }}
-                          />
-                        </div>
-
-
-                        <div className="flex flex-col gap-3 sm:flex-row">
-                          <div className="flex-1">
-                            <label className={fieldLabelClass}>Expiry date (optional)</label>
-                            <div className="flex items-center gap-1.5">
+                      <div className="rounded-control border border-subtle">
+                        <button
+                          type="button"
+                          aria-expanded={showMore}
+                          onClick={() => setShowMore((v) => !v)}
+                          className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
+                        >
+                          <span className="text-sm font-medium text-muted">More details</span>
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="truncate text-xs text-faint">
+                              {moreSummary(draft)}
+                            </span>
+                            <ChevronDown
+                              size={16}
+                              strokeWidth={1.75}
+                              className={`shrink-0 text-faint transition-transform ${showMore ? 'rotate-180' : ''}`}
+                            />
+                          </span>
+                        </button>
+                        {showMore && (
+                          <div className="flex flex-col gap-3 border-t border-subtle p-3">
+                            <div>
+                              <label htmlFor="purchasewizardmodal-1054" className={fieldLabelClass}>
+                                Nickname (optional)
+                              </label>
                               <input
-                                type="date"
-                                className={fieldClass(!customized.expiry_date && !!draft.expiryDate)}
-                                value={draft.expiryDate}
+                                id="purchasewizardmodal-1054"
+                                type="text"
+                                placeholder={draft.food?.name ?? 'e.g. HEB milk'}
+                                className={fieldClass(
+                                  !customized.nickname && draft.nickname !== '',
+                                )}
+                                value={draft.nickname}
                                 onChange={(e) => {
-                                  setDraft({ ...draft, expiryDate: e.target.value })
-                                  markCustomized('expiry_date')
+                                  setDraft({ ...draft, nickname: e.target.value })
+                                  markCustomized('nickname')
                                 }}
                               />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setDraft({ ...draft, expiryDate: '' })
-                                  markCustomized('expiry_date')
-                                }}
-                                title="Clear"
-                                aria-label="Clear expiry date"
-                                className="shrink-0 rounded-control p-2 text-faint transition-colors hover:bg-surface-hover hover:text-text"
-                              >
-                                <X size={16} strokeWidth={1.75} />
-                              </button>
                             </div>
-                            <p className="mt-1 text-xs text-muted">
-                              {expiryHint(
-                                draft.food,
-                                PLACE_LABELS[
-                                  placeForStorageType(
-                                    storageLocations.find((l) => l.id === draft.storageLocationId)
-                                      ?.type ?? 'PANTRY',
-                                  )
-                                ],
-                                !customized.expiry_date,
-                                !!draft.expiryDate,
-                              )}
-                            </p>
+
+                            <div className="flex flex-col gap-3 sm:flex-row">
+                              <div className="flex-1">
+                                <label
+                                  htmlFor="purchasewizardmodal-1070"
+                                  className={fieldLabelClass}
+                                >
+                                  Expiry date (optional)
+                                </label>
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    id="purchasewizardmodal-1070"
+                                    type="date"
+                                    className={fieldClass(
+                                      !customized.expiry_date && !!draft.expiryDate,
+                                    )}
+                                    value={draft.expiryDate}
+                                    onChange={(e) => {
+                                      setDraft({ ...draft, expiryDate: e.target.value })
+                                      markCustomized('expiry_date')
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDraft({ ...draft, expiryDate: '' })
+                                      markCustomized('expiry_date')
+                                    }}
+                                    title="Clear"
+                                    aria-label="Clear expiry date"
+                                    className="shrink-0 rounded-control p-2 text-faint transition-colors hover:bg-surface-hover hover:text-text"
+                                  >
+                                    <X size={16} strokeWidth={1.75} />
+                                  </button>
+                                </div>
+                                <p className="mt-1 text-xs text-muted">
+                                  {expiryHint(
+                                    draft.food,
+                                    PLACE_LABELS[
+                                      placeForStorageType(
+                                        storageLocations.find(
+                                          (l) => l.id === draft.storageLocationId,
+                                        )?.type ?? 'PANTRY',
+                                      )
+                                    ],
+                                    !customized.expiry_date,
+                                    !!draft.expiryDate,
+                                  )}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
                     </fieldset>
                   </div>
 
                   <div className="shrink-0 border-t border-subtle bg-surface-2 px-4 pb-3 pt-3 max-md:pb-[calc(var(--bottom-bar-gap)+0.75rem)]">
                     {error && <p className="mb-2 text-sm text-danger">{error}</p>}
                     <div className="flex flex-col gap-2">
-
                       {multiLine ? (
                         <div className="flex gap-2">
                           {/* Manual entry has no complete/incomplete to toggle --
@@ -1184,7 +1205,9 @@ export function PurchaseWizardModal({
                           </button>
                           <button
                             type="button"
-                            disabled={selectedIndex < 0 || selectedIndex >= session.items.length - 1}
+                            disabled={
+                              selectedIndex < 0 || selectedIndex >= session.items.length - 1
+                            }
                             onClick={() => goTo(1)}
                             className="flex flex-1 items-center justify-center gap-1 rounded-control border border-subtle px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-text disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                           >

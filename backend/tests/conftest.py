@@ -1,3 +1,4 @@
+import os
 import time
 import uuid
 from datetime import UTC, datetime
@@ -10,6 +11,29 @@ from app.main import app
 from app.schemas.household import Household
 from app.schemas.member import Member
 from tests.helpers.jwt_keys import TEST_SIGNING_KEY, FakeJWKSClient
+
+_LOCAL_HOSTS = ("127.0.0.1", "localhost", "[::1]", "host.docker.internal")
+
+
+def pytest_runtest_setup(item) -> None:
+    """The rls and integration suites create and delete real accounts and rows, so they
+    refuse to run against anything but a local Supabase (`npx supabase start`) unless
+    ALLOW_LIVE_DESTRUCTIVE_TESTS=1 is set on purpose. The linked project doubles as
+    production, so this stops a plain `pytest -m integration` from touching live data."""
+    if not (item.get_closest_marker("rls") or item.get_closest_marker("integration")):
+        return
+    if os.environ.get("ALLOW_LIVE_DESTRUCTIVE_TESTS") == "1":
+        return
+    from app.core.config import get_settings
+
+    url = get_settings().supabase_url
+    if not any(host in url for host in _LOCAL_HOSTS):
+        pytest.fail(
+            f"Refusing to run a destructive test against {url or 'an unset Supabase URL'}: "
+            "it is not a local Supabase. Point SUPABASE_URL at the local stack, or set "
+            "ALLOW_LIVE_DESTRUCTIVE_TESTS=1 if you really mean to use the live project.",
+            pytrace=False,
+        )
 
 
 def make_token(user_id: uuid.UUID) -> str:

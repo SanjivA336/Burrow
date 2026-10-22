@@ -189,8 +189,11 @@ export function RecipeDetailPage() {
       {actionError && <p className="text-sm text-danger">{actionError}</p>}
 
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-muted">Servings</label>
+        <label htmlFor="recipedetailpage-192" className="text-sm font-medium text-muted">
+          Servings
+        </label>
         <NumberInput
+          id="recipedetailpage-192"
           decimals={0}
           className="w-20 rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field outline-none focus:border-primary"
           value={servings ?? recipe.servings}

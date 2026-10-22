@@ -105,10 +105,10 @@ export function BurrowDetails() {
       </div>
 
       <div>
-        <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-muted">
+        <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-muted">
           Default measurement system
           <FieldTooltip text="Used when adding a food this burrow hasn't tracked before. Switching it for an individual food when you add or restock it overrides this default, and is remembered for next time." />
-        </label>
+        </p>
         <div className="flex flex-wrap gap-2">
           {(['METRIC', 'CUSTOMARY'] as UnitSystem[]).map((system) => (
             <button

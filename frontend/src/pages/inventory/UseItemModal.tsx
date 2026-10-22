@@ -222,8 +222,7 @@ export function UseItemModal({ item, householdId, myMemberId, onClose, onConsume
           <div className="flex items-baseline justify-between text-sm">
             <span className="text-muted">Remaining</span>
             <span className="font-medium">
-              {formatQuantity(remainingInUnit)} of {formatQuantity(totalInUnit)}{' '}
-              {UNIT_LABELS[unit]}
+              {formatQuantity(remainingInUnit)} of {formatQuantity(totalInUnit)} {UNIT_LABELS[unit]}
             </span>
           </div>
           <UsageBar
@@ -259,7 +258,12 @@ export function UseItemModal({ item, householdId, myMemberId, onClose, onConsume
 
         <div className="flex items-end gap-2">
           <div className="flex-1">
-            <label className="mb-1.5 block text-sm font-medium text-muted">Amount used</label>
+            <label
+              htmlFor="useitemmodal-262"
+              className="mb-1.5 block text-sm font-medium text-muted"
+            >
+              Amount used
+            </label>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
@@ -270,6 +274,7 @@ export function UseItemModal({ item, householdId, myMemberId, onClose, onConsume
                 <Minus size={14} strokeWidth={2} />
               </button>
               <NumberInput
+                id="useitemmodal-262"
                 decimals={3}
                 autoFocus
                 className="w-full rounded-control border border-subtle bg-field px-2 py-2 text-center text-sm text-text shadow-field outline-none focus:border-primary"
@@ -290,8 +295,14 @@ export function UseItemModal({ item, householdId, myMemberId, onClose, onConsume
             </div>
           </div>
           <div className="w-24">
-            <label className="mb-1.5 block text-sm font-medium text-muted">Unit</label>
+            <label
+              htmlFor="useitemmodal-293"
+              className="mb-1.5 block text-sm font-medium text-muted"
+            >
+              Unit
+            </label>
             <select
+              id="useitemmodal-293"
               className="w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field outline-none focus:border-primary"
               value={unit}
               onChange={(e) => setUnit(e.target.value as Unit)}

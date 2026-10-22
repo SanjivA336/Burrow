@@ -48,11 +48,12 @@ function BurrowSettingsCard({ householdId }: { householdId: string }) {
   return (
     <div className="rounded-card border border-subtle bg-surface p-4">
       <p className="mb-3 text-sm font-semibold text-muted">This burrow</p>
-      <label className="mb-1.5 block text-sm font-medium text-muted">
+      <label htmlFor="accountpage-51" className="mb-1.5 block text-sm font-medium text-muted">
         Your nickname in this burrow
       </label>
       <div className="flex items-center gap-1.5">
         <input
+          id="accountpage-51"
           type="text"
           className={inputClass}
           placeholder={me?.nickname}
@@ -215,8 +216,7 @@ export function AccountPage() {
             </p>
             <p className="mb-3 text-xs text-muted">
               Deleting your account permanently removes it and signs you out of every burrow you're
-              in. This cannot be undone. If you own a burrow, transfer ownership or delete it
-              first.
+              in. This cannot be undone. If you own a burrow, transfer ownership or delete it first.
             </p>
             <button
               type="button"
@@ -239,8 +239,8 @@ export function AccountPage() {
           }}
         >
           <p className="mb-3 text-sm text-muted">
-            This permanently deletes your account and removes you from every burrow. Type your
-            email to confirm.
+            This permanently deletes your account and removes you from every burrow. Type your email
+            to confirm.
           </p>
           <input
             type="text"

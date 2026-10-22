@@ -1,12 +1,28 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { apiClient, ApiError } from '../lib/apiClient'
 import { FOOD_CATEGORIES, FOOD_CATEGORY_LABELS } from '../lib/foodCategories'
+import { findSimilarFoods } from '../lib/similarFoods'
 import { UNKNOWN, type Place, type PlaceValues } from '../lib/shelfLife'
 import { DIMENSION_LABELS, UNITS_BY_DIMENSION, UNIT_LABELS } from '../lib/units'
 import type { Dimension, FoodCategory, FoodDefinition, Unit } from '../types/entities'
+import { CategoryDot } from './CategoryDot'
 import { ShelfLifeRow } from './ShelfLifeField'
 
 const DIMENSIONS: Dimension[] = ['WEIGHT', 'VOLUME', 'COUNT']
+
+// What can be changed on each item without making a new food. Shown next to the
+// reasons that do call for one, so the choice is easy to make.
+const NEW_FOOD_IF = [
+  'It keeps for a different amount of time (cooked chicken vs raw chicken)',
+  'It is a different kind of food (a different category)',
+  'You would measure it another way (by weight vs by count)',
+]
+const SAME_FOOD_IF = [
+  'Brand, flavor or store: use the item nickname ("HEB milk")',
+  'A different size or amount: set the quantity and unit on the item',
+  'A different expiry date: set the date on the item',
+  'A different place or price: set them on the item',
+]
 
 const selectClass =
   'w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field'
@@ -30,6 +46,25 @@ export function CreateFoodForm({ name, onCreated }: Props) {
   })
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  // Foods with a similar name; null while still checking. The check never blocks:
+  // if it fails the form just opens.
+  const [similar, setSimilar] = useState<ReturnType<
+    typeof findSimilarFoods<FoodDefinition>
+  > | null>(null)
+  const [confirmedDifferent, setConfirmedDifferent] = useState(false)
+
+  useEffect(() => {
+    // A different name needs its own "yes, it's different".
+    setConfirmedDifferent(false)
+    let cancelled = false
+    apiClient
+      .get<FoodDefinition[]>(`/api/food-definitions/search?query=${encodeURIComponent(name)}`)
+      .then((foods) => !cancelled && setSimilar(findSimilarFoods(name, foods)))
+      .catch(() => !cancelled && setSimilar([]))
+    return () => {
+      cancelled = true
+    }
+  }, [name])
 
   const create = async () => {
     setError(null)
@@ -51,11 +86,71 @@ export function CreateFoodForm({ name, onCreated }: Props) {
     }
   }
 
+  if (similar === null) {
+    return <p className="text-sm text-muted">Checking for similar foods…</p>
+  }
+
+  if (similar.length > 0 && !confirmedDifferent) {
+    const exact = similar.some((s) => s.match === 'same')
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-sm font-medium text-text">
+          {exact ? 'This food already exists' : 'Is "' + name + '" really a different food?'}
+        </p>
+        <div className="flex flex-col gap-1">
+          {similar.map(({ food }) => (
+            <button
+              key={food.id}
+              type="button"
+              onClick={() => onCreated(food)}
+              className="flex w-full items-center gap-2 rounded-control border border-subtle bg-surface-2 px-2 py-2 text-left text-sm hover:bg-surface-hover"
+            >
+              <CategoryDot category={food.category} />
+              <span className="flex-1">Use {food.name}</span>
+            </button>
+          ))}
+        </div>
+        {!exact && (
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="rounded-control border border-subtle p-2">
+              <p className="mb-1 font-semibold text-text">Make a new food if…</p>
+              <ul className="flex list-disc flex-col gap-1 pl-4 text-muted">
+                {NEW_FOOD_IF.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-control border border-subtle p-2">
+              <p className="mb-1 font-semibold text-text">Use the existing food if…</p>
+              <ul className="flex list-disc flex-col gap-1 pl-4 text-muted">
+                {SAME_FOOD_IF.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+        {!exact && (
+          <button
+            type="button"
+            onClick={() => setConfirmedDifferent(true)}
+            className="rounded-control border border-subtle px-2 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-text"
+          >
+            It&apos;s different, continue
+          </button>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-muted">Unit</label>
+        <label htmlFor="createfoodform-57" className="mb-1.5 block text-sm font-medium text-muted">
+          Unit
+        </label>
         <select
+          id="createfoodform-57"
           className={selectClass}
           value={unit}
           onChange={(e) => setUnit(e.target.value as Unit)}
@@ -72,8 +167,11 @@ export function CreateFoodForm({ name, onCreated }: Props) {
         </select>
       </div>
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-muted">Category</label>
+        <label htmlFor="createfoodform-75" className="mb-1.5 block text-sm font-medium text-muted">
+          Category
+        </label>
         <select
+          id="createfoodform-75"
           className={selectClass}
           value={category}
           onChange={(e) => setCategory(e.target.value as FoodCategory)}
@@ -89,7 +187,9 @@ export function CreateFoodForm({ name, onCreated }: Props) {
         <p className="mb-1.5 text-sm font-medium text-muted">How many days it keeps</p>
         <ShelfLifeRow
           values={lives}
-          onChange={(place: Place, next: number) => setLives((prev) => ({ ...prev, [place]: next }))}
+          onChange={(place: Place, next: number) =>
+            setLives((prev) => ({ ...prev, [place]: next }))
+          }
         />
         <p className="mt-1.5 text-xs text-faint">
           Optional. Leave a place on Unknown if you're not sure.

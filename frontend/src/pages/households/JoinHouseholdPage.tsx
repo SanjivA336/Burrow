@@ -37,8 +37,14 @@ export function JoinHouseholdPage() {
         <h1 className="mb-6 text-2xl font-semibold">Join a burrow</h1>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-muted">Join code</label>
+            <label
+              htmlFor="joinhouseholdpage-40"
+              className="mb-1.5 block text-sm font-medium text-muted"
+            >
+              Join code
+            </label>
             <input
+              id="joinhouseholdpage-40"
               type="text"
               placeholder="ABCD2345"
               maxLength={8}
@@ -50,8 +56,14 @@ export function JoinHouseholdPage() {
             )}
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-muted">Your nickname</label>
+            <label
+              htmlFor="joinhouseholdpage-53"
+              className="mb-1.5 block text-sm font-medium text-muted"
+            >
+              Your nickname
+            </label>
             <input
+              id="joinhouseholdpage-53"
               type="text"
               placeholder="Alex"
               className="w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field outline-none placeholder:text-faint focus:border-primary"

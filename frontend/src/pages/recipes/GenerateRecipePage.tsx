@@ -146,9 +146,9 @@ export function GenerateRecipePage() {
 
       <div className="flex flex-col gap-4">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-muted">
+          <p className="mb-1.5 block text-sm font-medium text-muted">
             Cuisine (optional, pick any number)
-          </label>
+          </p>
           <div className="flex flex-wrap gap-2">
             {CUISINES.map((cuisine) => {
               const selected = selectedCuisines.includes(cuisine)
@@ -171,9 +171,7 @@ export function GenerateRecipePage() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-muted">
-            Total time (optional)
-          </label>
+          <p className="mb-1.5 block text-sm font-medium text-muted">Total time (optional)</p>
           <div className="flex flex-wrap gap-2">
             {TIME_RANGES.map((range) => {
               const selected = timeRangeKey === range.key
@@ -196,10 +194,14 @@ export function GenerateRecipePage() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-muted">
+          <label
+            htmlFor="generaterecipepage-199"
+            className="mb-1.5 block text-sm font-medium text-muted"
+          >
             Dietary restrictions (comma-separated, optional)
           </label>
           <input
+            id="generaterecipepage-199"
             type="text"
             placeholder="e.g. vegetarian, gluten-free"
             className={inputClass}
@@ -209,7 +211,10 @@ export function GenerateRecipePage() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-muted">
+          <label
+            htmlFor="generaterecipepage-212"
+            className="mb-1.5 block text-sm font-medium text-muted"
+          >
             Required ingredients (optional, from your inventory)
           </label>
           {requiredTags.length > 0 && (
@@ -234,6 +239,7 @@ export function GenerateRecipePage() {
           )}
           <div className="relative">
             <input
+              id="generaterecipepage-212"
               type="text"
               placeholder="Search your inventory (e.g. chicken)"
               className={inputClass}
@@ -283,10 +289,14 @@ export function GenerateRecipePage() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-muted">
+          <label
+            htmlFor="generaterecipepage-286"
+            className="mb-1.5 block text-sm font-medium text-muted"
+          >
             Describe what you want (optional)
           </label>
           <textarea
+            id="generaterecipepage-286"
             rows={2}
             placeholder="e.g. something with leftover rice, kid-friendly"
             className={inputClass}

@@ -244,10 +244,14 @@ leaving localhost.
   cost of maintaining two projects (separate env files, keeping schemas in
   sync, re-running test suites against both) isn't worth it yet. The one
   linked Supabase project doubles as prod.
-- [ ] Discipline to follow now that this project may hold real user data:
+- [x] Discipline to follow now that this project may hold real user data:
   stop running the destructive `rls`/`integration` suites (they create and
   delete real accounts) against it; test new migrations against the local
-  Supabase CLI stack first, before pushing here.
+  Supabase CLI stack first, before pushing here. Enforced since 2026-10-19:
+  those suites now refuse to run unless `SUPABASE_URL` points at a local
+  Supabase (set `ALLOW_LIVE_DESTRUCTIVE_TESTS=1` to override on purpose). Testing
+  a migration against the local stack first (`npx supabase start`, needs
+  Docker) is still a habit, not something the tools check.
 - [x] **Decided: stay on the free tier, no automatic backups or PITR.**
   Safety net is a manual dump before any risky migration:
   `npx supabase db dump --linked -f <path outside the repo>` (schema), plus
@@ -353,7 +357,8 @@ leaving localhost.
   2026-10-17; the Privacy Policy is unchanged (still October 6). Nothing asks
   existing users to accept the new wording again (no such flow exists yet; fine
   with no real users). Added 2026-10-15, done 2026-10-17.
-- [ ] **Finish removing the burrow address (step 2 of 2).** The address field is
+- [x] **Finish removing the burrow address (step 2 of 2).** Done 2026-10-19
+  (migration 0049 dropped the column and the old function). The address field is
   gone from the app and the API (v0.11.4) and migration 0047 added a new
   create-burrow function without it, but the `households.address` column and the
   old four-argument `create_household_and_join` still exist so the backend that
@@ -369,15 +374,32 @@ leaving localhost.
   opening it shows a search box in place of the greyed Food type field;
   choosing a type links it at once (and drops the nickname if it now only repeats
   the type's name). Items with no type are left out of the low-stock warnings.
-  Still to do: the optional "apply to every item called X" shortcut, and
-  trying it on the live database after the migration is pushed.
-- [ ] **Give every new burrow a pantry, a fridge and a freezer.** Today a new
+  Tried on the live database 2026-10-19 (migration 0048): works. If the new
+  food is usually measured another way than the item (milk is by volume, the item
+  is in grams) the app asks first. Still to do: the optional "apply to every item
+  called X" shortcut.
+- [x] **Give every new burrow a pantry, a fridge and a freezer.** Done
+  2026-10-19 (migration 0050; existing burrows were left alone, both already had them). Today a new
   burrow starts with no storage places, and adding the first item stops with
   "Add a fridge, freezer, or pantry first". Create the three when a burrow is
   created so a new person can add an item straight away. Storage-aware expiry
   already treats those three types specially. Decide whether burrows that
   already exist should get them too (only when they have none). Added
   2026-10-17.
+- [x] **Food names: one capitalisation rule, no near-duplicates.** Done 2026-10-19
+  (migration 0051). A new food's name is written the same way every time (extra
+  spaces removed, each word capitalised, small words such as "and" and "of" left
+  lowercase, words you capitalised yourself such as "BBQ" left alone), which is how
+  all 320 catalog foods already look. A second unique index ignores capitals, so
+  "milk" is refused when "Milk" exists. When the name you type is close to an
+  existing food (same words plural or not, one name inside the other, a typo), the
+  create form first asks whether it really is a different food, with two columns:
+  make a new food if... / use the existing food if... (brand, size, expiry date,
+  place and price are set on the item itself).
+- [x] **Form labels linked to their inputs.** Done 2026-10-19. About 45 labels now
+  point at their field (clicking the label focuses it); labels over buttons, lists
+  and pickers became plain text. A scan of 20 more screens found only the nested
+  controls on item cards and the burrow switcher.
 - [ ] **Tester kit.** The invite message, a short "what to try" list, and
   check-in questions for the first testers. Added 2026-10-08.
 - [x] **API rate limit + retry.** The limit was 120 requests per minute per IP

@@ -204,8 +204,14 @@ export function SettlementsSection({
           <div className="flex flex-col gap-3">
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <label className="mb-1.5 block text-sm font-medium text-muted">Who paid</label>
+                <label
+                  htmlFor="settlementssection-207"
+                  className="mb-1.5 block text-sm font-medium text-muted"
+                >
+                  Who paid
+                </label>
                 <select
+                  id="settlementssection-207"
                   className={inputClass}
                   value={form.payer}
                   onChange={(e) => setForm({ ...form, payer: e.target.value })}
@@ -219,8 +225,14 @@ export function SettlementsSection({
               </div>
               <ArrowRight size={16} strokeWidth={2} className="mb-2.5 shrink-0 text-faint" />
               <div className="flex-1">
-                <label className="mb-1.5 block text-sm font-medium text-muted">Who received</label>
+                <label
+                  htmlFor="settlementssection-222"
+                  className="mb-1.5 block text-sm font-medium text-muted"
+                >
+                  Who received
+                </label>
                 <select
+                  id="settlementssection-222"
                   className={inputClass}
                   value={form.payee}
                   onChange={(e) => setForm({ ...form, payee: e.target.value })}
@@ -234,8 +246,14 @@ export function SettlementsSection({
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-muted">Amount</label>
+              <label
+                htmlFor="settlementssection-237"
+                className="mb-1.5 block text-sm font-medium text-muted"
+              >
+                Amount
+              </label>
               <NumberInput
+                id="settlementssection-237"
                 decimals={2}
                 autoFocus
                 className={inputClass}
@@ -244,8 +262,14 @@ export function SettlementsSection({
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-muted">Note (optional)</label>
+              <label
+                htmlFor="settlementssection-247"
+                className="mb-1.5 block text-sm font-medium text-muted"
+              >
+                Note (optional)
+              </label>
               <input
+                id="settlementssection-247"
                 type="text"
                 placeholder="e.g. Venmo"
                 className={inputClass}

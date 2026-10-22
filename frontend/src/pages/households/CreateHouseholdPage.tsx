@@ -37,8 +37,14 @@ export function CreateHouseholdPage() {
         <h1 className="mb-6 text-2xl font-semibold">Create a burrow</h1>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-muted">Burrow name</label>
+            <label
+              htmlFor="createhouseholdpage-40"
+              className="mb-1.5 block text-sm font-medium text-muted"
+            >
+              Burrow name
+            </label>
             <input
+              id="createhouseholdpage-40"
               type="text"
               placeholder="3BR Apartment on Main St"
               className="w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field outline-none placeholder:text-faint focus:border-primary"
@@ -47,8 +53,14 @@ export function CreateHouseholdPage() {
             {errors.name && <p className="mt-1.5 text-sm text-danger">{errors.name.message}</p>}
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-muted">Your nickname</label>
+            <label
+              htmlFor="createhouseholdpage-50"
+              className="mb-1.5 block text-sm font-medium text-muted"
+            >
+              Your nickname
+            </label>
             <input
+              id="createhouseholdpage-50"
               type="text"
               placeholder="Alex"
               className="w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field outline-none placeholder:text-faint focus:border-primary"

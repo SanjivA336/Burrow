@@ -53,6 +53,32 @@ class FoodDefinition(BaseModel):
     updated_at: datetime
 
 
+# Words that stay lowercase inside a name ("Salt and Pepper"), unless they come first.
+_SMALL_WORDS = frozenset(
+    {"a", "an", "and", "as", "at", "but", "by", "for", "in", "nor", "of", "on", "or", "per"}
+    | {"the", "to", "with"}
+)
+
+
+def tidy_food_name(name: str) -> str:
+    """How a new food's name is written: single spaces, and each word starting with a
+    capital ("chicken breast" -> "Chicken Breast", "salt and pepper" -> "Salt and
+    Pepper", "rice (cooked)" -> "Rice (Cooked)"). A word the person already wrote with
+    a capital anywhere in it ("BBQ", "McIntosh") is left exactly as typed."""
+    words = name.split()
+    tidied: list[str] = []
+    for index, word in enumerate(words):
+        opening = len(word) - len(word.lstrip("("))
+        core = word[opening:]
+        if not core or any(ch.isupper() for ch in core):
+            tidied.append(word)
+        elif core in _SMALL_WORDS and index > 0 and not opening:
+            tidied.append(word)
+        else:
+            tidied.append(word[:opening] + core[0].upper() + core[1:])
+    return " ".join(tidied)
+
+
 class CreateFoodDefinitionRequest(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     preferred_unit: Unit
@@ -62,9 +88,15 @@ class CreateFoodDefinitionRequest(BaseModel):
     fridge_shelf_life_days: int = UNKNOWN
     freezer_shelf_life_days: int = UNKNOWN
 
-    @field_validator(
-        "pantry_shelf_life_days", "fridge_shelf_life_days", "freezer_shelf_life_days"
-    )
+    @field_validator("name")
+    @classmethod
+    def _tidy_name(cls, value: str) -> str:
+        tidied = tidy_food_name(value)
+        if not tidied:
+            raise ValueError("Give the food a name")
+        return tidied
+
+    @field_validator("pantry_shelf_life_days", "fridge_shelf_life_days", "freezer_shelf_life_days")
     @classmethod
     def _valid_place_value(cls, value: int) -> int:
         # "Not recommended" is only ever set on verified foods, never by a user
