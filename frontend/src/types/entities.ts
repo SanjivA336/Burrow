@@ -26,6 +26,9 @@ export interface Household {
   join_code: string
   owner_id: string
   preferred_unit_system: UnitSystem
+  // Whether this burrow splits costs between members. Off: items are shared with everyone and
+  // never enter the ledger (see migration 0052).
+  split_costs: boolean
   created_at: string
   updated_at: string
 }
@@ -467,4 +470,11 @@ export interface CreateReceiptSessionResponse {
   id: string
   upload_bucket: string
   upload_path: string
+}
+
+// What a burrow has really spent, from its purchases (GET /households/{id}/spending).
+export interface SpendingSummary {
+  months: { month: string; total: string; purchases: number }[]
+  foods: { name: string; total: string; purchases: number }[]
+  total: string
 }

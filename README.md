@@ -258,7 +258,10 @@ leaving localhost.
   `--data-only` (public) and `--data-only -s auth` (users); needs Docker and
   `SUPABASE_DB_PASSWORD`. Restore data dumps with `--disable-triggers`
   (circular foreign keys). The free tier also pauses after about a week
-  idle. Revisit the Pro plan once real users exist.
+  idle. Revisit the Pro plan once real users exist. Added 2026-10-23: a weekly
+  export that needs no Docker, `cd backend && uv run python -m scripts.export_data`
+  (one JSON file per table, written outside the repo, newest 8 kept; it cannot
+  read login accounts or receipt photos, so the manual dump stays the full backup).
 - **Revisit if this ever needs undoing**: create a real separate prod
   project, push migrations to it, and pick back up the original plan
   (documented `.env.production`, re-running `rls`/`integration` against
@@ -433,13 +436,22 @@ leaving localhost.
   removed but still knows it. Backend: `POST
   /households/{id}/regenerate-join-code` (migration 0042's service-role-only
   `regenerate_join_code`).
-- [ ] **Per-burrow "Split costs" setting**: a toggle that hides the Cost and
-  Buyer fields (and the Balances tab) for burrows that never split anything,
-  typically families, and keeps them for roommate groups, where cost is used
-  almost every time. Needs a new setting on the household (a migration), so
-  it is queued on its own rather than bundled into the mobile-density work.
-  Decided 2026-10-05; deliberately *not* a placeholder toggle in Settings
-  first, since testers would see a control that does nothing.
+- [x] **Per-burrow "Split costs" setting.** Built 2026-10-23 (migration 0052,
+  `households.split_costs`, on by default). An admin turns it off in Settings →
+  Burrow for a burrow that does not split money, such as a family. Then: new
+  items are saved as "personal" (the ledger never touches those) and shared with
+  every member, so Buyer and "Who's using this?" disappear from the Add and Edit
+  forms; Cost stays. Using an item still records who used how much (the item's
+  Usage history), but the "Your share" bar and the over-your-share and not-your-
+  share messages are hidden. The Balances tab becomes **Spending**: the Members
+  (debts) and Settlements sections are hidden and the dashboard shows spending
+  over time, top items by spend and most frequently bought, all read from the
+  purchases themselves (`GET /households/{id}/spending`). Burrows that do split
+  see the same corrected top-items and frequency cards (real purchase totals,
+  not only what non-buyers owe) beside the net-balance chart. Turning it off or
+  on later changes only items added afterwards; ledger history is kept. The
+  tour's Balances and Invite cards reword themselves when it is off. Decided
+  2026-10-05, extended 2026-10-23.
 - **Comprehensive/exhaustive test suite in CI**: go beyond Phase 4's
   current scope (running the existing unit-marked `pytest` suite plus
   `tsc`/`oxlint`) toward broader, deeper coverage in CI, e.g. the

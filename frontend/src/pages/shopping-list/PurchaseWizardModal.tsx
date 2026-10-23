@@ -5,6 +5,7 @@ import { apiClient, ApiError } from '../../lib/apiClient'
 import { CategoryDot } from '../../components/CategoryDot'
 import { FieldTooltip } from '../../components/FieldTooltip'
 import { FillFromPreviousButton } from '../../components/FillFromPreviousButton'
+import { useSplitCosts } from '../../hooks/useSplitCosts'
 import { MemberPicker } from '../../components/MemberPicker'
 import { Modal } from '../../components/Modal'
 import { TypeSearchField, type TypeSearchFieldHandle } from '../../components/TypeSearchField'
@@ -220,6 +221,9 @@ export function PurchaseWizardModal({
   onCancelled,
 }: Props) {
   const { user } = useAuth()
+  // Off: the form leaves out who bought it and who shares it; the server saves the item as
+  // personal and shared with everyone (see create_manual).
+  const splitCosts = useSplitCosts(householdId)
   const activeMembers = useMemo(() => members.filter((m) => m.is_active), [members])
   const activeMemberIds = useMemo(() => activeMembers.map((m) => m.id), [activeMembers])
   const myMemberId = useMemo(
@@ -1074,7 +1078,7 @@ export function PurchaseWizardModal({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-x-2">
+                      <div className={`grid gap-x-2 ${splitCosts ? 'grid-cols-2' : 'grid-cols-1'}`}>
                         <div>
                           <div className="flex items-start justify-start gap-1">
                             <label htmlFor="purchasewizardmodal-946" className={fieldLabelClass}>
@@ -1118,21 +1122,25 @@ export function PurchaseWizardModal({
                             </button>
                           </div>
                         </div>
-                        <div>
-                          <p className={fieldLabelClass}>Buyer</p>
-                          <MemberPicker
-                            mode="single"
-                            members={activeMembers}
-                            value={draft.buyerId}
-                            panelContainer={buyerPanel}
-                            onChange={(id) => setDraft({ ...draft, buyerId: id })}
-                          />
-                        </div>
-                        <div ref={setBuyerPanel} className="col-span-2 empty:hidden" />
+                        {splitCosts && (
+                          <>
+                            <div>
+                              <p className={fieldLabelClass}>Buyer</p>
+                              <MemberPicker
+                                mode="single"
+                                members={activeMembers}
+                                value={draft.buyerId}
+                                panelContainer={buyerPanel}
+                                onChange={(id) => setDraft({ ...draft, buyerId: id })}
+                              />
+                            </div>
+                            <div ref={setBuyerPanel} className="col-span-2 empty:hidden" />
+                          </>
+                        )}
                       </div>
 
                       {/* With one person in the burrow there is nobody to choose between. */}
-                      {activeMembers.length > 1 && (
+                      {splitCosts && activeMembers.length > 1 && (
                         <div>
                           <div className="flex items-start justify-start gap-1">
                             <p className={fieldLabelClass}>Who's using this?</p>

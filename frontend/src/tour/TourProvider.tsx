@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useIsDesktop } from '../hooks/useIsDesktop'
+import { useSplitCosts } from '../hooks/useSplitCosts'
 import { supabase } from '../lib/supabaseClient'
 import { TourOverlay } from './TourOverlay'
 import { CHAPTERS, relativePath, type GoHint } from './steps'
@@ -33,6 +34,12 @@ export function TourProvider({
   const [index, setIndex] = useState<number | null>(null)
   const autoStarted = useRef(false)
   const completed = Boolean(user?.user_metadata?.[COMPLETED_KEY])
+  // A burrow that doesn't split costs has no balances, so a few cards say something else.
+  const splitCosts = useSplitCosts(householdId)
+  const chapters = useMemo(
+    () => CHAPTERS.map((c) => (!splitCosts && c.noSplit ? { ...c, ...c.noSplit } : c)),
+    [splitCosts],
+  )
   // One ref so a quick double-tap on Skip cannot save twice.
   const saving = useRef(false)
 
@@ -72,7 +79,7 @@ export function TourProvider({
     navigate(`/households/${householdId}`, { replace: true })
   }
 
-  const chapter = index === null ? null : CHAPTERS[index]
+  const chapter = index === null ? null : chapters[index]
   const rel = relativePath(location.pathname)
   useEffect(() => {
     if (beginning && rel === '/') {
@@ -101,12 +108,12 @@ export function TourProvider({
         <TourOverlay
           chapter={chapter}
           index={index}
-          total={CHAPTERS.length}
+          total={chapters.length}
           phase={phase}
           hint={hint}
           isDesktop={isDesktop}
           onBegin={begin}
-          onNext={() => (index + 1 >= CHAPTERS.length ? end() : setIndex(index + 1))}
+          onNext={() => (index + 1 >= chapters.length ? end() : setIndex(index + 1))}
           onBack={() => setIndex(Math.max(1, index - 1))}
           onSkip={end}
         />

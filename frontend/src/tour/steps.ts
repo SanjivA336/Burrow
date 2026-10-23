@@ -32,6 +32,8 @@ export interface Chapter {
   target?: string | string[]
   // How to get to the page. The first hint whose `from` matches is shown.
   go?: GoHint[]
+  // Wording to use instead when the burrow does not split costs (Settings → Burrow).
+  noSplit?: Partial<Pick<Chapter, 'title' | 'body' | 'phoneBody' | 'go'>>
 }
 
 // The address without /households/<id>: '/' for the inventory, '/balances', ...
@@ -107,6 +109,11 @@ export const CHAPTERS: Chapter[] = [
     title: 'Balances',
     body: 'Who owes whom. Costs are split between the people who share each item, and you can record a payment here when someone pays someone back.',
     go: [{ target: 'nav-balances', from: anywhere, text: 'Tap Balances.' }],
+    noSplit: {
+      title: 'Spending',
+      body: 'What your burrow spends on groceries: spending by month, your biggest items and what you buy most often.',
+      go: [{ target: 'nav-balances', from: anywhere, text: 'Tap Spending.' }],
+    },
   },
   {
     id: 'invite',
@@ -114,6 +121,9 @@ export const CHAPTERS: Chapter[] = [
     title: 'Invite your roommates',
     body: 'Share this code and anyone can join your burrow from the Join screen. Everyone in it sees the same inventory and splits costs together.',
     target: 'join-code',
+    noSplit: {
+      body: 'Share this code and anyone can join your burrow from the Join screen. Everyone in it sees the same inventory.',
+    },
   },
   {
     id: 'activity',

@@ -46,20 +46,20 @@ Burrow is licensed under the Apache License 2.0 (see `LICENSE`). It includes the
 | buffer-from | 1.1.2 | MIT | frontend | Copyright (c) 2016, 2018 Linus Unnebäck |
 | commander | 2.20.3 | MIT | frontend | Copyright (c) 2011 TJ Holowaychuk <tj@vision-media.ca> |
 | cookie | 1.1.1 | MIT | frontend | Copyright (c) 2012-2014 Roman Shtylman <shtylman@gmail.com>; Copyright (c) 2015 Douglas Christopher Wilson <doug@somethingdoug.com> |
-| detect-libc | 2.1.2 | Apache-2.0 | frontend | copyright notice that is included in or attached to the work; copyright license to reproduce, prepare Derivative Works of,; (c) You must retain, in the Source form of any Derivative Works; Copyright {yyyy} {name of copyright owner} |
+| detect-libc | 2.1.2 | Apache-2.0 | frontend | see license |
 | enhanced-resolve | 5.24.2 | MIT | frontend | Copyright JS Foundation and other contributors |
 | fdir | 6.5.0 | MIT | frontend | Copyright 2023 Abdullah Atta |
-| graceful-fs | 4.2.11 | ISC | frontend | Copyright (c) 2011-2022 Isaac Z. Schlueter, Ben Noordhuis, and Contributors; copyright notice and this permission notice appear in all copies. |
+| graceful-fs | 4.2.11 | ISC | frontend | Copyright (c) 2011-2022 Isaac Z. Schlueter, Ben Noordhuis, and Contributors |
 | iceberg-js | 0.8.1 | MIT | frontend | Copyright (c) 2025 Supabase |
 | jiti | 2.7.0 | MIT | frontend | Copyright (c) Pooya Parsa <pooya@pi0.io> |
-| lightningcss | 1.32.0 | MPL-2.0 | frontend | (c) under Patent Claims infringed by Covered Software in the absence of |
-| lightningcss-win32-x64-msvc | 1.32.0 | MPL-2.0 | frontend | (c) under Patent Claims infringed by Covered Software in the absence of |
-| lucide-react | 1.25.0 | ISC | frontend | Copyright (c) 2026 Lucide Icons and Contributors; copyright notice and this permission notice appear in all copies.; Copyright (c) 2013-present Cole Bemis |
+| lightningcss | 1.32.0 | MPL-2.0 | frontend | see license |
+| lightningcss-win32-x64-msvc | 1.32.0 | MPL-2.0 | frontend | see license |
+| lucide-react | 1.25.0 | ISC | frontend | Copyright (c) 2026 Lucide Icons and Contributors; Copyright (c) 2013-present Cole Bemis |
 | magic-string | 0.30.21 | MIT | frontend | Copyright 2018 Rich Harris |
-| nanoid | 3.3.19 | MIT | frontend | Copyright 2017 Andrey Sitnik <andrey@sitnik.ru>; COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER |
-| picocolors | 1.1.1 | ISC | frontend | Copyright (c) 2021-2024 Oleksii Raspopov, Kostiantyn Denysov, Anton Verinov; copyright notice and this permission notice appear in all copies. |
+| nanoid | 3.3.19 | MIT | frontend | Copyright 2017 Andrey Sitnik <andrey@sitnik.ru> |
+| picocolors | 1.1.1 | ISC | frontend | Copyright (c) 2021-2024 Oleksii Raspopov, Kostiantyn Denysov, Anton Verinov |
 | picomatch | 4.0.5 | MIT | frontend | Copyright (c) 2017-present, Jon Schlinkert. |
-| postcss | 8.5.28 | MIT | frontend | Copyright 2013 Andrey Sitnik <andrey@sitnik.es>; COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER |
+| postcss | 8.5.28 | MIT | frontend | Copyright 2013 Andrey Sitnik <andrey@sitnik.es> |
 | react | 19.2.7 | MIT | frontend | Copyright (c) Meta Platforms, Inc. and affiliates. |
 | react-dom | 19.2.7 | MIT | frontend | Copyright (c) Meta Platforms, Inc. and affiliates. |
 | react-hook-form | 7.82.0 | MIT | frontend | Copyright (c) 2019-present Beier(Bill) Luo |
@@ -73,7 +73,7 @@ Burrow is licensed under the Apache License 2.0 (see `LICENSE`). It includes the
 | source-map-support | 0.5.21 | MIT | frontend | Copyright (c) 2014 Evan Wallace |
 | tailwindcss | 4.3.3 | MIT | frontend | Copyright (c) Tailwind Labs, Inc. |
 | tapable | 2.3.3 | MIT | frontend | Copyright JS Foundation and other contributors |
-| terser | 5.51.2 | BSD-2-Clause | frontend | Copyright 2012-2018 (c) Mihai Bazon <mihai.bazon@gmail.com>; copyright notice, this list of conditions and the following |
+| terser | 5.51.2 | BSD-2-Clause | frontend | Copyright 2012-2018 (c) Mihai Bazon <mihai.bazon@gmail.com> |
 | tinyglobby | 0.2.17 | MIT | frontend | Copyright (c) 2024 Madeline Gurriarán |
 | tslib | 2.8.1 | 0BSD | frontend | Copyright (c) Microsoft Corporation. |
 | undici-types | 7.18.2 | MIT | frontend | Copyright (c) Matteo Collina and Undici contributors |
@@ -81,28 +81,28 @@ Burrow is licensed under the Apache License 2.0 (see `LICENSE`). It includes the
 | zod | 4.4.3 | MIT | frontend | Copyright (c) 2025 Colin McDonnell |
 | annotated-doc | 0.0.4 | MIT | backend | Copyright (c) 2025 Sebastián Ramírez |
 | annotated-types | 0.7.0 | MIT License | backend | Copyright (c) 2022 the contributors |
-| anyio | 4.14.2 | MIT | backend | Copyright (c) 2018 Alex Grönholm; COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER |
+| anyio | 4.14.2 | MIT | backend | Copyright (c) 2018 Alex Grönholm |
 | beautifulsoup4 | 4.15.0 | MIT License | backend | Copyright (c) Leonard Richardson |
 | certifi | 2026.6.17 | MPL-2.0 | backend | see license |
 | cffi | 2.1.0 | MIT-0 | backend | see license |
 | click | 8.4.2 | BSD-3-Clause | backend | Copyright 2014 Pallets |
 | colorama | 0.4.6 | BSD License | backend | Copyright (c) 2010 Jonathan Hartley |
 | cryptography | 49.0.0 | Apache-2.0 OR BSD-3-Clause | backend | see license |
-| deprecation | 2.1.0 | Apache 2 | backend | copyright notice that is included in or attached to the work; copyright license to reproduce, prepare Derivative Works of,; (c) You must retain, in the Source form of any Derivative Works; Copyright {yyyy} {name of copyright owner} |
+| deprecation | 2.1.0 | Apache 2 | backend | see license |
 | ecdsa | 0.19.2 | MIT | backend | see license |
 | fastapi | 0.139.2 | MIT | backend | Copyright (c) 2018 Sebastián Ramírez |
 | h11 | 0.16.0 | MIT | backend | Copyright (c) 2016 Nathaniel J. Smith <njs@pobox.com> and other contributors |
 | h2 | 4.3.0 | MIT License | backend | Copyright (c) 2015-2020 Cory Benfield and contributors |
 | hpack | 4.2.0 | MIT | backend | Copyright (c) 2014 Cory Benfield |
-| httpcore | 1.0.9 | BSD-3-Clause | backend | Copyright © 2020, [Encode OSS Ltd](https://www.encode.io/). |
+| httpcore | 1.0.9 | BSD-3-Clause | backend | see license |
 | httptools | 0.8.0 | MIT | backend | Copyright (c) 2015 MagicStack Inc.  http://magic.io |
-| httpx | 0.28.1 | BSD-3-Clause | backend | Copyright © 2019, [Encode OSS Ltd](https://www.encode.io/). |
+| httpx | 0.28.1 | BSD-3-Clause | backend | see license |
 | hyperframe | 6.1.0 | MIT License | backend | Copyright (c) 2014 Cory Benfield |
 | idna | 3.18 | BSD-3-Clause | backend | Copyright (c) 2013-2026, Kim Davies and contributors. |
 | multidict | 6.7.1 | Apache License 2.0 | backend | Copyright 2016 Andrew Svetlov and aio-libs contributors |
 | packaging | 26.2 | Apache-2.0 OR BSD-2-Clause | backend | see license |
 | postgrest | 2.31.0 | MIT | backend | see license |
-| propcache | 0.5.2 | Apache-2.0 | backend | copyright notice that is included in or attached to the work; copyright license to reproduce, prepare Derivative Works of,; (c) You must retain, in the Source form of any Derivative Works; Copyright [yyyy] [name of copyright owner] |
+| propcache | 0.5.2 | Apache-2.0 | backend | see license |
 | pyasn1 | 0.6.4 | BSD-2-Clause | backend | Copyright (c) 2005-2020, Ilya Etingof <etingof@gmail.com> |
 | pycparser | 3.0 | BSD-3-Clause | backend | Copyright (c) 2008-2022, Eli Bendersky |
 | pydantic | 2.13.4 | MIT | backend | Copyright (c) 2017 to present Pydantic Services Inc. and individual contributors. |
@@ -115,9 +115,9 @@ Burrow is licensed under the Apache License 2.0 (see `LICENSE`). It includes the
 | realtime | 2.31.0 | MIT | backend | see license |
 | rsa | 4.9.1 | Apache-2.0 | backend | Copyright 2011 Sybren A. Stüvel <sybren@stuvel.eu> |
 | sentry-sdk | 2.69.2 | MIT | backend | Copyright (c) 2018 Functional Software, Inc. dba Sentry |
-| six | 1.17.0 | MIT | backend | Copyright (c) 2010-2024 Benjamin Peterson; COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER |
+| six | 1.17.0 | MIT | backend | Copyright (c) 2010-2024 Benjamin Peterson |
 | soupsieve | 2.9.1 | MIT | backend | Copyright (c) 2018 - 2026 Isaac Muse <isaacmuse@gmail.com> |
-| starlette | 1.3.1 | BSD-3-Clause | backend | Copyright © 2018, [Encode OSS Ltd](https://www.encode.io/). |
+| starlette | 1.3.1 | BSD-3-Clause | backend | see license |
 | storage3 | 2.31.0 | MIT | backend | see license |
 | strenum | 0.4.15 | MIT License | backend | Copyright (c) 2019 James C Sinclair |
 | supabase | 2.31.0 | MIT | backend | Copyright (c) 2020 Supabase |
@@ -126,27 +126,27 @@ Burrow is licensed under the Apache License 2.0 (see `LICENSE`). It includes the
 | typing-extensions | 4.16.0 | PSF-2.0 | backend | Copyright (c) 1991 - 1995, Stichting Mathematisch Centrum Amsterdam, |
 | typing-inspection | 0.4.2 | MIT | backend | Copyright (c) Pydantic Services Inc. 2025 to present |
 | urllib3 | 2.7.0 | MIT | backend | Copyright (c) 2008-2020 Andrey Petrov and contributors. |
-| uvicorn | 0.51.0 | BSD-3-Clause | backend | Copyright © 2017-present, [Encode OSS Ltd](https://www.encode.io/). |
+| uvicorn | 0.51.0 | BSD-3-Clause | backend | see license |
 | watchfiles | 1.2.0 | MIT | backend | Copyright (c) 2017 to present Samuel Colvin |
 | websockets | 15.0.1 | BSD-3-Clause | backend | Copyright (c) Aymeric Augustin and contributors |
-| yarl | 1.24.2 | Apache-2.0 | backend | copyright notice that is included in or attached to the work; copyright license to reproduce, prepare Derivative Works of,; (c) You must retain, in the Source form of any Derivative Works; Copyright [yyyy] [name of copyright owner] |
+| yarl | 1.24.2 | Apache-2.0 | backend | see license |
 
 ## License texts
 
 ### 0BSD
 
 ```text
-Copyright (c) Microsoft Corporation.
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+Copyright (c) Microsoft Corporation.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ```
 

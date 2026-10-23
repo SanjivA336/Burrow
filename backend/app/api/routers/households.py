@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.auth import get_current_user_id, require_household_admin, require_household_membership
 from app.core.responses import Envelope, ok
@@ -13,9 +13,11 @@ from app.schemas.household import (
     UpdateHouseholdRequest,
 )
 from app.schemas.member import Member
+from app.schemas.spending import SpendingSummary
 from app.services import activity as activity_service
 from app.services import households as households_service
 from app.services import members as members_service
+from app.services import spending as spending_service
 
 router = APIRouter(prefix="/households", tags=["households"])
 
@@ -66,6 +68,15 @@ def get_household(
     if household is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Household not found")
     return ok(household)
+
+
+@router.get("/{household_id}/spending", response_model=Envelope[SpendingSummary])
+def get_spending(
+    household_id: UUID,
+    months: int = Query(default=12, ge=1, le=60),
+    _member: Member = Depends(require_household_membership),
+) -> Envelope[SpendingSummary]:
+    return ok(spending_service.summarize(household_id, months))
 
 
 @router.patch("/{household_id}", response_model=Envelope[Household])

@@ -13,6 +13,7 @@ import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage'
 import { TermsPage } from './pages/legal/TermsPage'
 import { PrivacyPage } from './pages/legal/PrivacyPage'
+import { LicensesPage } from './pages/legal/LicensesPage'
 import { HouseholdPickerPage } from './pages/households/HouseholdPickerPage'
 import { CreateHouseholdPage } from './pages/households/CreateHouseholdPage'
 import { JoinHouseholdPage } from './pages/households/JoinHouseholdPage'
@@ -62,6 +63,7 @@ function App() {
           {/* Public on purpose: people read these before they have an account. */}
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/licenses" element={<LicensesPage />} />
 
           <Route element={<AuthGuard />}>
             <Route path="/" element={<HouseholdPickerPage />} />

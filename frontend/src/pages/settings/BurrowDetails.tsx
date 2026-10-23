@@ -23,6 +23,7 @@ export function BurrowDetails() {
 
   const [actionError, setActionError] = useState<string | null>(null)
   const [savingUnitSystem, setSavingUnitSystem] = useState(false)
+  const [savingSplitCosts, setSavingSplitCosts] = useState(false)
 
   const {
     register,
@@ -73,6 +74,20 @@ export function BurrowDetails() {
     }
   }
 
+  const chooseSplitCosts = async (value: boolean) => {
+    if (value === household?.split_costs) return
+    setActionError(null)
+    setSavingSplitCosts(true)
+    try {
+      await apiClient.patch(`/api/households/${householdId}`, { split_costs: value })
+      reloadHousehold()
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Something went wrong')
+    } finally {
+      setSavingSplitCosts(false)
+    }
+  }
+
   if (!household) return <p className="text-sm text-muted">Loading…</p>
 
   if (!isAdmin) {
@@ -88,6 +103,10 @@ export function BurrowDetails() {
             {UNIT_SYSTEM_LABELS[household.preferred_unit_system]} (
             {UNIT_SYSTEM_EXAMPLES[household.preferred_unit_system]})
           </p>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-muted">Split costs</p>
+          <p className="text-text">{household.split_costs ? 'On' : 'Off'}</p>
         </div>
         <p className="text-xs text-faint">Only admins can edit or delete this burrow.</p>
       </div>
@@ -128,6 +147,40 @@ export function BurrowDetails() {
           ))}
         </div>
         <p className="mt-1.5 text-xs text-faint">Saves as soon as you choose.</p>
+      </div>
+
+      <div>
+        <p className="mb-1.5 flex items-center text-sm font-medium text-muted">
+          Split costs
+          <FieldTooltip text="Turn this off if your burrow doesn't split money, like a family where one person buys everything. Items, amounts, costs and who used what are still recorded." />
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { value: true, label: 'On' },
+            { value: false, label: 'Off' },
+          ].map((option) => (
+            <button
+              key={option.label}
+              type="button"
+              disabled={savingSplitCosts}
+              aria-pressed={household.split_costs === option.value}
+              onClick={() => chooseSplitCosts(option.value)}
+              className={`rounded-control border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
+                household.split_costs === option.value
+                  ? 'border-primary bg-primary-soft text-primary'
+                  : 'border-subtle bg-surface-2 text-muted hover:bg-surface-hover'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-xs text-faint">
+          {household.split_costs
+            ? 'Each purchase records who bought it, who shares it and what it cost, and Balances works out who owes whom.'
+            : 'Costs and usage are still recorded, but nobody is billed: no shares, no debts, no settlements. Balances becomes Spending.'}{' '}
+          Saves as soon as you choose, and applies to items you add from now on.
+        </p>
       </div>
 
       {!isDirty && actionError && <p className="text-sm text-danger">{actionError}</p>}

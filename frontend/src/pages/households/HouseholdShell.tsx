@@ -8,7 +8,7 @@ import {
   useParams,
   useSearchParams,
 } from 'react-router-dom'
-import { ChefHat, Home, Receipt, Scale, Settings, ShoppingCart } from 'lucide-react'
+import { ChefHat, Home, Receipt, Scale, Settings, ShoppingCart, Wallet } from 'lucide-react'
 import { apiClient, ApiError } from '../../lib/apiClient'
 import { BurrowLogo } from '../../components/BurrowLogo'
 import { CopyButton } from '../../components/CopyButton'
@@ -25,6 +25,7 @@ import { ItemEditModal } from '../inventory/ItemEditModal'
 import { useIsDeveloper } from '../../hooks/useIsDeveloper'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { invalidateResources } from '../../lib/resourceCache'
+import { useSplitCosts } from '../../hooks/useSplitCosts'
 import type { Household } from '../../types/entities'
 // Activity now lives inside Settings (see SettingsList) rather
 // than as its own destination -- it's a look-back log, not a daily action,
@@ -54,6 +55,12 @@ const MOBILE_BOTTOM_NAV_ITEMS = [...PRIMARY_NAV_ITEMS, ...RECIPES_NAV_ITEMS]
 
 export function HouseholdShell() {
   const { householdId } = useParams<{ householdId: string }>()
+  // A burrow that does not split costs has no balances, only what it spends.
+  const splitCosts = useSplitCosts(householdId)
+  const labelled = <T extends { to: string; label: string }>(item: T): T =>
+    item.to === 'balances' && !splitCosts
+      ? ({ ...item, label: 'Spending', icon: Wallet } as T)
+      : item
   const navigate = useNavigate()
   const isDeveloper = useIsDeveloper()
   const [household, setHousehold] = useState<Household | null>(null)
@@ -211,7 +218,7 @@ export function HouseholdShell() {
           </div>
 
           <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3">
-            {PRIMARY_NAV_ITEMS.map((item) => (
+            {PRIMARY_NAV_ITEMS.map(labelled).map((item) => (
               <SidebarLink key={item.label} {...item} />
             ))}
             {isDeveloper &&
@@ -312,17 +319,21 @@ export function HouseholdShell() {
         {!tabBarHidden && (
           <nav className="tab-bar fixed inset-x-0 bottom-0 z-20 flex h-[calc(4rem+var(--bottom-bar-gap))] items-stretch border-t border-subtle bg-surface pb-[var(--bottom-bar-gap)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:hidden">
             <div className="flex flex-1">
-              {MOBILE_BOTTOM_NAV_ITEMS.slice(0, 2).map((item) => (
-                <BottomTabLink key={item.label} {...item} />
-              ))}
+              {MOBILE_BOTTOM_NAV_ITEMS.slice(0, 2)
+                .map(labelled)
+                .map((item) => (
+                  <BottomTabLink key={item.label} {...item} />
+                ))}
             </div>
             <div className="relative flex w-16 shrink-0 items-center justify-center">
               {householdId && <MobileShortcutMenu householdId={householdId} />}
             </div>
             <div className="flex flex-1">
-              {MOBILE_BOTTOM_NAV_ITEMS.slice(2).map((item) => (
-                <BottomTabLink key={item.label} {...item} />
-              ))}
+              {MOBILE_BOTTOM_NAV_ITEMS.slice(2)
+                .map(labelled)
+                .map((item) => (
+                  <BottomTabLink key={item.label} {...item} />
+                ))}
             </div>
           </nav>
         )}

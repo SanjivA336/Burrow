@@ -1,4 +1,5 @@
-"""Writes THIRD_PARTY_LICENSES.md: every package that ships with Burrow (the frontend's
+"""Writes THIRD_PARTY_LICENSES.md (and frontend/src/legal/thirdPartyLicenses.json for the
+in-app page): every package that ships with Burrow (the frontend's
 runtime dependency tree and the backend's runtime requirements), its version, license
 and copyright notice, followed by one copy of each license's text.
 
@@ -18,17 +19,34 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-LICENSE_FILE_NAMES = ("LICENSE", "LICENSE.md", "LICENSE.txt", "LICENCE", "COPYING", "license")
+LICENSE_FILE_NAMES = (
+    "LICENSE",
+    "LICENSE.md",
+    "LICENSE.txt",
+    "LICENCE",
+    "COPYING",
+    "license",
+)
+
+
+def read_text(path: Path) -> str:
+    """UTF-8, or Latin-1 for the occasional license file saved that way (so names with accents
+    such as "Stüvel" come out right instead of garbled)."""
+    data = path.read_bytes()
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data.decode("latin-1")
 
 
 def find_license_text(directory: Path) -> str:
     for name in LICENSE_FILE_NAMES:
         path = directory / name
         if path.is_file():
-            return path.read_text(encoding="utf-8", errors="replace")
+            return read_text(path)
     for path in directory.glob("LICEN[SC]E*"):
         if path.is_file():
-            return path.read_text(encoding="utf-8", errors="replace")
+            return read_text(path)
     return ""
 
 
@@ -36,7 +54,13 @@ def copyright_lines(text: str) -> list[str]:
     lines = []
     for line in text.splitlines():
         stripped = line.strip(" *#/\t")
-        if re.match(r"(?i)^(copyright|\(c\)|©)", stripped) and len(stripped) < 200:
+        # Capitalised "Copyright" only (the Apache text has many lowercase sentences about
+        # copyright), and never the "[yyyy] [name of copyright owner]" template line.
+        if (
+            re.match(r"^(Copyright|©)", stripped)
+            and not re.search(r"[\[{]", stripped)
+            and len(stripped) < 200
+        ):
             if stripped not in lines:
                 lines.append(stripped)
     return lines[:4]
@@ -53,7 +77,11 @@ def normalise_license(value) -> str:
 def frontend_packages() -> list[dict]:
     frontend = ROOT / "frontend"
     out = subprocess.run(
-        "npm ls --omit=dev --all --json", shell=True, cwd=frontend, capture_output=True, text=True
+        "npm ls --omit=dev --all --json",
+        shell=True,
+        cwd=frontend,
+        capture_output=True,
+        text=True,
     ).stdout
     names: dict[str, str] = {}
 
@@ -68,13 +96,17 @@ def frontend_packages() -> list[dict]:
         for base in (frontend / "node_modules", ROOT / "node_modules"):
             directory = base.joinpath(*name.split("/"))
             if (directory / "package.json").is_file():
-                meta = json.loads((directory / "package.json").read_text(encoding="utf-8"))
+                meta = json.loads(
+                    (directory / "package.json").read_text(encoding="utf-8")
+                )
                 text = find_license_text(directory)
                 packages.append(
                     {
                         "name": name,
                         "version": meta.get("version", version),
-                        "license": normalise_license(meta.get("license") or meta.get("licenses")),
+                        "license": normalise_license(
+                            meta.get("license") or meta.get("licenses")
+                        ),
                         "text": text,
                         "where": "frontend",
                     }
@@ -109,7 +141,7 @@ def backend_packages() -> list[dict]:
         text = ""
         for file in md.files(name) or []:
             if re.search(r"(?i)(^|/)(licen[sc]e|copying)[^/]*$", str(file)):
-                text = Path(file.locate()).read_text(encoding="utf-8", errors="replace")
+                text = read_text(Path(file.locate()))
                 break
         packages.append(
             {
@@ -144,7 +176,10 @@ def main() -> None:
         "|---|---|---|---|---|",
     ]
     for package in packages:
-        notice = "; ".join(copyright_lines(package["text"])).replace("|", "/") or "see license"
+        notice = (
+            "; ".join(copyright_lines(package["text"])).replace("|", "/")
+            or "see license"
+        )
         out.append(
             f"| {package['name']} | {package['version']} | {package['license']} | "
             f"{package['where']} | {notice} |"
@@ -152,7 +187,27 @@ def main() -> None:
     out += ["", "## License texts", ""]
     for license_name, text in sorted(distinct.items()):
         out += [f"### {license_name}", "", "```text", text.strip(), "```", ""]
-    (ROOT / "THIRD_PARTY_LICENSES.md").write_text("\n".join(out) + "\n", encoding="utf-8")
+    (ROOT / "THIRD_PARTY_LICENSES.md").write_text(
+        "\n".join(out) + "\n", encoding="utf-8"
+    )
+    # The same data for the in-app "Open-source licenses" page
+    # (frontend/src/pages/legal/LicensesPage.tsx).
+    page_data = {
+        "packages": [
+            {
+                "name": p["name"],
+                "version": p["version"],
+                "license": p["license"],
+                "part": p["where"],
+                "copyright": "; ".join(copyright_lines(p["text"])),
+            }
+            for p in packages
+        ],
+        "licenses": dict(sorted(distinct.items())),
+    }
+    (ROOT / "frontend" / "src" / "legal" / "thirdPartyLicenses.json").write_text(
+        json.dumps(page_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     missing = [p["name"] for p in packages if not p["text"]]
     print(f"{len(packages)} packages, {len(distinct)} distinct licenses")
     if missing:

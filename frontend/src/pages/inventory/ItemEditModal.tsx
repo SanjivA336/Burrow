@@ -12,6 +12,7 @@ import { MemberPicker } from '../../components/MemberPicker'
 import { UnitSelect } from '../../components/UnitSelect'
 import { useHouseholdResource } from '../../hooks/useHouseholdResource'
 import { useDialog } from '../../hooks/useDialog'
+import { useSplitCosts } from '../../hooks/useSplitCosts'
 import { FOOD_CATEGORY_LABELS } from '../../lib/foodCategories'
 import { DIMENSION_LABELS, UNIT_LABELS, UNITS_BY_DIMENSION, guessDimension } from '../../lib/units'
 import type {
@@ -106,6 +107,8 @@ export function ItemEditModal({
   // A chosen type whose usual measurement differs from the item's, waiting for a yes.
   const [mismatchedType, setMismatchedType] = useState<FoodDefinition | null>(null)
   const expiryRef = useRef<ItemExpiryHandle>(null)
+  // Off: no buyer and no "who's using this" (the item is shared with everyone); cost stays.
+  const splitCosts = useSplitCosts(householdId)
 
   // The draft starts from the saved item, and follows it (a refresh, a change
   // from another phone) only while there is nothing unsaved to protect.
@@ -247,7 +250,7 @@ export function ItemEditModal({
   const dimension = guessDimension(item.preferred_unit)
   const activeMembers = members.filter((m) => m.is_active)
   // With one person in the burrow there is nobody to choose between.
-  const showWhoIsUsing = activeMembers.length > 1
+  const showWhoIsUsing = splitCosts && activeMembers.length > 1
   const update = (changes: Partial<Draft>) => setDraft({ ...draft, ...changes })
 
   // Everything that differs from what's saved goes to the server together:
@@ -436,6 +439,7 @@ export function ItemEditModal({
                     dimension={dimension}
                     draft={draft}
                     onDraft={update}
+                    showBuyer={splitCosts}
                     buyerNickname={
                       members.find((m) => m.id === item.buyer_member_id)?.nickname ?? 'Unknown'
                     }
@@ -855,6 +859,7 @@ function CostAndQuantitySection({
   dimension,
   draft,
   onDraft,
+  showBuyer,
   buyerNickname,
   onChanged,
 }: {
@@ -864,6 +869,7 @@ function CostAndQuantitySection({
   dimension: ReturnType<typeof guessDimension>
   draft: Pick<Draft, 'quantity' | 'unit' | 'cost'>
   onDraft: (changes: Partial<Draft>) => void
+  showBuyer: boolean
   buyerNickname: string
   onChanged: () => void
 }) {
@@ -944,20 +950,22 @@ function CostAndQuantitySection({
             onChange={(e) => onDraft({ cost: e.target.value })}
           />
         </div>
-        <div className="min-w-0 flex-1">
-          <label htmlFor="itemeditmodal-932" className={fieldLabelClass}>
-            Buyer
-          </label>
-          <input
-            id="itemeditmodal-932"
-            type="text"
-            disabled
-            readOnly
-            title="Set when this item was bought -- never editable afterward"
-            value={buyerNickname}
-            className={disabledInputClass}
-          />
-        </div>
+        {showBuyer && (
+          <div className="min-w-0 flex-1">
+            <label htmlFor="itemeditmodal-932" className={fieldLabelClass}>
+              Buyer
+            </label>
+            <input
+              id="itemeditmodal-932"
+              type="text"
+              disabled
+              readOnly
+              title="Set when this item was bought -- never editable afterward"
+              value={buyerNickname}
+              className={disabledInputClass}
+            />
+          </div>
+        )}
       </div>
 
       {error && !correcting && <p className="text-sm text-danger">{error}</p>}

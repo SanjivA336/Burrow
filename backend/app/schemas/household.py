@@ -20,6 +20,9 @@ class Household(BaseModel):
     # hasn't tracked before -- a per-food choice (see household_food_variants)
     # always wins once one's been made.
     preferred_unit_system: UnitSystem
+    # Whether this burrow splits costs between members. Off means items are saved as
+    # "personal" (never entering the ledger) and shared with everyone; see migration 0052.
+    split_costs: bool = True
     created_at: datetime
     updated_at: datetime
 
@@ -37,6 +40,7 @@ class JoinHouseholdRequest(BaseModel):
 class UpdateHouseholdRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     preferred_unit_system: UnitSystem | None = None
+    split_costs: bool | None = None
 
 
 class TransferOwnershipRequest(BaseModel):

@@ -3,6 +3,7 @@ import { NumberInput } from '../../components/NumberInput'
 import { Minus, Plus } from 'lucide-react'
 import { formatQuantity } from '../../lib/formatQuantity'
 import { apiClient, ApiError } from '../../lib/apiClient'
+import { useSplitCosts } from '../../hooks/useSplitCosts'
 import { Modal } from '../../components/Modal'
 import { convertAmount, guessDimension, UNIT_LABELS, UNITS_BY_DIMENSION } from '../../lib/units'
 import type { ConsumptionEvent, Dimension, InventoryItem, Unit } from '../../types/entities'
@@ -113,8 +114,13 @@ export function UseItemModal({ item, householdId, myMemberId, onClose, onConsume
   // accounting_service.bill_outsider_usage), and a solo (PERSONAL) item's
   // "share" is just the whole thing, so a second identical bar under the
   // first would be noise either way.
-  const notYours = !!myMemberId && !item.allowed_member_ids.includes(myMemberId)
-  const showAllotment = item.allowed_member_ids.length > 1 && !!myMemberId && !notYours
+  //
+  // None of this applies when the burrow doesn't split costs, or to an item that was saved
+  // unsplit (personal): nobody is billed, so there is no share to stay within and no "not
+  // yours" warning. What was used, and by whom, is still recorded either way.
+  const billed = useSplitCosts(householdId) && item.accounting_type === 'SHARED'
+  const notYours = billed && !!myMemberId && !item.allowed_member_ids.includes(myMemberId)
+  const showAllotment = billed && item.allowed_member_ids.length > 1 && !!myMemberId && !notYours
   useEffect(() => {
     if (!showAllotment) return
     apiClient

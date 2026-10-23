@@ -9,6 +9,7 @@ import {
   History,
   Home,
   LogOut,
+  Scale,
   ShieldCheck,
   Trash2,
   UserCircle,
@@ -198,6 +199,7 @@ export function SettingsList({ ctx }: { ctx: SettingsContext }) {
         {SUPPORT_URL && <LinkRow href={SUPPORT_URL} icon={CircleHelp} label="Contact support" />}
         <LinkRow href="/terms" icon={FileText} label="Terms of Service" />
         <LinkRow href="/privacy" icon={ShieldCheck} label="Privacy Policy" />
+        <LinkRow href="/licenses" icon={Scale} label="Open-source licenses" />
       </Group>
 
       {isAdmin && household && (

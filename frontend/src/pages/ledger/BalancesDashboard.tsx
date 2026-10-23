@@ -1,11 +1,17 @@
 import { useMemo, useState } from 'react'
 import { BarChart3 } from 'lucide-react'
 import { Modal } from '../../components/Modal'
-import type { LedgerEntryDetail, Member } from '../../types/entities'
+import type { LedgerEntryDetail, Member, SpendingSummary } from '../../types/entities'
 
 interface Props {
+  // The ledger, for the net-balance chart. Only used when the burrow splits costs.
   entries: LedgerEntryDetail[] | null
   members: Member[] | null
+  // What was really spent, from the purchases themselves (not the ledger, which only holds
+  // what each non-buyer owes and does not exist at all when a burrow does not split costs).
+  spending: SpendingSummary | null
+  // True when the burrow splits costs: adds the net-balance chart.
+  showBalance: boolean
   loading: boolean
 }
 
@@ -159,45 +165,80 @@ function ItemBarList({
   )
 }
 
-// One food's total spend across every PURCHASE/OVERAGE entry that resolved
-// to it -- entries are per-(debtor,creditor) shares, not per-purchase, so
-// this is total money that moved because of that food, not its sticker
-// price times how many times it was bought.
-function useTopItemsBySpend(entries: LedgerEntryDetail[]) {
-  return useMemo(() => {
-    const totals = new Map<string, number>()
-    for (const entry of entries) {
-      if (!entry.food_name) continue
-      totals.set(entry.food_name, (totals.get(entry.food_name) ?? 0) + Number(entry.amount))
-    }
-    return [...totals.entries()].sort((a, b) => b[1] - a[1])
-  }, [entries])
+const dollars = (n: number) => `$${n.toFixed(2)}`
+
+const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+]
+
+// "2026-10" -> "Oct"
+const monthLabel = (month: string) => MONTH_NAMES[Number(month.slice(5, 7)) - 1] ?? month
+
+// Money spent per month, as plain bars. Each month is a column of three fixed-height parts
+// (the amount, the bar area, the month name) so the bars line up whatever the amounts are.
+function SpendingOverTimeChart({ spending }: { spending: SpendingSummary }) {
+  const values = spending.months.map((m) => Number(m.total))
+  const max = Math.max(0, ...values)
+  const summary = spending.months
+    .map((m) => `${monthLabel(m.month)} ${dollars(Number(m.total))}`)
+    .join(', ')
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-muted">
+        Last {spending.months.length} months:{' '}
+        <span className="font-medium text-text">{dollars(Number(spending.total))}</span>
+      </p>
+      <div role="img" aria-label={`Spending by month: ${summary}`} className="flex gap-1">
+        {spending.months.map((m, i) => {
+          const value = values[i]
+          const percent = max ? Math.max((value / max) * 100, value > 0 ? 3 : 0) : 0
+          return (
+            <div
+              key={m.month}
+              title={`${monthLabel(m.month)}: ${dollars(value)}`}
+              className="flex min-w-0 flex-1 flex-col items-center"
+            >
+              <span className="h-4 text-[10px] leading-4 text-faint">
+                {value > 0 ? `$${Math.round(value)}` : ''}
+              </span>
+              <div className="flex h-28 w-full items-end">
+                <div
+                  className="w-full rounded-t-control bg-primary"
+                  style={{ height: `${percent}%` }}
+                />
+              </div>
+              <span className="h-4 text-[10px] leading-4 text-muted">{monthLabel(m.month)}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
-// Distinct purchase events per food, not entry count -- a single purchase
-// of a food shared by everyone in a 4-person household produces 3 PURCHASE
-// ledger entries (one per non-buyer), so counting entries directly would
-// make a household's size look like how often it buys something.
-function useTopItemsByFrequency(entries: LedgerEntryDetail[]) {
-  return useMemo(() => {
-    const purchaseIdsByFood = new Map<string, Set<string>>()
-    for (const entry of entries) {
-      if (entry.reason !== 'PURCHASE' || !entry.food_name || !entry.source_purchase_event_id)
-        continue
-      const set = purchaseIdsByFood.get(entry.food_name) ?? new Set<string>()
-      set.add(entry.source_purchase_event_id)
-      purchaseIdsByFood.set(entry.food_name, set)
-    }
-    return [...purchaseIdsByFood.entries()]
-      .map(([name, ids]) => [name, ids.size] as [string, number])
-      .sort((a, b) => b[1] - a[1])
-  }, [entries])
-}
-
-function TopItemsBySpendCard({ entries }: { entries: LedgerEntryDetail[] }) {
+// A ranked list that previews its top 5 and opens the whole list in a dialog.
+function RankedCard({
+  title,
+  items,
+  formatValue,
+}: {
+  title: string
+  items: [string, number][]
+  formatValue: (n: number) => string
+}) {
   const [expanded, setExpanded] = useState(false)
-  const items = useTopItemsBySpend(entries)
-  const formatValue = (n: number) => `$${n.toFixed(2)}`
 
   if (items.length === 0) return <EmptyChart label="No purchases on record yet." />
 
@@ -211,7 +252,7 @@ function TopItemsBySpendCard({ entries }: { entries: LedgerEntryDetail[] }) {
         <ItemBarList items={items} formatValue={formatValue} limit={5} />
       </button>
       {expanded && (
-        <Modal title="Top items by spend" onClose={() => setExpanded(false)}>
+        <Modal title={title} onClose={() => setExpanded(false)}>
           <div className="max-h-[60vh] overflow-y-auto pr-1">
             <ItemBarList items={items} formatValue={formatValue} />
           </div>
@@ -221,37 +262,13 @@ function TopItemsBySpendCard({ entries }: { entries: LedgerEntryDetail[] }) {
   )
 }
 
-function MostFrequentlyBoughtCard({ entries }: { entries: LedgerEntryDetail[] }) {
-  const [expanded, setExpanded] = useState(false)
-  const items = useTopItemsByFrequency(entries)
-  const formatValue = (n: number) => (n === 1 ? '1 time' : `${n} times`)
-
-  if (items.length === 0) return <EmptyChart label="No purchases on record yet." />
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setExpanded(true)}
-        className="-m-1 rounded-control p-1 text-left transition-colors hover:bg-surface-hover"
-      >
-        <ItemBarList items={items} formatValue={formatValue} limit={5} />
-      </button>
-      {expanded && (
-        <Modal title="Most frequently bought" onClose={() => setExpanded(false)}>
-          <div className="max-h-[60vh] overflow-y-auto pr-1">
-            <ItemBarList items={items} formatValue={formatValue} />
-          </div>
-        </Modal>
-      )}
-    </>
-  )
-}
-
-export function BalancesDashboard({ entries, members, loading }: Props) {
+export function BalancesDashboard({ entries, members, spending, showBalance, loading }: Props) {
   if (loading) return <p className="text-sm text-muted">Loading…</p>
 
-  if (!entries || entries.length === 0) {
+  const hasSpending = (spending?.foods.length ?? 0) > 0
+  const hasBalance = showBalance && (entries?.length ?? 0) > 0
+
+  if (!hasSpending && !hasBalance) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-subtle p-10 text-center">
         <BarChart3 size={28} strokeWidth={1.5} className="text-faint" />
@@ -261,20 +278,41 @@ export function BalancesDashboard({ entries, members, loading }: Props) {
   }
 
   const activeMembers = (members ?? []).filter((m) => m.is_active)
+  // What each food really cost in total (sticker price, every time it was bought), and how
+  // many times it was bought. Purchases with no cost entered still count for "bought".
+  const foods = spending?.foods ?? []
+  const bySpend: [string, number][] = foods
+    .filter((f) => Number(f.total) > 0)
+    .map((f) => [f.name, Number(f.total)])
+  const byFrequency: [string, number][] = [...foods]
+    .sort((a, b) => b.purchases - a.purchases || a.name.localeCompare(b.name))
+    .map((f) => [f.name, f.purchases])
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <div className={`${CARD_CLASS} md:col-span-2`}>
-        <h3 className="text-sm font-semibold text-muted">Net balance over time</h3>
-        <NetBalanceOverTimeChart entries={entries} members={activeMembers} />
-      </div>
+      {showBalance && hasBalance && (
+        <div className={`${CARD_CLASS} md:col-span-2`}>
+          <h3 className="text-sm font-semibold text-muted">Net balance over time</h3>
+          <NetBalanceOverTimeChart entries={entries ?? []} members={activeMembers} />
+        </div>
+      )}
+      {!showBalance && spending && (
+        <div className={`${CARD_CLASS} md:col-span-2`}>
+          <h3 className="text-sm font-semibold text-muted">Spending over time</h3>
+          <SpendingOverTimeChart spending={spending} />
+        </div>
+      )}
       <div className={CARD_CLASS}>
         <h3 className="text-sm font-semibold text-muted">Top items by spend</h3>
-        <TopItemsBySpendCard entries={entries} />
+        <RankedCard title="Top items by spend" items={bySpend} formatValue={dollars} />
       </div>
       <div className={CARD_CLASS}>
         <h3 className="text-sm font-semibold text-muted">Most frequently bought</h3>
-        <MostFrequentlyBoughtCard entries={entries} />
+        <RankedCard
+          title="Most frequently bought"
+          items={byFrequency}
+          formatValue={(n) => (n === 1 ? '1 time' : `${n} times`)}
+        />
       </div>
     </div>
   )

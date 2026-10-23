@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { toggleDiagnostics } from '../lib/diagnostics'
 
 interface Props {
@@ -23,8 +24,16 @@ export function AppVersion({ className = '' }: Props) {
   }
 
   return (
-    <p onClick={handleTap} className={`select-none text-xs text-muted ${className}`}>
-      Burrow — v{__APP_VERSION__}
-    </p>
+    <div className={`text-xs text-muted ${className}`}>
+      <p onClick={handleTap} className="select-none">
+        Burrow — v{__APP_VERSION__}
+      </p>
+      <p className="mt-0.5">
+        © 2026 Sanjiv Anand ·{' '}
+        <Link to="/licenses" className="underline hover:text-text">
+          Open-source licenses
+        </Link>
+      </p>
+    </div>
   )
 }

@@ -259,6 +259,17 @@ def create_manual(
     receipt_image_path: str | None = None,
 ) -> InventoryItem:
     accounting_type, lives, storage_type = _load_creation_inputs(body)
+    allowed_member_ids = body.allowed_member_ids
+    household = households_service.get_household(household_id)
+    if household is not None and not household.split_costs:
+        # This burrow does not split costs: the item is saved as "personal", which the ledger
+        # never touches, and is shared with everyone, so nobody is asked who it is for. Decided
+        # here on the server rather than trusted from the request, so an old open screen or
+        # another flow (the buy wizard, receipt import) cannot create a split item by accident.
+        accounting_type = AccountingType.PERSONAL
+        everyone = sorted(list_active_member_ids(household_id), key=str)
+        if everyone:
+            allowed_member_ids = everyone
     now = datetime.now(UTC)
     # The expiry module owns every date rule: the starting progress, this
     # item's own copy of the three place shelf lives, and the date to store
@@ -287,7 +298,7 @@ def create_manual(
             "p_preferred_unit": body.preferred_unit.value,
             "p_cost": str(body.cost),
             "p_expiry_date": expiry_date.isoformat() if expiry_date else None,
-            "p_allowed_member_ids": [str(m) for m in body.allowed_member_ids],
+            "p_allowed_member_ids": [str(m) for m in allowed_member_ids],
             "p_accounting_type": accounting_type.value,
             "p_receipt_image_path": receipt_image_path,
             "p_name_override": body.name_override,
