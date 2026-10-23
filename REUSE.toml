@@ -1,0 +1,19 @@
+# Machine-readable licensing, following the REUSE specification (https://reuse.software).
+# One place states who owns what and under which license, instead of a header in every file.
+version = 1
+SPDX-PackageName = "Burrow"
+SPDX-PackageSupplier = "Sanjiv Anand"
+SPDX-PackageDownloadLocation = "https://github.com/SanjivA336/PantryMVP"
+
+[[annotations]]
+path = "**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Sanjiv Anand"
+SPDX-License-Identifier = "Apache-2.0"
+
+# The name, logo and icons are not under the Apache License.
+[[annotations]]
+path = ["frontend/public/favicon.svg", "frontend/public/pwa/**", "frontend/src/assets/logo.svg"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Sanjiv Anand"
+SPDX-License-Identifier = "LicenseRef-Burrow-Branding"

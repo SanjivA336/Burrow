@@ -473,3 +473,19 @@ leaving localhost.
 - Lint: `npm run lint` (oxlint)
 - Format: `npx prettier --write .`
 - Build: `npm run build`
+
+## License
+
+Burrow is licensed under the [Apache License 2.0](LICENSE). Copyright 2026 Sanjiv Anand.
+
+- The name "Burrow", the logo and the app icons are **not** covered by that license
+  (see [LICENSES/LicenseRef-Burrow-Branding.txt](LICENSES/LicenseRef-Burrow-Branding.txt)).
+- Third-party packages keep their own licenses: see
+  [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) (regenerate it with
+  `python scripts/generate_third_party_licenses.py` when dependencies change).
+- Licensing is also declared in machine-readable form in [REUSE.toml](REUSE.toml).
+- **Found a mistake?** Burrow is built by one person, and I'd rather hear about a problem
+  than miss it. If you notice anything that doesn't match its license or terms, or that
+  seems to be missing proper credit, please open an issue saying what and where, and I'll
+  look into it and fix it.
+

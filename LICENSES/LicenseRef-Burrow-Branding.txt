@@ -1,0 +1,9 @@
+Burrow branding
+
+The Burrow name, the Burrow logo and the app icons (the fox mark, including
+frontend/public/favicon.svg, frontend/public/pwa/* and frontend/src/assets/logo.svg)
+are Copyright 2026 Sanjiv Anand. All rights reserved.
+
+These files are included in the repository so the app builds and runs. They are not
+covered by the Apache License 2.0 that applies to the rest of the code. If you fork
+or redistribute this project, replace them with your own name and artwork.
