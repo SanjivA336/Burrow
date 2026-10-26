@@ -23,7 +23,7 @@ export const INSTALL_STEPS = {
   ios: {
     heading: 'iPhone and iPad',
     steps: [
-      'Open Burrow in Safari. A link opened inside another app (Instagram, Messenger) can’t do this.',
+      'Open Burrow in your web browser (not from inside another app, like Instagram or Messenger).',
       'Tap the Share button.',
       'Choose Add to Home Screen, then tap Add.',
     ],
@@ -31,7 +31,7 @@ export const INSTALL_STEPS = {
   android: {
     heading: 'Android',
     steps: [
-      'Open Burrow in Chrome.',
+      'Open Burrow in your web browser.',
       'Tap the ⋮ menu.',
       'Choose Install app (or Add to Home screen).',
     ],
@@ -41,10 +41,10 @@ export const INSTALL_STEPS = {
 // One sentence for the last card of the tour.
 export function installTip(platform: Platform): string | null {
   if (platform === 'ios') {
-    return 'Tip: add Burrow to your home screen so it opens like an app. In Safari, tap Share, then Add to Home Screen.'
+    return 'Tip: add Burrow to your home screen so it opens like an app. In your web browser, tap Share, then Add to Home Screen.'
   }
   if (platform === 'android') {
-    return 'Tip: add Burrow to your home screen so it opens like an app. In Chrome, tap the ⋮ menu, then Install app.'
+    return 'Tip: add Burrow to your home screen so it opens like an app. In your web browser, tap the ⋮ menu, then Install app.'
   }
   return null
 }
