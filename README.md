@@ -258,10 +258,13 @@ leaving localhost.
   `--data-only` (public) and `--data-only -s auth` (users); needs Docker and
   `SUPABASE_DB_PASSWORD`. Restore data dumps with `--disable-triggers`
   (circular foreign keys). The free tier also pauses after about a week
-  idle. Revisit the Pro plan once real users exist. Added 2026-10-23: a weekly
+  idle. Revisit the Pro plan once real users exist. Added 2026-10-23: an
   export that needs no Docker, `cd backend && uv run python -m scripts.export_data`
   (one JSON file per table, written outside the repo, newest 8 kept; it cannot
   read login accounts or receipt photos, so the manual dump stays the full backup).
+  Decided 2026-10-26: run it by hand before any migration push and before opening
+  each tester phase. Automated backups, and possibly the Supabase Pro plan (which
+  has daily backups), come with the full release.
 - **Revisit if this ever needs undoing**: create a real separate prod
   project, push migrations to it, and pick back up the original plan
   (documented `.env.production`, re-running `rls`/`integration` against
