@@ -40,7 +40,8 @@ export function TourProvider({
   const chapters = useMemo(() => {
     // On a phone where Burrow isn't installed yet, the last card also says how to install it.
     const tip = canSuggestInstall() ? (installTip(detectPlatform()) ?? undefined) : undefined
-    return CHAPTERS.map((c) => {
+    // Cards about cost splitting are left out for a burrow that doesn't split.
+    return CHAPTERS.filter((c) => splitCosts || !c.onlySplitting).map((c) => {
       const adapted = !splitCosts && c.noSplit ? { ...c, ...c.noSplit } : c
       return c.kind === 'finish' && tip ? { ...adapted, tip } : adapted
     })

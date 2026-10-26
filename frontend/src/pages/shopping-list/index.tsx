@@ -427,6 +427,7 @@ export function ShoppingListPage() {
             <button
               key={key}
               type="button"
+              data-tour={key === 'purchases' ? 'past-orders' : undefined}
               onClick={() => setTab(key)}
               className={`rounded-control border px-3 py-1.5 text-sm font-medium transition-colors ${
                 tab === key
@@ -453,6 +454,7 @@ export function ShoppingListPage() {
           </button>
           <button
             type="button"
+            data-tour="suggest-list"
             onClick={suggest}
             disabled={suggesting}
             className="flex items-center gap-1.5 rounded-control border border-subtle bg-surface px-2 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover disabled:opacity-50"
@@ -774,6 +776,7 @@ export function ShoppingListPage() {
           Clear List/Suggest List/Select All up in the header. */}
           <button
             type="button"
+            data-tour="record-selected"
             onClick={startOrder}
             disabled={startingOrder || collectedCount === 0}
             title={collectedCount === 0 ? 'Check off items as you shop first' : undefined}

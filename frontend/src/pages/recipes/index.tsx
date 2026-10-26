@@ -34,6 +34,7 @@ export function RecipesPage() {
           <Link
             to={`/households/${householdId}/recipes/import`}
             aria-label="Import recipe"
+            data-tour="import-recipe"
             className="flex items-center gap-1.5 rounded-control border border-subtle bg-surface px-2 py-2 text-sm font-medium text-text transition-colors hover:bg-surface-hover"
           >
             <Wand2 size={16} strokeWidth={1.75} />

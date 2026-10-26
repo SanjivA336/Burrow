@@ -32,6 +32,8 @@ export interface Chapter {
   target?: string | string[]
   // How to get to the page. The first hint whose `from` matches is shown.
   go?: GoHint[]
+  // Skipped for a burrow that does not split costs (nothing on its page to show).
+  onlySplitting?: boolean
   // An extra line under the body (set at run time, e.g. how to add Burrow to the home screen).
   tip?: string
   // Wording to use instead when the burrow does not split costs (Settings → Burrow).
@@ -45,6 +47,13 @@ export function relativePath(pathname: string): string {
 
 const onInventory = (rel: string) => rel === '/' || rel.startsWith('/storage/')
 const anywhere = () => true
+const onShopping = (rel: string) => rel === '/shopping-list'
+
+const toRecipes: GoHint[] = [{ target: 'nav-recipes', from: anywhere, text: 'Tap Recipes.' }]
+
+const toShopping: GoHint[] = [
+  { target: 'nav-shopping', from: anywhere, text: 'Tap Shopping List.' },
+]
 
 const toInventory: GoHint[] = [
   { target: 'nav-inventory', from: anywhere, text: 'Tap Inventory to go back to your list.' },
@@ -95,15 +104,47 @@ export const CHAPTERS: Chapter[] = [
     id: 'shopping',
     page: (rel) => rel === '/shopping-list',
     title: 'Shopping list',
-    body: 'One list for the whole burrow. Add what you need, and low or empty items can be suggested for you.',
-    go: [{ target: 'nav-shopping', from: anywhere, text: 'Tap Shopping List.' }],
+    body: 'One list for the whole burrow. Add what you need, and tick things off as you shop.',
+    go: toShopping,
+  },
+  {
+    id: 'suggest',
+    page: onShopping,
+    title: 'Suggest a list',
+    body: 'Not sure what you need? Suggest List adds what you are low on or have run out of, with the reason beside each one.',
+    target: 'suggest-list',
+    go: toShopping,
+  },
+  {
+    id: 'record',
+    page: onShopping,
+    title: 'Record what you bought',
+    body: 'Tick items as you put them in the basket, then tap Record Selected. You fill in the amount, cost and place for each, and they join your inventory.',
+    target: 'record-selected',
+    go: toShopping,
+  },
+  {
+    id: 'past-orders',
+    page: onShopping,
+    title: 'Past orders',
+    body: 'An order you started but did not finish waits here as a draft, so you can pick it up again. Finished orders are kept as a record.',
+    target: 'past-orders',
+    go: toShopping,
   },
   {
     id: 'recipes',
     page: (rel) => rel.startsWith('/recipes'),
     title: 'Recipes',
     body: 'Your own recipe box. Each recipe shows which ingredients you already have in the burrow.',
-    go: [{ target: 'nav-recipes', from: anywhere, text: 'Tap Recipes.' }],
+    go: toRecipes,
+  },
+  {
+    id: 'import',
+    page: (rel) => rel === '/recipes',
+    title: 'Import a recipe',
+    body: 'Got a recipe file someone exported from their own Burrow recipe box? Import it here instead of typing it in.',
+    target: 'import-recipe',
+    go: toRecipes,
   },
   {
     id: 'balances',
@@ -116,6 +157,15 @@ export const CHAPTERS: Chapter[] = [
       body: 'What your burrow spends on groceries: spending by month, your biggest items and what you buy most often.',
       go: [{ target: 'nav-balances', from: anywhere, text: 'Tap Spending.' }],
     },
+  },
+  {
+    id: 'settlements',
+    page: (rel) => rel === '/balances',
+    title: 'Recommended settlements',
+    body: 'The fewest payments that would settle everyone up. Tap one to start recording it, and mark it paid once the money has changed hands.',
+    target: 'recommended-settlements',
+    onlySplitting: true,
+    go: [{ target: 'nav-balances', from: anywhere, text: 'Tap Balances.' }],
   },
   {
     id: 'invite',
