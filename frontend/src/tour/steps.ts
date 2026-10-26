@@ -32,6 +32,8 @@ export interface Chapter {
   target?: string | string[]
   // How to get to the page. The first hint whose `from` matches is shown.
   go?: GoHint[]
+  // An extra line under the body (set at run time, e.g. how to add Burrow to the home screen).
+  tip?: string
   // Wording to use instead when the burrow does not split costs (Settings → Burrow).
   noSplit?: Partial<Pick<Chapter, 'title' | 'body' | 'phoneBody' | 'go'>>
 }

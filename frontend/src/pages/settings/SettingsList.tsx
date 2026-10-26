@@ -10,13 +10,16 @@ import {
   Home,
   LogOut,
   Scale,
+  Smartphone,
   ShieldCheck,
   Trash2,
   UserCircle,
   Users,
   type LucideIcon,
 } from 'lucide-react'
+import { AddToHomeScreenDialog } from '../../components/AddToHomeScreenDialog'
 import { AppVersion } from '../../components/AppVersion'
+import { canSuggestInstall } from '../../lib/installApp'
 import { DeleteBurrowModal } from '../../components/DeleteBurrowModal'
 import { LogoutConfirmModal } from '../../components/LogoutConfirmModal'
 import { ShellChromeContext } from '../../context/shellChrome'
@@ -149,6 +152,7 @@ export function SettingsList({ ctx }: { ctx: SettingsContext }) {
   const shell = useContext(ShellChromeContext)
   const tour = useTour()
   const [logoutOpen, setLogoutOpen] = useState(false)
+  const [installOpen, setInstallOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
@@ -196,6 +200,13 @@ export function SettingsList({ ctx }: { ctx: SettingsContext }) {
 
       <Group title="Help and about">
         <ActionRow icon={Compass} label="Take the tour" onClick={tour.start} />
+        {canSuggestInstall() && (
+          <ActionRow
+            icon={Smartphone}
+            label="Add to home screen"
+            onClick={() => setInstallOpen(true)}
+          />
+        )}
         {SUPPORT_URL && <LinkRow href={SUPPORT_URL} icon={CircleHelp} label="Contact support" />}
         <LinkRow href="/terms" icon={FileText} label="Terms of Service" />
         <LinkRow href="/privacy" icon={ShieldCheck} label="Privacy Policy" />
@@ -214,6 +225,7 @@ export function SettingsList({ ctx }: { ctx: SettingsContext }) {
       )}
 
       <AppVersion className="text-center" />
+      {installOpen && <AddToHomeScreenDialog onClose={() => setInstallOpen(false)} />}
 
       {logoutOpen && (
         <LogoutConfirmModal

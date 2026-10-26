@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useIsDesktop } from '../hooks/useIsDesktop'
 import { useSplitCosts } from '../hooks/useSplitCosts'
+import { canSuggestInstall, detectPlatform, installTip } from '../lib/installApp'
 import { supabase } from '../lib/supabaseClient'
 import { TourOverlay } from './TourOverlay'
 import { CHAPTERS, relativePath, type GoHint } from './steps'
@@ -36,10 +37,14 @@ export function TourProvider({
   const completed = Boolean(user?.user_metadata?.[COMPLETED_KEY])
   // A burrow that doesn't split costs has no balances, so a few cards say something else.
   const splitCosts = useSplitCosts(householdId)
-  const chapters = useMemo(
-    () => CHAPTERS.map((c) => (!splitCosts && c.noSplit ? { ...c, ...c.noSplit } : c)),
-    [splitCosts],
-  )
+  const chapters = useMemo(() => {
+    // On a phone where Burrow isn't installed yet, the last card also says how to install it.
+    const tip = canSuggestInstall() ? (installTip(detectPlatform()) ?? undefined) : undefined
+    return CHAPTERS.map((c) => {
+      const adapted = !splitCosts && c.noSplit ? { ...c, ...c.noSplit } : c
+      return c.kind === 'finish' && tip ? { ...adapted, tip } : adapted
+    })
+  }, [splitCosts])
   // One ref so a quick double-tap on Skip cannot save twice.
   const saving = useRef(false)
 

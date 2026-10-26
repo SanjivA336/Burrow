@@ -256,7 +256,12 @@ export function TourOverlay({
             </span>
           )}
         </div>
-        <p className="mb-4 text-muted">{body}</p>
+        <p className={`text-muted ${chapter.tip && isFinish ? 'mb-3' : 'mb-4'}`}>{body}</p>
+        {isFinish && chapter.tip && (
+          <p className="mb-4 rounded-control bg-surface px-3 py-2 text-xs text-muted">
+            {chapter.tip}
+          </p>
+        )}
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
