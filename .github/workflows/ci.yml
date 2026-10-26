@@ -7,7 +7,9 @@ name: CI
 # first, so nothing slips through unchecked.
 on:
   push:
-    branches: [main]
+    # `ai/**` covers the short-lived branches for the OCR and AI work, so they are checked on
+    # every push even before a pull request is opened.
+    branches: [main, 'ai/**']
   pull_request:
     branches: [main]
 
@@ -79,3 +81,41 @@ jobs:
       # VITE_* variables are only read at runtime in the browser, not
       # while Vite is bundling.
       - run: npm run build
+
+  # Browser tests: the real frontend (a production build) driven in Chromium against a FAKE API,
+  # so no secrets, database or internet are needed. They guard the guided tour, the split-costs
+  # modes, add-item autofill and an accessibility scan. See frontend/playwright.config.ts.
+  e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      # The test files are TypeScript too; this catches a typo in one before the browser starts.
+      - run: npm run typecheck:e2e
+
+      # Downloads Chromium (and the system libraries it needs) onto the runner.
+      - run: npx playwright install --with-deps chromium
+
+      # Builds the app and runs every spec. A test that fails once and passes on the retry is
+      # reported as "flaky" rather than hidden.
+      - run: npm run e2e
+
+      # On a failure, keep the report (screenshots and a step-by-step trace) for a week so the
+      # problem can be seen without re-running it.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7

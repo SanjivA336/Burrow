@@ -455,7 +455,8 @@ leaving localhost.
   on later changes only items added afterwards; ledger history is kept. The
   tour's Balances and Invite cards reword themselves when it is off. Decided
   2026-10-05, extended 2026-10-23.
-- **Comprehensive/exhaustive test suite in CI**: go beyond Phase 4's
+- **Comprehensive/exhaustive test suite in CI** (partly done 2026-10-26: a browser
+  smoke set now runs in CI, see Frontend tooling): go beyond Phase 4's
   current scope (running the existing unit-marked `pytest` suite plus
   `tsc`/`oxlint`) toward broader, deeper coverage in CI, e.g. the
   `integration`/`rls` suites and frontend e2e. Deliberately deferred; not
@@ -488,6 +489,11 @@ leaving localhost.
 - Lint: `npm run lint` (oxlint)
 - Format: `npx prettier --write .`
 - Build: `npm run build`
+- Browser tests: `npm run e2e` (builds the app, then drives it in Chromium against a fake API, so no
+  secrets or database are needed; `npm run e2e -- --ui` to watch). They cover the guided tour, the
+  split-costs modes, add-item autofill, the home-screen tip and an accessibility scan of the main
+  screens, and they run in CI on every push to `main` or an `ai/**` branch. Add a test for every bug a
+  tester reports. The older `verify-e2e-*.mjs` scripts need real services and are out of date.
 
 ## License
 
