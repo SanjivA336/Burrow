@@ -72,9 +72,15 @@
   /* Text on a solid accent fill (green or red buttons): near-black on the bright dark-theme
      accents. The light theme swaps this to white. */
   --color-on-accent: #0c0d0d;
+  /* Green used as TEXT or an icon. Same as the accent in the dark theme; the light theme
+     darkens it (see below), since the bright green is too faint to read on white. Fills and
+     borders keep the real accent in both themes. */
+  --color-primary-ink: #3ecf8e;
 
   /* Status */
   --color-danger: #f16565;
+  /* Text on a solid red fill (the destructive buttons). */
+  --color-on-danger: #0c0d0d;
   --color-danger-soft: #2b1717;
   --color-warning: #f0b84f;
   --color-warning-soft: #2b2314;
@@ -143,7 +149,8 @@ html[data-theme='light'] {
   --color-surface: #ffffff;
   --color-surface-2: #ebefed;
   --color-surface-hover: #e2e9e6;
-  --shadow-field: inset 0 1px 2px rgba(20, 26, 23, 0.1), inset 0 0 0 1px rgba(20, 26, 23, 0.04);
+  /* No inset shadow in light: on top of the border it reads as a bevel, not a recessed field. */
+  --shadow-field: none;
 
   --color-subtle: #d5ddd9;
   --color-subtle-strong: #c2ccc7;
@@ -152,11 +159,12 @@ html[data-theme='light'] {
   --color-muted: #454d48;
   --color-faint: #606864;
 
-  --color-primary: #1d764e;
-  --color-primary-hover: #186140;
-  --color-primary-soft: #e2ede8;
-  /* Text on a solid accent fill (green or red buttons): white once the fills are dark enough. */
-  --color-on-accent: #ffffff;
+  /* The accent itself is unchanged from the dark theme (buttons, borders, selected states). Only
+     soft tints and green-as-text differ, so the text stays readable on white. */
+  --color-primary-soft: #dcf3e8;
+  --color-primary-ink: #1d764e;
+  --color-on-danger: #ffffff;
+
 
   --color-danger: #cd1313;
   --color-danger-soft: #f8e0e0;
@@ -178,19 +186,35 @@ html[data-theme='light'] {
   --color-storage-fridge: #2a99c2;
   --color-storage-other: #86918c;
 
-  --shadow-card: 0 1px 2px rgba(20, 26, 23, 0.05), 0 3px 10px rgba(20, 26, 23, 0.05);
-  --shadow-raised: 0 3px 8px rgba(20, 26, 23, 0.08), 0 10px 28px rgba(20, 26, 23, 0.1);
+  /* Barely-there shadows with no downward offset: a shadow pushed down next to a border reads as
+     a bevel, and cards inside the swipe row get their shadow clipped at the edge anyway. */
+  --shadow-card: 0 0 4px rgba(20, 26, 23, 0.04);
+  --shadow-raised: 0 1px 8px rgba(20, 26, 23, 0.1);
 }
 
-/* The installed iPhone app draws white status-bar text over the top of the page. On a light page
-   that would vanish, so in light mode that strip (only as tall as the status bar, and zero
-   anywhere else) stays dark. */
+/* Green text and icons use the darker ink in the light theme. Written as plain rules (not by
+   editing every text-primary in the app) so new screens get it for free; the last rule keeps the
+   dark-on-green hover that a few buttons use. */
+html[data-theme='light'] .text-primary {
+  color: var(--color-primary-ink);
+}
+html[data-theme='light'] .hover\:text-primary:hover,
+html[data-theme='light'] .group:hover .group-hover\:text-primary {
+  color: var(--color-primary-ink);
+}
+html[data-theme='light'] .hover\:text-on-accent:hover {
+  color: var(--color-on-accent);
+}
+
+/* The strip under the installed iPhone app's status bar (only as tall as the status bar, and zero
+   anywhere else) takes the top bar's colour so it looks seamless. index.html and appearance.ts
+   switch the status-bar text to dark in light mode so the clock stays readable on it. */
 html[data-theme='light'] body::before {
   content: '';
   position: fixed;
   inset: 0 0 auto 0;
   height: env(safe-area-inset-top, 0px);
-  background: #0c0d0d;
+  background: var(--color-surface);
   z-index: 100;
   pointer-events: none;
 }

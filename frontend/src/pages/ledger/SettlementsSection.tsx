@@ -129,11 +129,12 @@ export function SettlementsSection({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted">Every payment recorded between members, newest first.</p>
-        <div className="flex flex-wrap gap-2">
+        {/* One row across the whole page: the two buttons share the width equally. */}
+        <div className="flex w-full gap-2">
           <button
             type="button"
             onClick={openBlankForm}
-            className="flex items-center gap-1.5 rounded-control bg-primary-soft px-2 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-on-accent"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-control bg-primary-soft px-2 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-on-accent"
           >
             <Plus size={15} strokeWidth={2} />
             Record a payment
@@ -142,10 +143,10 @@ export function SettlementsSection({
             type="button"
             data-tour="recommended-settlements"
             onClick={() => setRecommendedOpen(true)}
-            className="flex items-center gap-1.5 rounded-control border border-subtle px-2 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-text"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-control border border-subtle px-2 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-text"
           >
             <Sparkles size={15} strokeWidth={1.75} />
-            Recommended settlements
+            Recommended
             {recommendedCount > 0 && (
               <span className="rounded-pill bg-surface-2 px-1.5 text-xs">{recommendedCount}</span>
             )}

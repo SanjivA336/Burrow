@@ -442,31 +442,32 @@ export function ShoppingListPage() {
       </div>
 
       {tab === 'list' && (
-        <div className="flex flex-wrap gap-2">
+        // One row across the whole page: the three buttons share the width equally.
+        <div className="flex gap-2">
           <button
             type="button"
             onClick={clearList}
             disabled={clearing || !hasAnyItems}
-            className="flex items-center gap-1.5 rounded-control border border-subtle bg-surface px-2 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-control border border-subtle bg-surface px-2 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover disabled:opacity-50"
           >
             <ListX size={16} strokeWidth={1.75} />
-            {clearing ? 'Clearing…' : 'Clear List'}
+            {clearing ? 'Clearing…' : 'Clear'}
           </button>
           <button
             type="button"
             data-tour="suggest-list"
             onClick={suggest}
             disabled={suggesting}
-            className="flex items-center gap-1.5 rounded-control border border-subtle bg-surface px-2 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-control border border-subtle bg-surface px-2 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover disabled:opacity-50"
           >
             <Sparkles size={16} strokeWidth={1.75} />
-            {suggesting ? 'Suggesting…' : 'Suggest List'}
+            {suggesting ? 'Suggesting…' : 'Suggest'}
           </button>
           <button
             type="button"
             onClick={selectAll}
             disabled={selectingAll || uncollectedCount === 0}
-            className="flex items-center gap-1.5 rounded-control border border-subtle bg-surface px-2 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-control border border-subtle bg-surface px-2 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover disabled:opacity-50"
           >
             <CheckCheck size={16} strokeWidth={1.75} />
             Select All

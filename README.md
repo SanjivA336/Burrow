@@ -121,11 +121,14 @@ OCR-backed steps below are gated to a developer allowlist.
   the app shell (JS/CSS/HTML, precached) loads and renders fully offline;
   API calls are never cached and always hit the network fresh
 - Appearance (Settings, then Appearance), saved on this device and applied before
-  the first screen draws: a **theme** (Light, Dark, which stays the default, or
-  Match device, which follows the phone or computer) and a **display size** (Small,
-  Medium, the original size, or Large). The light theme uses the same colours with
-  each accent darkened only as far as needed to reach 4.5:1 contrast, and a scan of
-  every main screen in light mode runs in CI.
+  the first screen draws: a **theme** (Light, which is the default, Dark, or
+  Match device, which follows the phone or computer), an **accent color** (Green,
+  Blue, Purple, Red, Orange or Yellow; one base colour per choice, with the hover
+  shade, soft tint, text shade and button-text colour worked out from it for each
+  theme) and a **display size** (Small, Medium, the original size, or Large). The
+  light theme keeps the same accent for buttons and borders and only darkens
+  accent-coloured text to reach 4.5:1 contrast. A scan of every main screen in both
+  themes, and in every accent, runs in CI.
 
 ## What's left
 

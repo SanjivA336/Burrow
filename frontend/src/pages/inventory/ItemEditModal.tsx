@@ -655,7 +655,7 @@ export function ItemEditModal({
               type="button"
               disabled={voiding}
               onClick={() => void voidItem()}
-              className="flex-1 rounded-control bg-danger px-3 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-danger/90 disabled:opacity-50"
+              className="flex-1 rounded-control bg-danger px-3 py-2 text-sm font-semibold text-on-danger transition-colors hover:bg-danger/90 disabled:opacity-50"
             >
               {voiding ? 'Voiding…' : 'Yes, void it'}
             </button>

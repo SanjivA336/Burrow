@@ -450,7 +450,7 @@ export function InventoryPage() {
     return (
       <li key={item.id}>
         <SwipeActionRow
-          tileClassName="rounded-card border border-subtle shadow-card"
+          tileClassName="rounded-card border border-subtle md:shadow-card"
           open={openSwipe?.id === item.id ? openSwipe.side : null}
           onOpenChange={(side) => setOpenSwipe(side ? { id: item.id, side } : null)}
           actionsWidth={swipeActions.length * (SWIPE_ACTION_WIDTH + SWIPE_ACTION_GAP)}
@@ -839,7 +839,7 @@ export function InventoryPage() {
                 setVoidTarget(null)
                 void discard(target, 'VOIDED')
               }}
-              className="rounded-control bg-danger px-3 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-danger/90"
+              className="rounded-control bg-danger px-3 py-2 text-sm font-semibold text-on-danger transition-colors hover:bg-danger/90"
             >
               Yes, void it
             </button>

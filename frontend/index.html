@@ -13,14 +13,14 @@
       name="description"
       content="Household pantry tracking: inventory, shopping lists, cost splitting, and recipes."
     />
-    <meta name="theme-color" content="#0c0d0d" />
+    <meta name="theme-color" content="#f4f6f5" />
     <!-- Private testing: ask search engines not to list the site. This is a polite request, not a
          lock (anyone with the link can still open it; sign-in protects the data). Remove this tag
          when Burrow is ready to be found. -->
     <meta name="robots" content="noindex, nofollow" />
     <link rel="apple-touch-icon" href="/pwa/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Burrow" />
     <title>Burrow</title>
     <!-- Applies the saved display size and theme before the page paints, so there is no flash of
@@ -31,12 +31,25 @@
         var size = localStorage.getItem('burrow-display-size')
         if (size === 'small' || size === 'large') root.dataset.size = size
         var theme = localStorage.getItem('burrow-theme')
+        // Light unless dark was chosen (or "match device" on a dark device).
         var light =
-          theme === 'light' ||
-          (theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)
+          theme === 'dark'
+            ? false
+            : theme === 'system'
+              ? window.matchMedia('(prefers-color-scheme: light)').matches
+              : true
         root.dataset.theme = light ? 'light' : 'dark'
-        if (light) {
-          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f4f6f5')
+        // The accent colour's worked-out values (saved by src/lib/appearance.ts); none for green.
+        var accent = JSON.parse(localStorage.getItem('burrow-accent-vars') || 'null')
+        if (accent) {
+          var vars = accent[light ? 'light' : 'dark']
+          for (var name in vars) root.style.setProperty(name, vars[name])
+        }
+        if (!light) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0c0d0d')
+          document
+            .querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+            .setAttribute('content', 'black-translucent')
         }
       } catch (e) {}
     </script>

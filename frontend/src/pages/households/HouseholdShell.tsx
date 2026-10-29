@@ -16,6 +16,9 @@ import { Modal } from '../../components/Modal'
 import { MobileShortcutMenu } from '../../components/MobileShortcutMenu'
 import { PullToRefreshIndicator } from '../../components/PullToRefreshIndicator'
 import { SupportLink } from '../../components/SupportLink'
+import { UpdatesButton } from '../../components/UpdatesButton'
+import { UpdatesModal } from '../../components/UpdatesModal'
+import { useUpdates } from '../../hooks/useUpdates'
 import { AddItemWizardContext } from '../../context/addItemWizard'
 import { ShellChromeContext } from '../../context/shellChrome'
 import { TourProvider } from '../../tour/TourProvider'
@@ -129,6 +132,10 @@ export function HouseholdShell() {
     setRefreshKey((k) => k + 1)
   })
 
+  // The Updates card: one modal for the whole shell, opened by either button below. Not opened by
+  // itself over a page that was opened straight onto an item or the add sheet.
+  const updates = useUpdates(searchParams.has('item') || searchParams.has('addItem'))
+
   useEffect(() => {
     if (!householdId) return
     let cancelled = false
@@ -231,6 +238,9 @@ export function HouseholdShell() {
 
           <div className="shrink-0 border-t border-subtle p-3">
             <SupportLink className="mb-1 rounded-control px-2 py-2 hover:bg-surface-hover" />
+            {updates.updates.length > 0 && (
+              <UpdatesButton variant="row" unread={updates.unread} onOpen={updates.open} />
+            )}
             <div className="flex items-center gap-2">
               <NavLink
                 to="settings"
@@ -281,6 +291,9 @@ export function HouseholdShell() {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
+            {updates.updates.length > 0 && (
+              <UpdatesButton variant="icon" unread={updates.unread} onOpen={updates.open} />
+            )}
             <NavLink
               to="settings"
               data-tour="nav-settings"
@@ -295,6 +308,8 @@ export function HouseholdShell() {
             </NavLink>
           </div>
         </header>
+
+        {updates.isOpen && <UpdatesModal updates={updates.updates} onClose={updates.close} />}
 
         <main
           data-tour="page"

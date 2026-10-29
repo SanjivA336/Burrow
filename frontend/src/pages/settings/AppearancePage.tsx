@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { Monitor, Moon, Sun, type LucideIcon } from 'lucide-react'
 import {
+  ACCENT_BASES,
+  ACCENT_LABELS,
+  ACCENT_NAMES,
+  getAccent,
+  setAccent,
+  type AccentName,
   DISPLAY_SIZES,
   DISPLAY_SIZE_LABELS,
   THEME_CHOICES,
@@ -30,10 +36,15 @@ const buttonClass = (selected: boolean) =>
 export function AppearancePage() {
   const [size, setSize] = useState<DisplaySize>(getDisplaySize)
   const [theme, setTheme] = useState<ThemeChoice>(getThemeChoice)
+  const [accent, setAccentState] = useState<AccentName>(getAccent)
 
   const chooseSize = (next: DisplaySize) => {
     setDisplaySize(next)
     setSize(next)
+  }
+  const chooseAccent = (next: AccentName) => {
+    setAccent(next)
+    setAccentState(next)
   }
   const chooseTheme = (next: ThemeChoice) => {
     setThemeChoice(next)
@@ -66,6 +77,26 @@ export function AppearancePage() {
         <p className="mt-1.5 text-xs text-faint">
           &quot;Match device&quot; follows your phone or computer, and switches with it.
         </p>
+      </div>
+
+      <div>
+        <p className="mb-1.5 text-sm font-medium text-muted">Accent color</p>
+        <div className="flex flex-wrap gap-3" role="group" aria-label="Accent color">
+          {ACCENT_NAMES.map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={accent === option}
+              aria-label={ACCENT_LABELS[option]}
+              title={ACCENT_LABELS[option]}
+              onClick={() => chooseAccent(option)}
+              className={`h-10 w-10 rounded-full border-2 transition-shadow ${
+                accent === option ? 'border-text ring-2 ring-subtle-strong' : 'border-transparent'
+              }`}
+              style={{ backgroundColor: ACCENT_BASES[option] }}
+            />
+          ))}
+        </div>
       </div>
 
       <div>

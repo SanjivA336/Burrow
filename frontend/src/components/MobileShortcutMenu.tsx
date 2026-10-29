@@ -170,8 +170,9 @@ export function MobileShortcutMenu({ householdId }: Props) {
                 <Icon size={18} strokeWidth={2} />
               </button>
               <span
-                className="text-center text-xs font-medium text-text"
-                style={{ textShadow: '0 1px 3px rgba(0,0,0,0.7)' }}
+                // Always light: these labels sit on the dimmed backdrop, which is dark in both themes.
+                className="text-center text-xs font-medium text-white"
+                style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
               >
                 {s.label}
               </span>

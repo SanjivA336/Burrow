@@ -119,41 +119,42 @@ async function pageColor(page: import('@playwright/test').Page): Promise<string>
 test.describe('the Theme setting', () => {
   test.use(DESKTOP)
 
-  test('Dark is the default; Light and Dark switch the colors and are remembered', async ({
+  test('Light is the default; Dark and Light switch the colors and are remembered', async ({
     page,
   }) => {
     await page.goto(`/households/${HID}/settings/appearance`)
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-    expect(await pageColor(page)).toBe(DARK_BG)
-
-    await page.getByRole('button', { name: 'Light', exact: false }).click()
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
     expect(await pageColor(page)).toBe(LIGHT_BG)
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', LIGHT_BG)
 
-    await page.reload()
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
-
     await page.getByRole('button', { name: 'Dark', exact: false }).click()
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
     expect(await pageColor(page)).toBe(DARK_BG)
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', DARK_BG)
+
+    await page.reload()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+
+    await page.getByRole('button', { name: 'Light', exact: false }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+    expect(await pageColor(page)).toBe(LIGHT_BG)
   })
 
   test('the choice is shown on the Appearance row in Settings', async ({ page }) => {
     await page.goto(`/households/${HID}/settings/appearance`)
-    await page.getByRole('button', { name: 'Light', exact: false }).click()
+    await page.getByRole('button', { name: 'Dark', exact: false }).click()
     await page.goto(`/households/${HID}/settings`)
-    await expect(page.getByRole('link', { name: /Appearance/ })).toContainText('Light')
+    await expect(page.getByRole('link', { name: /Appearance/ })).toContainText('Dark')
   })
 
   test('is applied before the app even loads, so there is no flash of the wrong theme', async ({
     page,
   }) => {
-    await page.addInitScript((key) => window.localStorage.setItem(key, 'light'), THEME_KEY)
+    await page.addInitScript((key) => window.localStorage.setItem(key, 'dark'), THEME_KEY)
     await page.route('**/assets/*.js', (route) => route.abort())
     await page.goto('/login')
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
-    expect(await pageColor(page)).toBe(LIGHT_BG)
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+    expect(await pageColor(page)).toBe(DARK_BG)
   })
 })
 

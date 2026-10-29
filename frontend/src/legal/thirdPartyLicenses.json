@@ -246,11 +246,74 @@
       "copyright": ""
     },
     {
+      "name": "@types/debug",
+      "version": "4.1.13",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Microsoft Corporation."
+    },
+    {
+      "name": "@types/estree",
+      "version": "1.0.9",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Microsoft Corporation."
+    },
+    {
+      "name": "@types/estree-jsx",
+      "version": "1.0.5",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Microsoft Corporation."
+    },
+    {
+      "name": "@types/hast",
+      "version": "3.0.5",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Microsoft Corporation."
+    },
+    {
+      "name": "@types/mdast",
+      "version": "4.0.4",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Microsoft Corporation."
+    },
+    {
+      "name": "@types/ms",
+      "version": "2.1.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Microsoft Corporation."
+    },
+    {
       "name": "@types/node",
       "version": "24.13.3",
       "license": "MIT",
       "part": "frontend",
       "copyright": "Copyright (c) Microsoft Corporation."
+    },
+    {
+      "name": "@types/react",
+      "version": "19.2.17",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Microsoft Corporation."
+    },
+    {
+      "name": "@types/unist",
+      "version": "3.0.3",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Microsoft Corporation."
+    },
+    {
+      "name": "@ungap/structured-clone",
+      "version": "1.4.0",
+      "license": "ISC",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2021, Andrea Giammarchi, @WebReflection"
     },
     {
       "name": "acorn",
@@ -260,11 +323,60 @@
       "copyright": "Copyright (C) 2012-2022 by various contributors (see AUTHORS)"
     },
     {
+      "name": "bail",
+      "version": "2.0.2",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
       "name": "buffer-from",
       "version": "1.1.2",
       "license": "MIT",
       "part": "frontend",
       "copyright": "Copyright (c) 2016, 2018 Linus Unnebäck"
+    },
+    {
+      "name": "ccount",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "character-entities",
+      "version": "2.0.2",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "character-entities-html4",
+      "version": "2.1.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "character-entities-legacy",
+      "version": "3.0.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "character-reference-invalid",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "comma-separated-tokens",
+      "version": "2.0.3",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>"
     },
     {
       "name": "commander",
@@ -281,6 +393,34 @@
       "copyright": "Copyright (c) 2012-2014 Roman Shtylman <shtylman@gmail.com>; Copyright (c) 2015 Douglas Christopher Wilson <doug@somethingdoug.com>"
     },
     {
+      "name": "csstype",
+      "version": "3.2.3",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2017-2018 Fredrik Nicol"
+    },
+    {
+      "name": "debug",
+      "version": "4.4.3",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2014-2017 TJ Holowaychuk <tj@vision-media.ca>; Copyright (c) 2018-2021 Josh Junon"
+    },
+    {
+      "name": "decode-named-character-reference",
+      "version": "1.3.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "dequal",
+      "version": "2.0.3",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Luke Edwards <luke.edwards05@gmail.com> (lukeed.com)"
+    },
+    {
       "name": "detect-libc",
       "version": "2.1.2",
       "license": "Apache-2.0",
@@ -288,11 +428,32 @@
       "copyright": ""
     },
     {
+      "name": "devlop",
+      "version": "1.1.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2023 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
       "name": "enhanced-resolve",
       "version": "5.24.2",
       "license": "MIT",
       "part": "frontend",
       "copyright": "Copyright JS Foundation and other contributors"
+    },
+    {
+      "name": "estree-util-is-identifier-name",
+      "version": "3.0.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2020 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "extend",
+      "version": "3.0.2",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2014 Stefan Thomas"
     },
     {
       "name": "fdir",
@@ -309,11 +470,74 @@
       "copyright": "Copyright (c) 2011-2022 Isaac Z. Schlueter, Ben Noordhuis, and Contributors"
     },
     {
+      "name": "hast-util-to-jsx-runtime",
+      "version": "2.3.6",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "hast-util-whitespace",
+      "version": "3.0.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "html-url-attributes",
+      "version": "3.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer"
+    },
+    {
       "name": "iceberg-js",
       "version": "0.8.1",
       "license": "MIT",
       "part": "frontend",
       "copyright": "Copyright (c) 2025 Supabase"
+    },
+    {
+      "name": "inline-style-parser",
+      "version": "0.2.7",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2012 TJ Holowaychuk <tj@vision-media.ca>"
+    },
+    {
+      "name": "is-alphabetical",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "is-alphanumerical",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "is-decimal",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "is-hexadecimal",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "is-plain-obj",
+      "version": "4.1.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)"
     },
     {
       "name": "jiti",
@@ -337,6 +561,13 @@
       "copyright": ""
     },
     {
+      "name": "longest-streak",
+      "version": "3.1.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2015 Titus Wormer <mailto:tituswormer@gmail.com>"
+    },
+    {
       "name": "lucide-react",
       "version": "1.25.0",
       "license": "ISC",
@@ -351,11 +582,235 @@
       "copyright": "Copyright 2018 Rich Harris"
     },
     {
+      "name": "mdast-util-from-markdown",
+      "version": "2.1.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "mdast-util-mdx-expression",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2020 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "mdast-util-mdx-jsx",
+      "version": "3.2.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2020 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "mdast-util-mdxjs-esm",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2020 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "mdast-util-phrasing",
+      "version": "4.1.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2017 Titus Wormer <tituswormer@gmail.com>; Copyright (c) 2017 Victor Felder <victor@draft.li>"
+    },
+    {
+      "name": "mdast-util-to-hast",
+      "version": "13.2.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "mdast-util-to-markdown",
+      "version": "2.2.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "mdast-util-to-string",
+      "version": "4.0.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark",
+      "version": "4.0.3",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-core-commonmark",
+      "version": "2.0.4",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-factory-destination",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-factory-label",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-factory-space",
+      "version": "2.1.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-factory-title",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-factory-whitespace",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-character",
+      "version": "2.1.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-chunked",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-classify-character",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-combine-extensions",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-decode-numeric-character-reference",
+      "version": "2.0.2",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-decode-string",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-edit-map",
+      "version": "1.0.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-encode",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-html-tag-name",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-normalize-identifier",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-resolve-all",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-sanitize-uri",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-subtokenize",
+      "version": "2.1.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-symbol",
+      "version": "2.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "micromark-util-types",
+      "version": "2.0.3",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "ms",
+      "version": "2.1.3",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2020 Vercel, Inc."
+    },
+    {
       "name": "nanoid",
       "version": "3.3.19",
       "license": "MIT",
       "part": "frontend",
       "copyright": "Copyright 2017 Andrey Sitnik <andrey@sitnik.ru>"
+    },
+    {
+      "name": "parse-entities",
+      "version": "4.0.2",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <mailto:tituswormer@gmail.com>"
     },
     {
       "name": "picocolors",
@@ -379,6 +834,13 @@
       "copyright": "Copyright 2013 Andrey Sitnik <andrey@sitnik.es>"
     },
     {
+      "name": "property-information",
+      "version": "7.2.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <mailto:tituswormer@gmail.com>"
+    },
+    {
       "name": "react",
       "version": "19.2.7",
       "license": "MIT",
@@ -400,6 +862,13 @@
       "copyright": "Copyright (c) 2019-present Beier(Bill) Luo"
     },
     {
+      "name": "react-markdown",
+      "version": "10.1.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Espen Hovlandsdal"
+    },
+    {
       "name": "react-router",
       "version": "7.18.3",
       "license": "MIT",
@@ -412,6 +881,20 @@
       "license": "MIT",
       "part": "frontend",
       "copyright": "Copyright (c) React Training LLC 2015-2019; Copyright (c) Remix Software Inc. 2020-2021; Copyright (c) Shopify Inc. 2022-2023"
+    },
+    {
+      "name": "remark-parse",
+      "version": "11.0.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2014 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "remark-rehype",
+      "version": "11.1.2",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
     },
     {
       "name": "rolldown",
@@ -456,6 +939,34 @@
       "copyright": "Copyright (c) 2014 Evan Wallace"
     },
     {
+      "name": "space-separated-tokens",
+      "version": "2.0.2",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "stringify-entities",
+      "version": "4.0.4",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2015 Titus Wormer <mailto:tituswormer@gmail.com>"
+    },
+    {
+      "name": "style-to-js",
+      "version": "1.1.21",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2020 Menglin \"Mark\" Xu <mark@remarkablemark.org>"
+    },
+    {
+      "name": "style-to-object",
+      "version": "1.0.14",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2017 Menglin \"Mark\" Xu <mark@remarkablemark.org>"
+    },
+    {
       "name": "tailwindcss",
       "version": "4.3.3",
       "license": "MIT",
@@ -484,6 +995,20 @@
       "copyright": "Copyright (c) 2024 Madeline Gurriarán"
     },
     {
+      "name": "trim-lines",
+      "version": "3.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2015 Titus Wormer <mailto:tituswormer@gmail.com>"
+    },
+    {
+      "name": "trough",
+      "version": "2.2.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
       "name": "tslib",
       "version": "2.8.1",
       "license": "0BSD",
@@ -498,6 +1023,62 @@
       "copyright": "Copyright (c) Matteo Collina and Undici contributors"
     },
     {
+      "name": "unified",
+      "version": "11.0.5",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "unist-util-is",
+      "version": "6.0.1",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "unist-util-position",
+      "version": "5.0.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "unist-util-stringify-position",
+      "version": "4.0.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "unist-util-visit",
+      "version": "5.2.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "unist-util-visit-parents",
+      "version": "6.1.0",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "vfile",
+      "version": "6.0.3",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
+      "name": "vfile-message",
+      "version": "4.0.3",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) Titus Wormer <tituswormer@gmail.com>"
+    },
+    {
       "name": "vite",
       "version": "8.1.5",
       "license": "MIT",
@@ -510,6 +1091,13 @@
       "license": "MIT",
       "part": "frontend",
       "copyright": "Copyright (c) 2025 Colin McDonnell"
+    },
+    {
+      "name": "zwitch",
+      "version": "2.0.4",
+      "license": "MIT",
+      "part": "frontend",
+      "copyright": "Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>"
     },
     {
       "name": "annotated-doc",
@@ -879,7 +1467,7 @@
     "BSD License": "Copyright (c) 2010 Jonathan Hartley\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n* Redistributions of source code must retain the above copyright notice, this\n  list of conditions and the following disclaimer.\n\n* Redistributions in binary form must reproduce the above copyright notice,\n  this list of conditions and the following disclaimer in the documentation\n  and/or other materials provided with the distribution.\n\n* Neither the name of the copyright holders, nor those of its contributors\n  may be used to endorse or promote products derived from this software without\n  specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
     "BSD-2-Clause": "Copyright 2012-2018 (c) Mihai Bazon <mihai.bazon@gmail.com>\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n\n    * Redistributions of source code must retain the above\n      copyright notice, this list of conditions and the following\n      disclaimer.\n\n    * Redistributions in binary form must reproduce the above\n      copyright notice, this list of conditions and the following\n      disclaimer in the documentation and/or other materials\n      provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY\nEXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\nPURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE\nLIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,\nOR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\nPROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\nPROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR\nTORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF\nTHE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF\nSUCH DAMAGE.\n",
     "BSD-3-Clause": "\nCopyright (c) 2009-2011, Mozilla Foundation and contributors\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n* Redistributions of source code must retain the above copyright notice, this\n  list of conditions and the following disclaimer.\n\n* Redistributions in binary form must reproduce the above copyright notice,\n  this list of conditions and the following disclaimer in the documentation\n  and/or other materials provided with the distribution.\n\n* Neither the names of the Mozilla Foundation nor the names of project\n  contributors may be used to endorse or promote products derived from this\n  software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
-    "ISC": "The ISC License\n\nCopyright (c) 2011-2022 Isaac Z. Schlueter, Ben Noordhuis, and Contributors\n\nPermission to use, copy, modify, and/or distribute this software for any\npurpose with or without fee is hereby granted, provided that the above\ncopyright notice and this permission notice appear in all copies.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\" AND THE AUTHOR DISCLAIMS ALL WARRANTIES\nWITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF\nMERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR\nANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES\nWHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN\nACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR\nIN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.\n",
+    "ISC": "ISC License\n\nCopyright (c) 2021, Andrea Giammarchi, @WebReflection\n\nPermission to use, copy, modify, and/or distribute this software for any\npurpose with or without fee is hereby granted, provided that the above\ncopyright notice and this permission notice appear in all copies.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH\nREGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY\nAND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,\nINDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM\nLOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE\nOR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR\nPERFORMANCE OF THIS SOFTWARE.\n",
     "MIT": "MIT License\n\nCopyright (c) 2021-present Toyobayashi\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n",
     "MIT License": "The MIT License (MIT)\n\nCopyright (c) 2022 the contributors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n",
     "MIT-0": "\nExcept when otherwise stated (look for LICENSE files in directories or\ninformation at the beginning of each file) all software and\ndocumentation is licensed as follows: \n\n    MIT No Attribution\n\n    Permission is hereby granted, free of charge, to any person \n    obtaining a copy of this software and associated documentation \n    files (the \"Software\"), to deal in the Software without \n    restriction, including without limitation the rights to use, \n    copy, modify, merge, publish, distribute, sublicense, and/or \n    sell copies of the Software, and to permit persons to whom the \n    Software is furnished to do so.\n\n    THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS \n    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, \n    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL \n    THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER \n    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING \n    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER \n    DEALINGS IN THE SOFTWARE.\n\n",

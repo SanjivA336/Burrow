@@ -255,7 +255,7 @@ export function AccountPage() {
             type="button"
             onClick={confirmDelete}
             disabled={confirmText.trim() !== user?.email || deleting}
-            className="w-full rounded-control bg-danger px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-danger/90 disabled:opacity-50"
+            className="w-full rounded-control bg-danger px-2 py-2 text-sm font-semibold text-on-danger transition-colors hover:bg-danger/90 disabled:opacity-50"
           >
             {deleting ? 'Deleting…' : 'Permanently delete'}
           </button>
