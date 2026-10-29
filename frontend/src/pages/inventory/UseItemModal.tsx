@@ -359,7 +359,7 @@ export function UseItemModal({ item, householdId, myMemberId, onClose, onConsume
           type="button"
           disabled={submitting}
           onClick={submit}
-          className="w-full rounded-control bg-primary px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+          className="w-full rounded-control bg-primary px-3 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
         >
           {submitting ? 'Saving…' : 'Use it'}
         </button>

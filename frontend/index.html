@@ -9,7 +9,10 @@
          whenever the icon artwork actually changes. -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Household pantry tracking: inventory, shopping lists, cost splitting, and recipes." />
+    <meta
+      name="description"
+      content="Household pantry tracking: inventory, shopping lists, cost splitting, and recipes."
+    />
     <meta name="theme-color" content="#0c0d0d" />
     <!-- Private testing: ask search engines not to list the site. This is a polite request, not a
          lock (anyone with the link can still open it; sign-in protects the data). Remove this tag
@@ -20,6 +23,23 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Burrow" />
     <title>Burrow</title>
+    <!-- Applies the saved display size and theme before the page paints, so there is no flash of
+         the wrong ones. Keep the keys and values in step with src/lib/appearance.ts. -->
+    <script>
+      try {
+        var root = document.documentElement
+        var size = localStorage.getItem('burrow-display-size')
+        if (size === 'small' || size === 'large') root.dataset.size = size
+        var theme = localStorage.getItem('burrow-theme')
+        var light =
+          theme === 'light' ||
+          (theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)
+        root.dataset.theme = light ? 'light' : 'dark'
+        if (light) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f4f6f5')
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

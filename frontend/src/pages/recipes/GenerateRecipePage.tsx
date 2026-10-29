@@ -229,7 +229,7 @@ export function GenerateRecipePage() {
                     type="button"
                     onClick={() => removeIngredientTag(tag)}
                     aria-label={`Remove ${tag}`}
-                    className="rounded-full p-0.5 hover:bg-primary hover:text-bg"
+                    className="rounded-full p-0.5 hover:bg-primary hover:text-on-accent"
                   >
                     <X size={11} strokeWidth={2.5} />
                   </button>
@@ -312,7 +312,7 @@ export function GenerateRecipePage() {
         type="button"
         onClick={runGenerate}
         disabled={generating}
-        className="mt-4 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+        className="mt-4 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
       >
         {generating ? 'Generating…' : 'Generate'}
       </button>

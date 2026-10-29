@@ -284,7 +284,7 @@ export function TourOverlay({
               <button
                 type="button"
                 onClick={onBegin}
-                className="rounded-control bg-primary px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover"
+                className="rounded-control bg-primary px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover"
               >
                 Start tour
               </button>
@@ -293,7 +293,7 @@ export function TourOverlay({
               <button
                 type="button"
                 onClick={onNext}
-                className="rounded-control bg-primary px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover"
+                className="rounded-control bg-primary px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover"
               >
                 {isFinish ? 'Done' : 'Next'}
               </button>

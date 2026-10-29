@@ -18,6 +18,7 @@ import { HouseholdPickerPage } from './pages/households/HouseholdPickerPage'
 import { CreateHouseholdPage } from './pages/households/CreateHouseholdPage'
 import { JoinHouseholdPage } from './pages/households/JoinHouseholdPage'
 import { HouseholdShell } from './pages/households/HouseholdShell'
+import { AppearancePage } from './pages/settings/AppearancePage'
 import { BurrowDetails } from './pages/settings/BurrowDetails'
 import { MembersScreen } from './pages/settings/MembersScreen'
 import { SettingsLayout } from './pages/settings/SettingsLayout'
@@ -78,6 +79,7 @@ function App() {
                 <Route path="members" element={<MembersScreen />} />
                 <Route path="activity" element={<ActivityPage />} />
                 <Route path="account" element={<AccountPage />} />
+                <Route path="appearance" element={<AppearancePage />} />
               </Route>
               {/* Account used to be its own page; it now lives inside Settings. */}
               <Route path="account" element={<AccountRedirect />} />

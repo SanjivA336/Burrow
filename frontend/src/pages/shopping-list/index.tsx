@@ -630,7 +630,7 @@ export function ShoppingListPage() {
                             aria-hidden="true"
                             className={`flex size-5 shrink-0 items-center justify-center rounded-control border transition-colors ${
                               item.collected
-                                ? 'border-primary bg-primary text-bg'
+                                ? 'border-primary bg-primary text-on-accent'
                                 : 'border-subtle-strong bg-surface-2'
                             }`}
                           >
@@ -745,7 +745,7 @@ export function ShoppingListPage() {
                 <button
                   type="submit"
                   disabled={sectionForm.formState.isSubmitting}
-                  className="shrink-0 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+                  className="shrink-0 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
                 >
                   Add
                 </button>
@@ -780,7 +780,7 @@ export function ShoppingListPage() {
             onClick={startOrder}
             disabled={startingOrder || collectedCount === 0}
             title={collectedCount === 0 ? 'Check off items as you shop first' : undefined}
-            className="flex items-center justify-center gap-1.5 rounded-control bg-primary px-2 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+            className="flex items-center justify-center gap-1.5 rounded-control bg-primary px-2 py-2.5 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
           >
             <ShoppingBag size={16} strokeWidth={2.25} />
             {startingOrder

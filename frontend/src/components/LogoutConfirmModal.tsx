@@ -24,7 +24,7 @@ export function LogoutConfirmModal({ onConfirm, onClose, loggingOut = false }: P
           type="button"
           onClick={onConfirm}
           disabled={loggingOut}
-          className="flex-1 rounded-control bg-danger px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-danger/90 disabled:opacity-50"
+          className="flex-1 rounded-control bg-danger px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-danger/90 disabled:opacity-50"
         >
           {loggingOut ? 'Logging out…' : 'Log out'}
         </button>

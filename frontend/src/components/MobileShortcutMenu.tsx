@@ -192,7 +192,7 @@ export function MobileShortcutMenu({ householdId }: Props) {
           // back down to fit that 56px box every render, while height
           // (the cross axis, never shrunk by flex-shrink) grew as
           // intended. Same box, same bug either axis could have hit.
-          className="pointer-events-auto relative z-10 flex shrink-0 items-center justify-center rounded-full bg-primary text-bg shadow-raised transition-all duration-200 hover:bg-primary-hover"
+          className="pointer-events-auto relative z-10 flex shrink-0 items-center justify-center rounded-full bg-primary text-on-accent shadow-raised transition-all duration-200 hover:bg-primary-hover"
           style={{
             height: open ? FAB_SIZE_OPEN : FAB_SIZE_REST,
             width: open ? FAB_SIZE_OPEN : FAB_SIZE_REST,
@@ -409,7 +409,7 @@ function QuickAddToListModal({
           type="button"
           disabled={!food || adding}
           onClick={submit}
-          className="rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+          className="rounded-control bg-primary px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
         >
           {adding ? 'Adding…' : 'Add to list'}
         </button>

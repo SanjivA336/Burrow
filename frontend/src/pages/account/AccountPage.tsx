@@ -67,7 +67,7 @@ function BurrowSettingsCard({ householdId }: { householdId: string }) {
           type="button"
           disabled={!canSave}
           onClick={() => void save()}
-          className="shrink-0 rounded-control bg-primary px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+          className="shrink-0 rounded-control bg-primary px-3 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
         >
           Save
         </button>
@@ -163,7 +163,7 @@ function ChangePasswordSection() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+          className="flex-1 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
         >
           {isSubmitting ? 'Saving…' : 'Save'}
         </button>
@@ -255,7 +255,7 @@ export function AccountPage() {
             type="button"
             onClick={confirmDelete}
             disabled={confirmText.trim() !== user?.email || deleting}
-            className="w-full rounded-control bg-danger px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-danger/90 disabled:opacity-50"
+            className="w-full rounded-control bg-danger px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-danger/90 disabled:opacity-50"
           >
             {deleting ? 'Deleting…' : 'Permanently delete'}
           </button>

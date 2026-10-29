@@ -1,6 +1,7 @@
 import { useContext, useState, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
+  ALargeSmall,
   ChevronRight,
   CircleHelp,
   Compass,
@@ -19,6 +20,12 @@ import {
 } from 'lucide-react'
 import { AddToHomeScreenDialog } from '../../components/AddToHomeScreenDialog'
 import { AppVersion } from '../../components/AppVersion'
+import {
+  DISPLAY_SIZE_LABELS,
+  getDisplaySize,
+  getThemeChoice,
+  type ThemeChoice,
+} from '../../lib/appearance'
 import { canSuggestInstall } from '../../lib/installApp'
 import { DeleteBurrowModal } from '../../components/DeleteBurrowModal'
 import { LogoutConfirmModal } from '../../components/LogoutConfirmModal'
@@ -29,6 +36,9 @@ import { InviteCard } from './InviteCard'
 import type { SettingsContext } from './settingsContext'
 
 const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL
+
+// The theme as it reads on the Appearance row ("Match device" is too long for the row).
+const THEME_SHORT: Record<ThemeChoice, string> = { light: 'Light', dark: 'Dark', system: 'Auto' }
 
 const rowClass =
   'flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium transition-colors'
@@ -195,6 +205,12 @@ export function SettingsList({ ctx }: { ctx: SettingsContext }) {
 
       <Group title="You">
         <ScreenRow to="account" icon={UserCircle} label="Account" value={user?.email} />
+        <ScreenRow
+          to="appearance"
+          icon={ALargeSmall}
+          label="Appearance"
+          value={`${THEME_SHORT[getThemeChoice()]}, ${DISPLAY_SIZE_LABELS[getDisplaySize()]}`}
+        />
         <ActionRow danger icon={LogOut} label="Log out" onClick={() => setLogoutOpen(true)} />
       </Group>
 

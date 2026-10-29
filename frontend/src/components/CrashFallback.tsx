@@ -13,7 +13,7 @@ export function CrashFallback() {
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="w-full rounded-control bg-primary px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover"
+          className="w-full rounded-control bg-primary px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover"
         >
           Reload
         </button>

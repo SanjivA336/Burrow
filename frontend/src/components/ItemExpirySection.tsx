@@ -383,7 +383,7 @@ export const ItemExpirySection = forwardRef<ItemExpiryHandle, Props>(function It
               type="button"
               disabled={busy}
               onClick={() => void confirmPrompt()}
-              className="flex-1 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-60"
+              className="flex-1 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-60"
             >
               Save
             </button>

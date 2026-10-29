@@ -31,7 +31,7 @@ export function EmptyState({ icon: Icon, title, hint, action }: Props) {
         ('to' in action ? (
           <Link
             to={action.to}
-            className="mt-1 rounded-control bg-primary px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover"
+            className="mt-1 rounded-control bg-primary px-3 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover"
           >
             {action.label}
           </Link>
@@ -39,7 +39,7 @@ export function EmptyState({ icon: Icon, title, hint, action }: Props) {
           <button
             type="button"
             onClick={action.onClick}
-            className="mt-1 rounded-control bg-primary px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover"
+            className="mt-1 rounded-control bg-primary px-3 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover"
           >
             {action.label}
           </button>

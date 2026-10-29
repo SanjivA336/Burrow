@@ -108,7 +108,7 @@ export function ImportRecipePage() {
             onClick={() => setSource('text')}
             className={`rounded-control px-2 py-2 font-medium transition-colors ${
               source === 'text'
-                ? 'bg-primary text-bg'
+                ? 'bg-primary text-on-accent'
                 : 'border border-subtle text-muted hover:bg-surface-hover'
             }`}
           >
@@ -119,7 +119,7 @@ export function ImportRecipePage() {
             onClick={() => setSource('url')}
             className={`rounded-control px-2 py-2 font-medium transition-colors ${
               source === 'url'
-                ? 'bg-primary text-bg'
+                ? 'bg-primary text-on-accent'
                 : 'border border-subtle text-muted hover:bg-surface-hover'
             }`}
           >
@@ -130,7 +130,7 @@ export function ImportRecipePage() {
             onClick={() => setSource('json')}
             className={`rounded-control px-2 py-2 font-medium transition-colors ${
               source === 'json'
-                ? 'bg-primary text-bg'
+                ? 'bg-primary text-on-accent'
                 : 'border border-subtle text-muted hover:bg-surface-hover'
             }`}
           >
@@ -191,7 +191,7 @@ export function ImportRecipePage() {
           importing ||
           (source === 'text' ? !text.trim() : source === 'url' ? !url.trim() : !jsonData)
         }
-        className="mt-4 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+        className="mt-4 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
       >
         {importing ? 'Importing…' : 'Import'}
       </button>

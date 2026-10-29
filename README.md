@@ -120,6 +120,12 @@ OCR-backed steps below are gated to a developer allowlist.
 - Installable as a PWA (manifest + service worker via `vite-plugin-pwa`):
   the app shell (JS/CSS/HTML, precached) loads and renders fully offline;
   API calls are never cached and always hit the network fresh
+- Appearance (Settings, then Appearance), saved on this device and applied before
+  the first screen draws: a **theme** (Light, Dark, which stays the default, or
+  Match device, which follows the phone or computer) and a **display size** (Small,
+  Medium, the original size, or Large). The light theme uses the same colours with
+  each accent darkened only as far as needed to reach 4.5:1 contrast, and a scan of
+  every main screen in light mode runs in CI.
 
 ## What's left
 

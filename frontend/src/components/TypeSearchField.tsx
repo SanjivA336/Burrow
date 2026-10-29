@@ -110,7 +110,7 @@ export const TypeSearchField = forwardRef<TypeSearchFieldHandle, Props>(function
           disabled={query.trim().length === 0}
           title="Create a new food type"
           aria-label="Create a new food type"
-          className="flex shrink-0 items-center justify-center rounded-control bg-primary-soft px-3 text-primary transition-colors hover:bg-primary hover:text-bg disabled:pointer-events-none disabled:opacity-40"
+          className="flex shrink-0 items-center justify-center rounded-control bg-primary-soft px-3 text-primary transition-colors hover:bg-primary hover:text-on-accent disabled:pointer-events-none disabled:opacity-40"
         >
           <Plus size={18} strokeWidth={2} />
         </button>

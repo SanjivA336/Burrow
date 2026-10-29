@@ -131,7 +131,7 @@ export function SignupPage() {
             <button
               type="submit"
               disabled={isSubmitting || !agreedToAll}
-              className="mt-1 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+              className="mt-1 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
             >
               {isSubmitting ? 'Creating account…' : 'Sign up'}
             </button>

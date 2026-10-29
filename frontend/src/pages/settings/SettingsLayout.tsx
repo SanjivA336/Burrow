@@ -14,6 +14,7 @@ const TITLES: Record<string, string> = {
   members: 'Members',
   activity: 'Activity',
   account: 'Account',
+  appearance: 'Appearance',
 }
 
 // The frame for every Settings page. On a phone it is one screen at a time: the

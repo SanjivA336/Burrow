@@ -5,6 +5,13 @@ import './index.css'
 import App from './App.tsx'
 import { CrashFallback } from './components/CrashFallback.tsx'
 import { startDiagnosticsRecording } from './lib/diagnostics.ts'
+import {
+  applyDisplaySize,
+  applyTheme,
+  followDeviceTheme,
+  getDisplaySize,
+  getThemeChoice,
+} from './lib/appearance.ts'
 import { lockZoomWhenInstalled } from './lib/lockZoom.ts'
 
 // A no-op until VITE_SENTRY_DSN is actually set -- no account needed for
@@ -19,6 +26,11 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   })
 }
 
+// Backup for the script in index.html (which applies the saved display size and theme before the
+// first paint), and the part that follows the device's own light/dark switch.
+applyDisplaySize(getDisplaySize())
+applyTheme(getThemeChoice())
+followDeviceTheme()
 lockZoomWhenInstalled()
 startDiagnosticsRecording()
 

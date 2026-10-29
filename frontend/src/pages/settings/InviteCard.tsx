@@ -66,7 +66,7 @@ export function InviteCard({ household, canRegenerate, onRegenerated }: Props) {
             <button
               type="button"
               onClick={() => void share()}
-              className="flex items-center gap-1.5 rounded-control bg-primary px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover"
+              className="flex items-center gap-1.5 rounded-control bg-primary px-3 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover"
             >
               <Share2 size={15} strokeWidth={2} />
               Share
@@ -109,7 +109,7 @@ export function InviteCard({ household, canRegenerate, onRegenerated }: Props) {
               type="button"
               onClick={() => void regenerate()}
               disabled={regenerating}
-              className="flex-1 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+              className="flex-1 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
             >
               {regenerating ? 'Making…' : 'Make new code'}
             </button>

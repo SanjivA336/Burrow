@@ -23,6 +23,7 @@ const BURROW_PAGES = [
   '/settings/members',
   '/settings/activity',
   '/settings/account',
+  '/settings/appearance',
 ]
 
 async function expectClean(page: import('@playwright/test').Page) {
@@ -84,5 +85,56 @@ test.describe('a burrow that does not split costs (phone)', () => {
     await page.goto(`/households/${HID}/balances`)
     await expect(page.getByRole('heading', { name: 'Spending', exact: true })).toBeVisible()
     await expectClean(page)
+  })
+})
+
+// The same scan with the light theme on. Contrast is the whole point of this: every colour in the
+// light palette was darkened only as far as needed to reach 4.5:1, and these screens prove it.
+async function expectCleanLight(page: import('@playwright/test').Page) {
+  // Guard: a "light theme" scan of a page that is secretly dark would pass for the wrong reason.
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await expectClean(page)
+}
+
+test.describe('light theme (phone)', () => {
+  test.use(IPHONE)
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem('burrow-theme', 'light'))
+  })
+
+  for (const path of ['/login', '/signup', '/forgot-password', '/terms', '/privacy', '/licenses']) {
+    test(`public ${path}`, async ({ page }) => {
+      await page.goto(path)
+      await expectCleanLight(page)
+    })
+  }
+  for (const path of ['/', '/households/new', '/households/join']) {
+    test(`${path}`, async ({ page }) => {
+      await page.goto(path)
+      await expectCleanLight(page)
+    })
+  }
+  for (const path of BURROW_PAGES) {
+    test(`burrow ${path || '/ (inventory)'}`, async ({ page }) => {
+      await page.goto(`/households/${HID}${path}`)
+      await expectCleanLight(page)
+    })
+  }
+
+  test('the item edit page', async ({ page }) => {
+    await page.goto(`/households/${HID}?item=i1`)
+    await expect(page.getByRole('dialog', { name: 'Edit item' })).toBeVisible()
+    await expectCleanLight(page)
+  })
+
+  test('the Add Item sheet', async ({ page }) => {
+    await page.goto(`/households/${HID}`)
+    await openAddItemSheet(page)
+    await expectCleanLight(page)
+  })
+
+  test('the Spending page (splitting off)', async ({ page }) => {
+    await page.goto(`/households/${HID}/balances`)
+    await expectCleanLight(page)
   })
 })

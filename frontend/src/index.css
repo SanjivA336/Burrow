@@ -69,6 +69,9 @@
   --color-primary: #3ecf8e;
   --color-primary-hover: #34b87c;
   --color-primary-soft: #12291d;
+  /* Text on a solid accent fill (green or red buttons): near-black on the bright dark-theme
+     accents. The light theme swaps this to white. */
+  --color-on-accent: #0c0d0d;
 
   /* Status */
   --color-danger: #f16565;
@@ -126,6 +129,73 @@
 }
 
 /*
+  Light theme (Settings, then Appearance). The same tokens with light values, switched on by
+  data-theme="light" on <html> (set before the first paint by the script in index.html). Each
+  accent keeps its dark-theme hue and saturation and is only darkened by the least amount that
+  gives 4.5:1 or better on every light surface (and for white text on its solid fill), so the app
+  keeps its character while staying readable. Neutrals are the dark theme's single hue (~153deg) at
+  low saturation, flipped to light. Dark remains the default.
+*/
+html[data-theme='light'] {
+  color-scheme: light;
+
+  --color-bg: #f4f6f5;
+  --color-surface: #ffffff;
+  --color-surface-2: #ebefed;
+  --color-surface-hover: #e2e9e6;
+  --shadow-field: inset 0 1px 2px rgba(20, 26, 23, 0.1), inset 0 0 0 1px rgba(20, 26, 23, 0.04);
+
+  --color-subtle: #d5ddd9;
+  --color-subtle-strong: #c2ccc7;
+
+  --color-text: #141a17;
+  --color-muted: #454d48;
+  --color-faint: #606864;
+
+  --color-primary: #1d764e;
+  --color-primary-hover: #186140;
+  --color-primary-soft: #e2ede8;
+  /* Text on a solid accent fill (green or red buttons): white once the fills are dark enough. */
+  --color-on-accent: #ffffff;
+
+  --color-danger: #cd1313;
+  --color-danger-soft: #f8e0e0;
+  --color-warning: #8c5f0c;
+  --color-warning-soft: #f0eadf;
+  --color-orange: #ab4b0f;
+  --color-orange-soft: #f4e8e0;
+  --color-info: #2a6ba6;
+
+  /* Identity dots: darkened only where they would fade into a white page (3:1 or better). */
+  --color-category-proteins: #e7665a;
+  --color-category-fruits: #e06e2d;
+  --color-category-grains-breads: #b28647;
+  --color-category-dairy-alternatives: #9d8d5d;
+  --color-category-oils-fats: #aa8b25;
+  --color-category-snacks-sweets: #db6795;
+  --color-category-beverages: #4e93d2;
+  --color-category-other: #86918c;
+  --color-storage-fridge: #2a99c2;
+  --color-storage-other: #86918c;
+
+  --shadow-card: 0 1px 2px rgba(20, 26, 23, 0.05), 0 3px 10px rgba(20, 26, 23, 0.05);
+  --shadow-raised: 0 3px 8px rgba(20, 26, 23, 0.08), 0 10px 28px rgba(20, 26, 23, 0.1);
+}
+
+/* The installed iPhone app draws white status-bar text over the top of the page. On a light page
+   that would vanish, so in light mode that strip (only as tall as the status bar, and zero
+   anywhere else) stays dark. */
+html[data-theme='light'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: env(safe-area-inset-top, 0px);
+  background: #0c0d0d;
+  z-index: 100;
+  pointer-events: none;
+}
+
+/*
   In `@layer base` so these participate in Tailwind's own layer ordering --
   left unlayered, plain CSS rules always beat every utility class regardless
   of specificity, which silently defeated any `border-{color}` utility
@@ -134,6 +204,16 @@
   specificity with a layered utility, it just always wins outright).
 */
 @layer base {
+  /* Display size (Settings, then Appearance). Most text and spacing is measured in rem, so
+     changing the page's base size scales them together. Medium sets nothing: it is the browser's
+     own default (normally 16px), exactly how Burrow looked before this setting existed. */
+  html[data-size='small'] {
+    font-size: 14px;
+  }
+  html[data-size='large'] {
+    font-size: 18px;
+  }
+
   /*
     Space under the tab icons, inside the tab bar (so it is the bar's own colour,
     not a separate strip): a fixed 20px so the icons don't sit right on the
@@ -208,7 +288,9 @@
   input,
   select,
   textarea {
-    font-size: 16px;
+    /* Never under 16px (iPhones zoom the page when a smaller field is tapped), but it grows with
+       the display size. */
+    font-size: max(16px, 1rem);
   }
 
   /* Phones draw scrollbars as overlay indicators on top of the content;

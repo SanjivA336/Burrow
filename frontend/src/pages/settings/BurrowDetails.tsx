@@ -205,7 +205,7 @@ export function BurrowDetails() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 rounded-control bg-primary px-3 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50 md:flex-none md:px-4 md:py-2"
+              className="flex-1 rounded-control bg-primary px-3 py-2.5 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50 md:flex-none md:px-4 md:py-2"
             >
               {isSubmitting ? 'Saving…' : 'Save changes'}
             </button>

@@ -48,7 +48,7 @@ export function ServerWakingScreen() {
             setTrying(true)
             retryConnection()
           }}
-          className="rounded-control bg-primary px-5 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+          className="rounded-control bg-primary px-5 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
         >
           {trying ? 'Trying…' : 'Try again'}
         </button>

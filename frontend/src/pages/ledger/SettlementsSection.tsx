@@ -133,7 +133,7 @@ export function SettlementsSection({
           <button
             type="button"
             onClick={openBlankForm}
-            className="flex items-center gap-1.5 rounded-control bg-primary-soft px-2 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-bg"
+            className="flex items-center gap-1.5 rounded-control bg-primary-soft px-2 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-on-accent"
           >
             <Plus size={15} strokeWidth={2} />
             Record a payment
@@ -284,7 +284,7 @@ export function SettlementsSection({
                 type="button"
                 disabled={submitting}
                 onClick={submitForm}
-                className="rounded-control bg-primary px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+                className="rounded-control bg-primary px-3 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
               >
                 {submitting ? 'Saving…' : 'Record payment'}
               </button>

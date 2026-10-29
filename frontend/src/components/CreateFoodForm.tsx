@@ -198,7 +198,7 @@ export function CreateFoodForm({ name, onCreated }: Props) {
         type="button"
         onClick={() => void create()}
         disabled={creating}
-        className="rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-60"
+        className="rounded-control bg-primary px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-60"
       >
         {creating ? 'Creating…' : 'Create'}
       </button>

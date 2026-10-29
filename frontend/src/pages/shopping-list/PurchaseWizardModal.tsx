@@ -1318,7 +1318,7 @@ export function PurchaseWizardModal({
                                 type="button"
                                 disabled={busy}
                                 onClick={markComplete}
-                                className="flex-1 rounded-control bg-primary px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+                                className="flex-1 rounded-control bg-primary px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
                               >
                                 Complete
                               </button>
@@ -1347,7 +1347,7 @@ export function PurchaseWizardModal({
                             type="button"
                             disabled={busy || (isManual && !requiredFieldsFilled(draft))}
                             onClick={() => void submitSolo()}
-                            className="flex-1 rounded-control bg-primary px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+                            className="flex-1 rounded-control bg-primary px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
                           >
                             Submit
                           </button>
@@ -1411,7 +1411,7 @@ export function PurchaseWizardModal({
                 type="button"
                 disabled={busy}
                 onClick={submitOrder}
-                className="rounded-control bg-primary px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+                className="rounded-control bg-primary px-3 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
               >
                 {busy ? 'Submitting…' : 'Submit now'}
               </button>

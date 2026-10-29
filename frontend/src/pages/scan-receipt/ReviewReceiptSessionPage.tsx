@@ -195,7 +195,7 @@ export function ReviewReceiptSessionPage() {
           type="button"
           onClick={runProcess}
           disabled={busy}
-          className="rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+          className="rounded-control bg-primary px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
         >
           {busy ? 'Working…' : 'Check status'}
         </button>
@@ -213,7 +213,7 @@ export function ReviewReceiptSessionPage() {
           type="button"
           onClick={runProcess}
           disabled={busy}
-          className="rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+          className="rounded-control bg-primary px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
         >
           {busy ? 'Retrying…' : 'Retry'}
         </button>
@@ -347,7 +347,7 @@ export function ReviewReceiptSessionPage() {
                     <button
                       type="button"
                       onClick={() => submitItem(item.id, 'COMPLETE')}
-                      className="rounded-control bg-primary px-2 py-1.5 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover"
+                      className="rounded-control bg-primary px-2 py-1.5 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover"
                     >
                       Confirm
                     </button>
@@ -371,7 +371,7 @@ export function ReviewReceiptSessionPage() {
         type="button"
         onClick={finalize}
         disabled={!allReviewed || busy}
-        className="self-start rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+        className="self-start rounded-control bg-primary px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
       >
         {busy ? 'Importing…' : 'Finalize'}
       </button>

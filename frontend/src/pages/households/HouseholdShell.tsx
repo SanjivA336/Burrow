@@ -170,7 +170,7 @@ export function HouseholdShell() {
           </p>
           <Link
             to="/"
-            className="inline-block w-full rounded-control bg-primary px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover"
+            className="inline-block w-full rounded-control bg-primary px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover"
           >
             Back to your burrows
           </Link>

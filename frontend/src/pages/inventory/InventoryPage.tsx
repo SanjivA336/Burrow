@@ -528,7 +528,7 @@ export function InventoryPage() {
               <button
                 type="button"
                 onClick={() => setUsingItem(item)}
-                className="rounded-control bg-primary-soft px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-bg"
+                className="rounded-control bg-primary-soft px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-on-accent"
               >
                 Use
               </button>
@@ -580,7 +580,7 @@ export function InventoryPage() {
             onClick={() => (storageLocationId ? openAddItem() : setAddPickerOpen(true))}
             aria-label="Add item"
             data-tour="add"
-            className="flex items-center gap-1.5 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover"
+            className="flex items-center gap-1.5 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover"
           >
             <Plus size={16} strokeWidth={2.25} />
             <span className="hidden sm:inline">Add</span>
@@ -839,7 +839,7 @@ export function InventoryPage() {
                 setVoidTarget(null)
                 void discard(target, 'VOIDED')
               }}
-              className="rounded-control bg-danger px-3 py-2 text-sm font-semibold text-bg transition-colors hover:bg-danger/90"
+              className="rounded-control bg-danger px-3 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-danger/90"
             >
               Yes, void it
             </button>
@@ -931,7 +931,7 @@ export function InventoryPage() {
             <button
               type="submit"
               disabled={storageForm.formState.isSubmitting}
-              className="mt-1 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-bg transition-colors hover:bg-primary-hover disabled:opacity-50"
+              className="mt-1 rounded-control bg-primary px-2 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50"
             >
               {storageForm.formState.isSubmitting
                 ? 'Saving…'
