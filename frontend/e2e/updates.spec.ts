@@ -16,6 +16,8 @@ test.describe('an unread major article (phone)', () => {
     await page.goto(`/households/${HID}`)
     await expect(dialog(page)).toBeVisible({ timeout: 5000 })
     await expect(dialog(page).getByRole('heading', { name: 'Make Burrow yours' })).toBeVisible()
+    // The banner shows the caption (the version); the title is only for screen readers.
+    await expect(dialog(page).getByText('v0.14.0')).toBeVisible()
     expect(await accessibilityProblems(page)).toEqual([])
 
     await dialog(page).getByRole('button', { name: 'Close' }).first().click()
@@ -42,6 +44,26 @@ test.describe('the button', () => {
     await page.keyboard.press('Escape')
     await expect(page.getByRole('button', { name: 'Updates', exact: true })).toBeVisible()
     await expect(page.getByTestId('updates-dot')).toHaveCount(0)
+  })
+})
+
+test.describe('the banner picture', () => {
+  test.use({ ...IPHONE })
+
+  test('is drawn fresh each time the card opens', async ({ page }) => {
+    await page.goto(`/households/${HID}`)
+    const picture = async () => {
+      await page.getByRole('button', { name: 'Updates', exact: true }).click()
+      const data = await dialog(page)
+        .locator('canvas')
+        .evaluate((c) => (c as HTMLCanvasElement).toDataURL())
+      await page.keyboard.press('Escape')
+      return data
+    }
+    const first = await picture()
+    const second = await picture()
+    expect(first.length).toBeGreaterThan(5000) // something was drawn
+    expect(second).not.toBe(first)
   })
 })
 

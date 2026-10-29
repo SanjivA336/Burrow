@@ -210,10 +210,12 @@ export function deriveAccent(base: string, theme: ResolvedTheme): AccentVars {
     }
   }
   const soft = hslToHex(h, Math.min(s, 0.7), 0.91)
-  // Same hue and saturation, darkened only until the text reads (4.5:1) on every light surface.
+  // Same hue, darkened only until the text reads (4.5:1) on every light surface. A colour gets
+  // muddy as it darkens (yellow turns olive), so saturation rises with each step down to keep it
+  // looking like a deeper version of the accent and not a grey-brown one.
   let ink = base
   for (let lightness = l; lightness > 0.1; lightness -= 0.005) {
-    ink = hslToHex(h, s, lightness)
+    ink = hslToHex(h, Math.min(1, s + (l - lightness) * 0.55), lightness)
     if ([...LIGHT_SURFACES, soft].every((surface) => contrast(ink, surface) >= 4.5)) break
   }
   return {

@@ -206,6 +206,22 @@ html[data-theme='light'] .hover\:text-on-accent:hover {
   color: var(--color-on-accent);
 }
 
+/* The Updates banner: a black-and-white marble texture (drawn fresh by lib/marble.ts), recoloured by the page's accent. The
+   accent is the background and the picture is blended onto it. Dark: the white veins become the
+   accent and the rest stays black (multiply). Light: the picture is inverted, so it is mostly white
+   and the veins are black, and screen blending turns the black veins into the accent. */
+.update-marble {
+  isolation: isolate;
+  background: var(--color-primary);
+}
+.update-marble > .marble-art {
+  mix-blend-mode: multiply;
+}
+html[data-theme='light'] .update-marble > .marble-art {
+  filter: invert(1);
+  mix-blend-mode: screen;
+}
+
 /* The strip under the installed iPhone app's status bar (only as tall as the status bar, and zero
    anywhere else) takes the top bar's colour so it looks seamless. index.html and appearance.ts
    switch the status-bar text to dark in light mode so the clock stays readable on it. */

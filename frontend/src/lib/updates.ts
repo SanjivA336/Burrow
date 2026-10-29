@@ -1,29 +1,27 @@
-// Updates: announcements and short articles, one markdown file each in src/updates/. They are
-// bundled into the app when it is built (no network request, no database), so adding one is
-// "write a file, deploy".
+// Updates: announcements, one markdown file each in src/updates/. They are bundled into the app
+// when it is built (no network request, no database), so adding one is "write a file, deploy".
+// Keep each one to a few seconds of reading; longer pieces belong on the marketing site.
 //
-// A file starts with a short header between two "---" lines, then the article in markdown:
+// A file starts with a short header between two "---" lines, then the note in markdown:
 //
 //   ---
-//   title: Make Burrow yours
+//   title: Make Burrow yours   (read aloud by screen readers; not shown)
+//   caption: v0.14.0           (shown in the middle of the banner; for release notes, the version)
 //   date: 2026-10-29
-//   major: true            (optional: opens by itself, once, the first time someone sees it)
-//   banner: banner.webp    (optional: an image file in src/updates/)
-//   bannerAlt: A kitchen   (required whenever there is a banner)
+//   major: true                (optional: opens by itself, once, the first time someone sees it)
 //   ---
-//   ## A heading
-//   Some text.
+//   Some text, **bold**, and bullets.
 //
-// The file's name (without .md) is the article's id. The saved "read" state remembers the id of the
-// newest article someone opened, so keep ids stable once published.
+// Every note gets the same marble banner, recoloured to the chosen accent (see UpdatesModal).
+// The file's name (without .md) is the note's id. The saved "read" state remembers the id of the
+// newest note someone opened, so keep ids stable once published.
 
 export interface Update {
   id: string
   title: string
+  caption: string
   date: string // YYYY-MM-DD
   major: boolean
-  banner?: string
-  bannerAlt?: string
   body: string
 }
 
@@ -32,12 +30,6 @@ export const MAX_UPDATES = 5
 
 const files = import.meta.glob('../updates/*.md', {
   query: '?raw',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>
-
-const images = import.meta.glob('../updates/*.{png,jpg,jpeg,webp,svg}', {
-  query: '?url',
   import: 'default',
   eager: true,
 }) as Record<string, string>
@@ -52,17 +44,14 @@ export function parseUpdate(id: string, source: string): Update | null {
     const colon = line.indexOf(':')
     if (colon > 0) fields[line.slice(0, colon).trim()] = line.slice(colon + 1).trim()
   }
-  if (!fields.title || !/^\d{4}-\d{2}-\d{2}$/.test(fields.date ?? '')) return null
-  // An image needs a description for screen readers; without one it is left out.
-  const banner =
-    fields.banner && fields.bannerAlt ? images[`../updates/${fields.banner}`] : undefined
+  if (!fields.title || !fields.caption || !/^\d{4}-\d{2}-\d{2}$/.test(fields.date ?? ''))
+    return null
   return {
     id,
     title: fields.title,
+    caption: fields.caption,
     date: fields.date,
     major: fields.major === 'true',
-    banner,
-    bannerAlt: banner ? fields.bannerAlt : undefined,
     body: match[2].trim(),
   }
 }
