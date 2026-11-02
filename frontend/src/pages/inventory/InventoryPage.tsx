@@ -556,7 +556,9 @@ export function InventoryPage() {
         </div>
       </div>
 
-      <div className="sticky top-0 z-10 -mx-4 -mt-1 bg-bg px-4 pb-3 pt-1 md:-mx-8 md:px-8">
+      {/* Sticks just below the phone top bar (--topbar-h; see useTopBarHeight), not at the very
+          top, or it would cover that bar once you scroll. */}
+      <div className="sticky top-[var(--topbar-h,0px)] z-10 -mx-4 -mt-1 bg-bg px-4 pb-3 pt-1 md:-mx-8 md:px-8">
         <div className="flex items-center gap-2 rounded-card border border-subtle bg-surface p-2 shadow-card">
           <input
             type="text"

@@ -18,6 +18,7 @@ import { PullToRefreshIndicator } from '../../components/PullToRefreshIndicator'
 import { SupportLink } from '../../components/SupportLink'
 import { UpdatesButton } from '../../components/UpdatesButton'
 import { UpdatesModal } from '../../components/UpdatesModal'
+import { useTopBarHeight } from '../../hooks/useTopBarHeight'
 import { useUpdates } from '../../hooks/useUpdates'
 import { AddItemWizardContext } from '../../context/addItemWizard'
 import { ShellChromeContext } from '../../context/shellChrome'
@@ -135,6 +136,8 @@ export function HouseholdShell() {
   // The Updates card: one modal for the whole shell, opened by either button below. Not opened by
   // itself over a page that was opened straight onto an item or the add sheet.
   const updates = useUpdates(searchParams.has('item') || searchParams.has('addItem'))
+  // The phone top bar's height, shared as --topbar-h so sticky bars can sit just below it.
+  const topBarRef = useTopBarHeight()
 
   useEffect(() => {
     if (!householdId) return
@@ -261,7 +264,10 @@ export function HouseholdShell() {
         </aside>
 
         {/* Mobile top bar */}
-        <header className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-subtle bg-surface px-4 pb-3 pt-[calc(0.75rem+var(--safe-top)+var(--offline-banner-h,0px))] md:hidden">
+        <header
+          ref={topBarRef}
+          className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-subtle bg-surface px-4 pb-3 pt-[calc(0.75rem+var(--safe-top)+var(--offline-banner-h,0px))] md:hidden"
+        >
           <div
             role="button"
             tabIndex={0}
