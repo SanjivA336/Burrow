@@ -2,16 +2,62 @@ import { useEffect, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Download } from 'lucide-react'
 import { apiClient, ApiError } from '../../lib/apiClient'
 import { FieldTooltip } from '../../components/FieldTooltip'
 import { useHideTabBar } from '../../hooks/useHideTabBar'
+import { downloadInventoryAsCsv } from '../../lib/inventoryCsv'
 import { UNIT_SYSTEM_EXAMPLES, UNIT_SYSTEM_LABELS } from '../../lib/units'
 import { updateHouseholdSchema, type UpdateHouseholdForm } from '../households/schema'
-import type { UnitSystem } from '../../types/entities'
+import type { InventoryItem, Member, UnitSystem } from '../../types/entities'
 import type { SettingsContext } from './settingsContext'
 
 const inputClass =
   'w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field outline-none placeholder:text-faint focus:border-primary'
+
+// Everyone in the burrow can take a copy of what is in stock. The data is fetched only when the
+// button is pressed (not on every visit to Settings), then turned into a file in the browser.
+function DownloadData({ householdId }: { householdId: string | undefined }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const download = async () => {
+    setError(null)
+    setBusy(true)
+    try {
+      const [items, members] = await Promise.all([
+        apiClient.get<InventoryItem[]>(
+          `/api/households/${householdId}/inventory-items?status=ACTIVE`,
+        ),
+        apiClient.get<Member[]>(`/api/households/${householdId}/members`),
+      ])
+      downloadInventoryAsCsv(items, members)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Something went wrong')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div>
+      <p className="mb-1.5 text-sm font-medium text-muted">Download data</p>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={download}
+        className="flex items-center gap-2 rounded-control border border-subtle bg-surface-2 px-3 py-2 text-sm font-medium text-text transition-colors hover:bg-surface-hover disabled:opacity-50"
+      >
+        <Download size={16} strokeWidth={1.75} />
+        {busy ? 'Preparing…' : 'Download inventory (CSV)'}
+      </button>
+      <p className="mt-1.5 text-xs text-faint">
+        Everything currently in stock, as a spreadsheet file.
+      </p>
+      {error && <p className="mt-1.5 text-sm text-danger">{error}</p>}
+    </div>
+  )
+}
 
 // The "Burrow details" screen: name and the default measurement system.
 // (The join code lives on the Invite card, deleting on the list's red row.)
@@ -108,6 +154,7 @@ export function BurrowDetails() {
           <p className="text-sm font-medium text-muted">Split costs</p>
           <p className="text-text">{household.split_costs ? 'On' : 'Off'}</p>
         </div>
+        <DownloadData householdId={householdId} />
         <p className="text-xs text-faint">Only admins can edit or delete this burrow.</p>
       </div>
     )
@@ -182,6 +229,8 @@ export function BurrowDetails() {
           Saves as soon as you choose, and applies to items you add from now on.
         </p>
       </div>
+
+      <DownloadData householdId={householdId} />
 
       {!isDirty && actionError && <p className="text-sm text-danger">{actionError}</p>}
 

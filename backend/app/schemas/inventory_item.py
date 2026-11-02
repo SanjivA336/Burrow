@@ -135,6 +135,10 @@ class InventoryItem(BaseModel):
     # creation (purchase_events.member_id) and never editable afterward,
     # regardless of finalize state. Shown read-only in the UI.
     buyer_member_id: UUID
+    # When anyone last logged a use of this item (a real USAGE event; corrections
+    # don't count). Worked out from consumption_events on read, never stored, so it
+    # stays right if a use is corrected. None = never used. Drives "recently used" sorting.
+    last_used_at: datetime | None = None
 
 
 class CreateInventoryItemRequest(BaseModel):

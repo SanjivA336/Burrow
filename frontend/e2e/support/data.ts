@@ -59,7 +59,7 @@ function item(id: string, name: string, locationId: string, extra: Record<string
     food_name: name,
     food_type_name: name,
     food_type_missing: false,
-    category: 'PANTRY',
+    category: 'OTHER',
     name_override: null,
     quantity: '2.000',
     total_quantity: '2.000',
@@ -75,16 +75,21 @@ function item(id: string, name: string, locationId: string, extra: Record<string
     updated_at: LONG_AGO,
     buyer_member_id: ME,
     allowed_member_ids: [ME],
+    last_used_at: null as string | null,
     ...extra,
   }
 }
 
+// Exported so a test can build items with particular dates and amounts.
+export const stockItem = item
+
 export const items = [
-  item('i1', 'Eggs', 'l1'),
-  item('i2', 'Milk', 'l1'),
-  item('i3', 'Peanut Butter', 'l2'),
+  item('i1', 'Eggs', 'l1', { category: 'PROTEINS' }),
+  item('i2', 'Milk', 'l1', { category: 'DAIRY_ALTERNATIVES' }),
+  item('i3', 'Peanut Butter', 'l2', { category: 'SAUCES_CONDIMENTS' }),
   // Shared between two people, so the Use dialog shows a personal "Your share" bar.
   item('i4', 'Shared Rice', 'l2', {
+    category: 'GRAINS_BREADS',
     accounting_type: 'SHARED',
     allowed_member_ids: [ME, OTHER],
     cost: '6.00',

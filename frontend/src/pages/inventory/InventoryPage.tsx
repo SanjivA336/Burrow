@@ -4,7 +4,7 @@ import {
   ArrowRightLeft,
   ChevronDown,
   ChevronRight,
-  Download,
+  ArrowUpDown,
   Hourglass,
   LayoutGrid,
   MapPin,
@@ -46,6 +46,14 @@ import { useHouseholdResource } from '../../hooks/useHouseholdResource'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { useRealtimeSubscription } from '../../hooks/useRealtimeSubscription'
 import { formatQuantity } from '../../lib/formatQuantity'
+import {
+  DEFAULT_INVENTORY_SORT,
+  INVENTORY_SORTS,
+  INVENTORY_SORT_LABELS,
+  isInventorySort,
+  sortInventory,
+  type InventorySort,
+} from '../../lib/inventorySort'
 import { UNIT_LABELS } from '../../lib/units'
 import { EmptyState } from '../../components/EmptyState'
 import { UseItemModal } from './UseItemModal'
@@ -94,61 +102,9 @@ function viewPrefKey(userId: string, householdId: string): string {
   return `burrow-inventory-view:${userId}:${householdId}`
 }
 
-// Wraps a field in quotes (doubling any internal quotes) only when it
-// actually needs it -- a comma, quote, or newline inside the value would
-// otherwise break column alignment for anything that opens this file.
-function csvField(value: string): string {
-  if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
-  return value
-}
-
-// Client-side only, from data the page already has loaded -- no server
-// round trip needed, same pattern as RecipeDetailPage's own JSON export.
-function downloadInventoryAsCsv(items: InventoryItem[], members: Member[]) {
-  const nameById = new Map(members.map((m) => [m.id, m.nickname]))
-  const header = [
-    'Food',
-    'Nickname',
-    'Category',
-    'Quantity',
-    'Total quantity',
-    'Unit',
-    'Storage location',
-    'Cost',
-    'Status',
-    'Expiry date',
-    'Buyer',
-    'Shared with',
-    'Purchased at',
-  ]
-  const rows = items.map((item) => [
-    item.food_name,
-    item.name_override ?? '',
-    item.category ? FOOD_CATEGORY_LABELS[item.category] : '',
-    item.quantity,
-    item.total_quantity,
-    UNIT_LABELS[item.preferred_unit],
-    item.storage_location_name,
-    item.cost,
-    item.status,
-    item.expiry_date ?? '',
-    nameById.get(item.buyer_member_id) ?? '',
-    item.allowed_member_ids.map((id) => nameById.get(id) ?? '').join('; '),
-    item.purchased_at,
-  ])
-  const csv = [header, ...rows]
-    .map((row) => row.map((v) => csvField(String(v))).join(','))
-    .join('\r\n')
-
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `inventory-${new Date().toISOString().slice(0, 10)}.csv`
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
+// Same idea for the chosen sort order: remembered per person per burrow, written only when changed.
+function sortPrefKey(userId: string, householdId: string): string {
+  return `burrow-inventory-sort:${userId}:${householdId}`
 }
 
 // One combined line instead of a separate "Expires {date}" line plus its own
@@ -234,7 +190,8 @@ export function InventoryPage() {
   // full option list, so they share one popover pattern instead of a
   // native <select> now that they're too narrow to also show their
   // selected option's text.
-  const [openFilter, setOpenFilter] = useState<'category' | 'storage' | null>(null)
+  const [openFilter, setOpenFilter] = useState<'category' | 'storage' | 'sort' | null>(null)
+  const [sort, setSort] = useState<InventorySort>(DEFAULT_INVENTORY_SORT)
   const [addPickerOpen, setAddPickerOpen] = useState(false)
   const [storageModal, setStorageModal] = useState<
     { mode: 'add' } | { mode: 'edit'; location: StorageLocation } | null
@@ -249,7 +206,17 @@ export function InventoryPage() {
     if (!user?.id || !householdId) return
     const stored = localStorage.getItem(viewPrefKey(user.id, householdId))
     if (stored === 'flat' || stored === 'sectional') setView(stored)
+    const storedSort = localStorage.getItem(sortPrefKey(user.id, householdId))
+    if (isInventorySort(storedSort)) setSort(storedSort)
   }, [user?.id, householdId])
+
+  const changeSort = (next: InventorySort) => {
+    setSort(next)
+    setOpenFilter(null)
+    if (user?.id && householdId) {
+      localStorage.setItem(sortPrefKey(user.id, householdId), next)
+    }
+  }
 
   const changeView = (next: ViewMode) => {
     setView(next)
@@ -310,7 +277,8 @@ export function InventoryPage() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
-    return (items ?? []).filter((item) => {
+    // Filter first, then order what is left; the grouped view reuses this order within each place.
+    return sortInventory(items ?? [], sort).filter((item) => {
       if (categoryFilter && item.category !== categoryFilter) return false
       if (storageTypeFilter && locationTypeById.get(item.storage_location_id) !== storageTypeFilter)
         return false
@@ -322,7 +290,7 @@ export function InventoryPage() {
         return false
       return true
     })
-  }, [items, search, categoryFilter, storageTypeFilter, locationTypeById])
+  }, [items, sort, search, categoryFilter, storageTypeFilter, locationTypeById])
 
   // Grouping only makes sense while browsing, not while actively searching
   // -- typing a term flips back to a flat filtered list so every match is
@@ -705,16 +673,38 @@ export function InventoryPage() {
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={() => downloadInventoryAsCsv(filtered, members ?? [])}
-            disabled={filtered.length === 0}
-            title="Export what's currently shown as a CSV file"
-            aria-label="Export as CSV"
-            className="shrink-0 rounded-control border border-subtle bg-field p-2 text-text shadow-field transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-field"
-          >
-            <Download size={16} strokeWidth={1.75} />
-          </button>
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setOpenFilter(openFilter === 'sort' ? null : 'sort')}
+              title={`Sort: ${INVENTORY_SORT_LABELS[sort]}`}
+              aria-label="Sort items"
+              aria-haspopup="menu"
+              aria-expanded={openFilter === 'sort'}
+              className="rounded-control border border-subtle bg-field p-2 text-text shadow-field transition-colors hover:bg-surface-hover"
+            >
+              <ArrowUpDown size={16} strokeWidth={1.75} />
+            </button>
+            {openFilter === 'sort' && (
+              <div
+                role="menu"
+                className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-card border border-subtle bg-surface-2 py-1 shadow-raised"
+              >
+                {INVENTORY_SORTS.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={sort === option}
+                    onClick={() => changeSort(option)}
+                    className={`block w-full px-3 py-2 text-left text-sm hover:bg-surface-hover ${sort === option ? 'font-medium text-primary' : 'text-muted'}`}
+                  >
+                    {INVENTORY_SORT_LABELS[option]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

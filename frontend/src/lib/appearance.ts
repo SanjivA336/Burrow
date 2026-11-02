@@ -250,6 +250,22 @@ export function applyAccent(accent: AccentName, theme: ResolvedTheme): void {
   names.forEach((name) => style.setProperty(name, vars[name]))
 }
 
+// The colours for lines in a chart that has one line per person. The first is always the accent
+// the person has chosen (so "their" colour never changes under them); the rest are the other
+// accent hues in an order that keeps neighbours easy to tell apart. In light mode each is the
+// darkened "ink" shade so a thin line still shows on white; in dark it is the base colour.
+const CHART_ORDER: AccentName[] = ['blue', 'orange', 'purple', 'green', 'red', 'yellow']
+
+export function chartColors(): string[] {
+  const accent = getAccent()
+  const theme = resolveTheme(getThemeChoice())
+  const shade = (name: AccentName) =>
+    theme === 'dark'
+      ? ACCENT_BASES[name]
+      : deriveAccent(ACCENT_BASES[name], 'light')['--color-primary-ink']
+  return ['var(--color-primary-ink)', ...CHART_ORDER.filter((name) => name !== accent).map(shade)]
+}
+
 export function setAccent(accent: AccentName): void {
   try {
     window.localStorage.setItem(ACCENT_KEY, accent)

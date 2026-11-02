@@ -37,8 +37,19 @@ _TABLE = "inventory_items"
 _ENRICHED_SELECT = (
     "*, household_food_variants(global_food_definitions(name, category)), "
     "storage_locations(name, type), inventory_item_allowed_members(member_id), "
-    "purchase_events(member_id)"
+    "purchase_events(member_id), consumption_events(consumed_at)"
 )
+
+
+def _latest_use_only(query):
+    """Narrow the embedded consumption_events to each item's single newest USAGE
+    row (the limit applies per item, not to the whole result), so reading the
+    list never drags every use ever logged along with it."""
+    return (
+        query.eq("consumption_events.kind", "USAGE")
+        .order("consumed_at", desc=True, foreign_table="consumption_events")
+        .limit(1, foreign_table="consumption_events")
+    )
 
 
 class InsufficientQuantityError(Exception):
@@ -109,6 +120,8 @@ def _flatten(row: dict) -> InventoryItem:
     storage = row.pop("storage_locations", None) or {}
     allowed = row.pop("inventory_item_allowed_members", None) or []
     purchase_event = row.pop("purchase_events", None) or {}
+    uses = row.pop("consumption_events", None) or []
+    row["last_used_at"] = uses[0]["consumed_at"] if uses else None
     global_definition = variant.get("global_food_definitions") or {}
 
     # quantity / total_quantity are persisted in the dimension's base unit
@@ -385,17 +398,19 @@ def list_for_household(
         query = query.eq("storage_location_id", str(storage_location_id))
     if household_food_variant_id:
         query = query.eq("household_food_variant_id", str(household_food_variant_id))
-    result = query.order("created_at", desc=True).execute()
+    result = _latest_use_only(query).order("created_at", desc=True).execute()
     return [_flatten(row) for row in result.data]
 
 
 def get_by_id(household_id: UUID, item_id: UUID) -> InventoryItem | None:
     client = get_service_client()
     result = (
-        client.table(_TABLE)
-        .select(_ENRICHED_SELECT)
-        .eq("household_id", str(household_id))
-        .eq("id", str(item_id))
+        _latest_use_only(
+            client.table(_TABLE)
+            .select(_ENRICHED_SELECT)
+            .eq("household_id", str(household_id))
+            .eq("id", str(item_id))
+        )
         .maybe_single()
         .execute()
     )

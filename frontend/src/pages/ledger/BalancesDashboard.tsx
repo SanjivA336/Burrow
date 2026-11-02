@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { BarChart3 } from 'lucide-react'
 import { Modal } from '../../components/Modal'
+import { chartColors } from '../../lib/appearance'
 import type { LedgerEntryDetail, Member, SpendingSummary } from '../../types/entities'
 
 interface Props {
@@ -14,18 +15,6 @@ interface Props {
   showBalance: boolean
   loading: boolean
 }
-
-// Cycled by member index -- reuses the existing food-category color tokens
-// as a convenient, already-distinct palette rather than inventing a
-// dedicated set of per-member colors for this one chart.
-const LINE_COLORS = [
-  'var(--color-category-beverages)',
-  'var(--color-category-proteins)',
-  'var(--color-category-fruits)',
-  'var(--color-category-seasonings-spices)',
-  'var(--color-category-vegetables-herbs)',
-  'var(--color-category-snacks-sweets)',
-]
 
 const CARD_CLASS =
   'flex flex-col gap-3 rounded-card border border-subtle bg-surface p-4 shadow-card'
@@ -70,6 +59,8 @@ function NetBalanceOverTimeChart({
 
   const memberIds = [...seriesByMember.keys()]
   if (memberIds.length === 0) return <EmptyChart label="No activity yet." />
+  // One colour per person, cycled by member index; the first is the current accent colour.
+  const lineColors = chartColors()
 
   const allPoints = [...seriesByMember.values()].flat()
   const minT = Math.min(...allPoints.map((p) => p.t))
@@ -105,7 +96,7 @@ function NetBalanceOverTimeChart({
           <polyline
             key={memberId}
             fill="none"
-            stroke={LINE_COLORS[i % LINE_COLORS.length]}
+            stroke={lineColors[i % lineColors.length]}
             strokeWidth={2}
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -120,7 +111,7 @@ function NetBalanceOverTimeChart({
           <span key={memberId} className="flex items-center gap-1.5 text-xs text-muted">
             <span
               className="size-2 shrink-0 rounded-full"
-              style={{ backgroundColor: LINE_COLORS[i % LINE_COLORS.length] }}
+              style={{ backgroundColor: lineColors[i % lineColors.length] }}
             />
             {nicknameById.get(memberId) ?? 'Unknown member'}
           </span>

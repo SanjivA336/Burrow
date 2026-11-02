@@ -20,6 +20,11 @@ export interface ApiState {
   splitCosts: boolean
   // What GET .../last-purchase answers (null = this food has never been bought here).
   lastPurchase: LastPurchase | null
+  // What GET .../inventory-items answers (the four stock items by default); replace it in a test
+  // that needs particular dates or amounts.
+  items: typeof items
+  // What GET .../ledger/entries answers (nothing by default); the Balances charts draw from it.
+  ledgerEntries: unknown[]
   // Every request the app made, as "METHOD /path".
   requests: string[]
   // The bodies of PATCH /households/{id} requests (e.g. {split_costs: false}).
@@ -27,7 +32,15 @@ export interface ApiState {
 }
 
 export function newState(overrides: Partial<ApiState> = {}): ApiState {
-  return { splitCosts: true, lastPurchase: null, requests: [], householdPatches: [], ...overrides }
+  return {
+    splitCosts: true,
+    lastPurchase: null,
+    items,
+    ledgerEntries: [],
+    requests: [],
+    householdPatches: [],
+    ...overrides,
+  }
 }
 
 const CORS = {
@@ -81,9 +94,10 @@ export async function mockApi(page: Page, state: ApiState): Promise<void> {
       return reply(route, { expiry_warnings: [], stock_warnings: [], food_type_warnings: [] })
     }
     if (path === `${base}/spending`) return reply(route, spending())
+    if (path === `${base}/ledger/entries`) return reply(route, state.ledgerEntries)
     if (path === `${base}/ledger/summary`) return reply(route, { balances: [], settlements: [] })
 
-    if (path === `${base}/inventory-items`) return reply(route, items)
+    if (path === `${base}/inventory-items`) return reply(route, state.items)
     if (path === `${base}/inventory-items/last-purchase`) return reply(route, state.lastPurchase)
     if (path === `${base}/inventory-items/last-cost`)
       return reply(route, state.lastPurchase?.cost ?? null)
@@ -91,7 +105,8 @@ export async function mockApi(page: Page, state: ApiState): Promise<void> {
       return reply(route, { dimension: 'VOLUME', unit_system: 'METRIC', unit: 'ml' })
     }
     const one = path.match(new RegExp(`^${base}/inventory-items/(i\\d)$`))
-    if (one && method === 'GET') return reply(route, items.find((i) => i.id === one[1]) ?? null)
+    if (one && method === 'GET')
+      return reply(route, state.items.find((i) => i.id === one[1]) ?? null)
     if (/\/(consumption|corrections)$/.test(path)) return reply(route, [])
 
     if (path === '/api/food-definitions/search') return reply(route, [wholeMilk])

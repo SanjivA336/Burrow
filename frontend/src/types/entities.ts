@@ -175,6 +175,8 @@ export interface InventoryItem {
   // Set once at creation, never editable afterward -- who's on the hook as
   // creditor for this item's cost.
   buyer_member_id: string
+  // When anyone last logged a use of this item; null if it has never been used.
+  last_used_at: string | null
 }
 
 export interface PurchaseCorrection {

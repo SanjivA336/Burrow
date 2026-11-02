@@ -309,7 +309,13 @@ export function HouseholdShell() {
           </div>
         </header>
 
-        {updates.isOpen && <UpdatesModal updates={updates.updates} onClose={updates.close} />}
+        {updates.isOpen && (
+          <UpdatesModal
+            updates={updates.updates}
+            startIndex={updates.startIndex}
+            onClose={updates.close}
+          />
+        )}
 
         <main
           data-tour="page"

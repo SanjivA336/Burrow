@@ -93,3 +93,19 @@ export function isUpdateUnread(
   if (accountCreatedAt && accountCreatedAt.slice(0, 10) > latest.date) return false
   return true
 }
+
+// Where the newest unread MAJOR note is in the list (0 = the newest), or -1 if there is none.
+// Looks past newer minor notes, so a major one is not skipped just because a smaller note was
+// added on top of it later. Notes the person has already opened (the seen one and everything
+// older) and notes from before their account existed do not count.
+export function unreadMajorIndex(
+  updates: Update[],
+  seenId: string | null,
+  accountCreatedAt: string | undefined,
+): number {
+  const seen = updates.findIndex((u) => u.id === seenId)
+  const unseen = seen === -1 ? updates : updates.slice(0, seen)
+  return unseen.findIndex(
+    (u) => u.major && !(accountCreatedAt && accountCreatedAt.slice(0, 10) > u.date),
+  )
+}

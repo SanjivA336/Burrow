@@ -52,16 +52,24 @@ function MarbleArt() {
 
 interface Props {
   updates: Update[]
+  // Which article to show first (0 = the newest).
+  startIndex?: number
   onClose: () => void
 }
 
 // The newest notes as a row you swipe through (scroll-snap, so it is native touch scrolling). Each
 // one is a marble banner in the accent colour with its caption in the middle, then a short note
 // underneath that scrolls if it is long (it can be at the Large display size).
-export function UpdatesModal({ updates, onClose }: Props) {
+export function UpdatesModal({ updates, startIndex = 0, onClose }: Props) {
   const boxRef = useDialog<HTMLDivElement>(onClose)
   const track = useRef<HTMLDivElement>(null)
-  const [index, setIndex] = useState(0)
+  const [index, setIndex] = useState(startIndex)
+
+  // Jump straight to the starting article (no sliding) before it is first seen.
+  useEffect(() => {
+    const el = track.current
+    if (el && startIndex > 0) el.scrollLeft = startIndex * el.clientWidth
+  }, [startIndex])
 
   const goTo = (next: number) => {
     const el = track.current
