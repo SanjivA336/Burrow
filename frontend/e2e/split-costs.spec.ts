@@ -1,6 +1,7 @@
 import { test, expect } from './support/fixtures'
 import { DESKTOP, IPHONE } from './support/devices'
 import { HID } from './support/env'
+import { OTHER, stockItem } from './support/data'
 import { openAddItemSheet, pickWholeMilk } from './support/ui'
 
 // A burrow can turn "Split costs" off (Settings, then Burrow). These check both modes: what is
@@ -34,6 +35,36 @@ test.describe('splitting off', () => {
     await expect(page.getByText('Cost (optional)')).toBeVisible()
     await expect(page.getByText('Buyer', { exact: true })).toHaveCount(0)
     await expect(page.getByText("Who's using this?", { exact: true })).toHaveCount(0)
+  })
+})
+
+// Items are saved shared with whoever was in the burrow at the time, so someone who joins later is
+// missing from every item's list. With costs split that is correct (they did not pay for it); with
+// costs not split nothing is billed, so no item should call itself "Not yours".
+test.describe('the "Not yours" tag', () => {
+  test.use(DESKTOP)
+
+  test.beforeEach(({ api }) => {
+    // Shared with Ana only: you are not on it.
+    api.items = [stockItem('i1', 'Oat Milk', 'l1', { allowed_member_ids: [OTHER] })]
+  })
+
+  test('shows when the burrow splits costs and you are not on the item', async ({ page }) => {
+    await page.goto(`/households/${HID}`)
+    await expect(page.getByText('Oat Milk')).toBeVisible()
+    await expect(page.getByText('Not yours')).toBeVisible()
+  })
+
+  test.describe('without splitting', () => {
+    test.use({ splitCosts: false })
+
+    test('never shows, even on an item you are not on (you joined after it was added)', async ({
+      page,
+    }) => {
+      await page.goto(`/households/${HID}`)
+      await expect(page.getByText('Oat Milk')).toBeVisible()
+      await expect(page.getByText('Not yours')).toHaveCount(0)
+    })
   })
 })
 

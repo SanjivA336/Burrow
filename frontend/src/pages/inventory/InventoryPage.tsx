@@ -29,6 +29,7 @@ import { Modal } from '../../components/Modal'
 import { SwipeActionRow } from '../../components/SwipeActionRow'
 import { WarningCounts } from '../../components/WarningCounts'
 import { useAddItemFlow } from '../../hooks/useAddItemFlow'
+import { useSplitCosts } from '../../hooks/useSplitCosts'
 import { useItemEditor } from '../../hooks/useItemEditor'
 import { useAuth } from '../../hooks/useAuth'
 import {
@@ -126,6 +127,8 @@ export function InventoryPage() {
   const navigate = useNavigate()
   const { open: openItem } = useItemEditor()
   const { user } = useAuth()
+  // A burrow that does not split costs has no "whose share" to flag (see the tag on each card).
+  const splitCosts = useSplitCosts(householdId)
   const itemsUrl = householdId
     ? `/api/households/${householdId}/inventory-items?status=ACTIVE${
         storageLocationId ? `&storage_location_id=${storageLocationId}` : ''
@@ -506,8 +509,12 @@ export function InventoryPage() {
                     single card would be noise. The one thing worth a flag is
                     the exception -- and even then, "not yours" describes
                     whose share this counts against, not a hard rule; the
-                    actual owner can still say "go ahead and have some." */}
-                {myMemberId && !item.allowed_member_ids.includes(myMemberId) && (
+                    actual owner can still say "go ahead and have some."
+                    Never in a burrow that does not split costs: there, items are shared with
+                    everyone, nobody is billed, and the list of people saved on an item is only
+                    whoever had joined when it was added, so someone who joined later would see
+                    this on every item. */}
+                {splitCosts && myMemberId && !item.allowed_member_ids.includes(myMemberId) && (
                   <span className="shrink-0 rounded-pill bg-warning-soft px-2 py-0.5 text-xs text-warning">
                     Not yours
                   </span>
