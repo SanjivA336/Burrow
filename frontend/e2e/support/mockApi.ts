@@ -29,6 +29,11 @@ export interface ApiState {
   requests: string[]
   // The bodies of PATCH /households/{id} requests (e.g. {split_costs: false}).
   householdPatches: Record<string, unknown>[]
+  // More burrows this account belongs to besides the usual one. Each answers with the same small
+  // burrow's data, under its own id and name.
+  otherBurrows: { id: string; name: string }[]
+  // Burrow ids that answer "403, not yours" when opened.
+  forbiddenBurrows: string[]
 }
 
 export function newState(overrides: Partial<ApiState> = {}): ApiState {
@@ -39,6 +44,8 @@ export function newState(overrides: Partial<ApiState> = {}): ApiState {
     ledgerEntries: [],
     requests: [],
     householdPatches: [],
+    otherBurrows: [],
+    forbiddenBurrows: [],
     ...overrides,
   }
 }
@@ -65,7 +72,7 @@ function reply(route: Route, data: unknown) {
 export async function mockApi(page: Page, state: ApiState): Promise<void> {
   await page.route(`${API}/**`, async (route) => {
     const request = route.request()
-    const path = new URL(request.url()).pathname
+    let path = new URL(request.url()).pathname
     const method = request.method()
     if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS })
     state.requests.push(`${method} ${path}`)
@@ -78,8 +85,41 @@ export async function mockApi(page: Page, state: ApiState): Promise<void> {
       })
     }
 
+    // A burrow that refuses this account.
+    if (state.forbiddenBurrows.some((id) => path === `/api/households/${id}`)) {
+      return route.fulfill({
+        status: 403,
+        headers: { ...CORS, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          status: 'error',
+          data: null,
+          error: { code: '403', message: 'Forbidden' },
+          timestamp: new Date().toISOString(),
+        }),
+      })
+    }
+    // Another burrow in the account: its own name and id, and otherwise the usual burrow's data.
+    const other = state.otherBurrows.find(
+      (b) => path === `/api/households/${b.id}` || path.startsWith(`/api/households/${b.id}/`),
+    )
+    if (other) {
+      if (path === `/api/households/${other.id}`) {
+        return reply(route, { ...household(state.splitCosts), id: other.id, name: other.name })
+      }
+      path = path.replace(other.id, HID)
+    }
+
     const base = `/api/households/${HID}`
-    if (path === '/api/households') return reply(route, [household(state.splitCosts)])
+    if (path === '/api/households') {
+      return reply(route, [
+        household(state.splitCosts),
+        ...state.otherBurrows.map((b) => ({
+          ...household(state.splitCosts),
+          id: b.id,
+          name: b.name,
+        })),
+      ])
+    }
     if (path === base) {
       if (method === 'PATCH') {
         const body = JSON.parse(request.postData() ?? '{}') as Record<string, unknown>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Link,
   NavLink,
+  Navigate,
   Outlet,
   useLocation,
   useNavigate,
@@ -26,7 +27,9 @@ import { TourProvider } from '../../tour/TourProvider'
 import { useAddItemWizard } from '../../hooks/useAddItemWizard'
 import { ITEM_PARAM } from '../../hooks/useItemEditor'
 import { ItemEditModal } from '../inventory/ItemEditModal'
+import { useAuth } from '../../hooks/useAuth'
 import { useIsDeveloper } from '../../hooks/useIsDeveloper'
+import { forgetLastBurrow, getLastBurrow, rememberBurrow } from '../../lib/lastBurrow'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { invalidateResources } from '../../lib/resourceCache'
 import { useSplitCosts } from '../../hooks/useSplitCosts'
@@ -67,6 +70,7 @@ export function HouseholdShell() {
       : item
   const navigate = useNavigate()
   const isDeveloper = useIsDeveloper()
+  const { user } = useAuth()
   const [household, setHousehold] = useState<Household | null>(null)
   // Deliberately one bucket for "doesn't exist" and "exists but you're not a
   // member" -- the backend already collapses these into the same 403
@@ -165,6 +169,22 @@ export function HouseholdShell() {
     }
   }, [householdId])
 
+  // Remember this burrow for next launch, but only once the server has said it is ours (so a
+  // wrong link is never remembered). And if it turns out we cannot open the one remembered, forget
+  // it, so launch does not keep trying.
+  useEffect(() => {
+    if (!user || !householdId) return
+    if (household?.id === householdId) rememberBurrow(user.id, householdId)
+    else if (accessError && getLastBurrow(user.id) === householdId) forgetLastBurrow(user.id)
+  }, [user, householdId, household, accessError])
+
+  // A burrow that was opened for the person (the launch shortcut) never shows an access error: if
+  // it turns out they cannot open it after all, quietly go to the list instead. (Opening a burrow
+  // by hand, or from a link, still says so.)
+  if (accessError && (location.state as { autoOpened?: boolean } | null)?.autoOpened) {
+    return <Navigate to="/" replace state={{ forcePicker: true }} />
+  }
+
   if (accessError || loadError) {
     return (
       <div className="flex min-h-app items-center justify-center bg-bg p-4 text-text">
@@ -180,6 +200,7 @@ export function HouseholdShell() {
           </p>
           <Link
             to="/"
+            state={{ forcePicker: true }}
             className="inline-block w-full rounded-control bg-primary px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover"
           >
             Back to your burrows

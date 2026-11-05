@@ -5,11 +5,13 @@ import { apiClient } from '../../lib/apiClient'
 import { LogoutConfirmModal } from '../../components/LogoutConfirmModal'
 import { useAuth } from '../../hooks/useAuth'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { forgetLastBurrow, getLastBurrow } from '../../lib/lastBurrow'
 import type { Household } from '../../types/entities'
 
 export function HouseholdPickerPage() {
   usePageTitle('Your Burrows')
-  const { signOut } = useAuth()
+  const { user, signOut } = useAuth()
+  const userId = user?.id
   const [households, setHouseholds] = useState<Household[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
@@ -40,7 +42,15 @@ export function HouseholdPickerPage() {
     apiClient
       .get<Household[]>('/api/households')
       .then((data) => {
-        if (!cancelled) setHouseholds(data)
+        if (cancelled) return
+        // A remembered burrow that is not in this person's list (deleted, or they left or were
+        // removed) is forgotten without a word, so the launch shortcut below never lands on a
+        // burrow they cannot open, and never shows an access error.
+        if (userId) {
+          const last = getLastBurrow(userId)
+          if (last && !data.some((household) => household.id === last)) forgetLastBurrow(userId)
+        }
+        setHouseholds(data)
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Something went wrong')
@@ -48,7 +58,7 @@ export function HouseholdPickerPage() {
     return () => {
       cancelled = true
     }
-  }, [attempt])
+  }, [attempt, userId])
 
   const retry = () => {
     setError(null)
@@ -78,6 +88,14 @@ export function HouseholdPickerPage() {
         <p className="text-sm text-muted">Loading…</p>
       </div>
     )
+  }
+
+  // At launch, go straight to the burrow that was open last (it is only still remembered if it is
+  // in the list just loaded). The switch button sets forcePicker, so choosing burrows on purpose
+  // always shows the list.
+  const lastBurrowId = userId && !forcePicker ? getLastBurrow(userId) : null
+  if (lastBurrowId && households.some((household) => household.id === lastBurrowId)) {
+    return <Navigate to={`/households/${lastBurrowId}`} replace state={{ autoOpened: true }} />
   }
 
   if (households.length === 1 && !forcePicker) {
