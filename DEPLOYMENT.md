@@ -191,3 +191,45 @@ Share `https://burrowapp.site`. That's v1.
 Because the API sits behind your own `api.burrowapp.site` name, moving the backend to another
 host later (Fly.io, Cloud Run, Railway) only means pointing that DNS record somewhere else. The
 `backend/Dockerfile` already works on any container host. The frontend would not need a rebuild.
+
+## Testing on a phone without deploying ("Burrow Dev")
+
+A second home-screen app, next to the real one, that runs the code on your computer. Edits show
+on the phone as you save them, with no commit, push or deploy. It only works while your computer
+is running it; closing the windows just makes the dev app stop loading. The live app is never
+touched.
+
+```
+phone "Burrow"      -> burrowapp.site      -> Cloudflare + Render (live, from main)
+phone "Burrow Dev"  -> dev.burrowapp.site  -> Cloudflare tunnel -> Vite on this computer (5173)
+                       dev-api.burrowapp.site -> same tunnel   -> FastAPI on this computer (8000)
+```
+
+**To start it:** `powershell -ExecutionPolicy Bypass -File scripts\dev-phone.ps1`. It opens three
+windows (backend, frontend, tunnel). The first time, on the phone, open `https://dev.burrowapp.site`
+in Safari, then Share, Add to Home Screen. It is named "Burrow Dev" and has an orange fox.
+
+**It uses the real database.** The one Supabase project is also production (see the Phase 3
+decision in the README), so anything you add in the dev app is real data. Make a burrow called
+"Test Burrow" and use that one in the dev app. A migration applied for testing is applied to
+everything, so take the manual backup first (`cd backend && uv run python -m scripts.export_data`).
+
+**What was set up once (already done on this computer):**
+- `cloudflared` installed (`winget install Cloudflare.cloudflared`) and logged in
+  (`cloudflared tunnel login`).
+- A tunnel named `burrow-dev`, with two DNS names pointing at it:
+  `cloudflared tunnel route dns burrow-dev dev.burrowapp.site` and the same for
+  `dev-api.burrowapp.site`.
+- `%USERPROFILE%\.cloudflared\config.yml` mapping those names to ports 5173 and 8000. The tunnel's
+  credentials file next to it is a secret; never put it in the repo.
+- On a different computer, repeat these, then `cloudflared tunnel create burrow-dev` again (or copy
+  the credentials file).
+
+**How the dev app differs:** `npm run dev:phone` runs Vite in "phone" mode (`frontend/vite.config.ts`).
+That changes the app's name and icon, shows "(dev)" after the version, reads `.env.phone` (points at
+`dev-api.burrowapp.site` and turns Sentry off, so test errors don't mix into the real ones), and lets
+the tunnel's hostname through. The script starts the backend with `CORS_ORIGINS` including the dev
+address, without editing `.env`.
+
+**To remove it:** `cloudflared tunnel delete burrow-dev`, delete the two `dev` records in Cloudflare
+DNS, and delete the Burrow Dev app from the phone.

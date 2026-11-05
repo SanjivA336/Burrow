@@ -265,12 +265,24 @@ def _storage_type(household_id: UUID, storage_location_id: UUID) -> str:
     return result.data["type"]
 
 
-def create_manual(
+def split_cost(total: Decimal, count: int) -> list[Decimal]:
+    """Divides a cost over `count` containers in whole cents so the parts add up to
+    exactly the total: 10.00 over 3 is 3.34, 3.33, 3.33. Plain rounding would lose
+    or invent a cent, and the ledger needs exact totals. Any leftover cents go on
+    the first containers, one cent each."""
+    cents = int((total * 100).to_integral_value())
+    base, extra = divmod(cents, count)
+    return [Decimal(base + (1 if i < extra else 0)) / 100 for i in range(count)]
+
+
+def _creation_params(
     household_id: UUID,
     member_id: UUID,
     body: CreateInventoryItemRequest,
-    receipt_image_path: str | None = None,
-) -> InventoryItem:
+    receipt_image_path: str | None,
+) -> dict:
+    """Everything the create functions take except the cost (one number for a single item,
+    a list for several). The same rules apply however many containers are made."""
     accounting_type, lives, storage_type = _load_creation_inputs(body)
     allowed_member_ids = body.allowed_member_ids
     household = households_service.get_household(household_id)
@@ -296,31 +308,39 @@ def create_manual(
         body.expiry_date,
         no_date="expiry_date" in body.model_fields_set and body.expiry_date is None,
     )
+    return {
+        "p_household_id": str(household_id),
+        "p_member_id": str(member_id),
+        "p_global_food_definition_id": str(body.global_food_definition_id),
+        "p_storage_location_id": str(body.storage_location_id),
+        # Persisted in base units; the RPC writes what it's given. The
+        # unit itself still rides along (as p_preferred_unit) and lands
+        # in the display_unit column.
+        "p_quantity": str(units_service.to_base(body.quantity, body.preferred_unit)),
+        "p_preferred_unit": body.preferred_unit.value,
+        "p_expiry_date": expiry_date.isoformat() if expiry_date else None,
+        "p_allowed_member_ids": [str(m) for m in allowed_member_ids],
+        "p_accounting_type": accounting_type.value,
+        "p_receipt_image_path": receipt_image_path,
+        "p_name_override": body.name_override,
+        "p_remaining_fraction": expiry.round_fraction(clock.remaining_fraction),
+        "p_pantry_days": clock.lives.pantry,
+        "p_fridge_days": clock.lives.fridge,
+        "p_freezer_days": clock.lives.freezer,
+        "p_started_at": now.isoformat(),
+    }
+
+
+def create_manual(
+    household_id: UUID,
+    member_id: UUID,
+    body: CreateInventoryItemRequest,
+    receipt_image_path: str | None = None,
+) -> InventoryItem:
+    params = _creation_params(household_id, member_id, body, receipt_image_path)
     client = get_service_client()
     rpc_result = client.rpc(
-        "create_manual_inventory_item",
-        {
-            "p_household_id": str(household_id),
-            "p_member_id": str(member_id),
-            "p_global_food_definition_id": str(body.global_food_definition_id),
-            "p_storage_location_id": str(body.storage_location_id),
-            # Persisted in base units; the RPC writes what it's given. The
-            # unit itself still rides along (as p_preferred_unit) and lands
-            # in the display_unit column.
-            "p_quantity": str(units_service.to_base(body.quantity, body.preferred_unit)),
-            "p_preferred_unit": body.preferred_unit.value,
-            "p_cost": str(body.cost),
-            "p_expiry_date": expiry_date.isoformat() if expiry_date else None,
-            "p_allowed_member_ids": [str(m) for m in allowed_member_ids],
-            "p_accounting_type": accounting_type.value,
-            "p_receipt_image_path": receipt_image_path,
-            "p_name_override": body.name_override,
-            "p_remaining_fraction": expiry.round_fraction(clock.remaining_fraction),
-            "p_pantry_days": clock.lives.pantry,
-            "p_fridge_days": clock.lives.fridge,
-            "p_freezer_days": clock.lives.freezer,
-            "p_started_at": now.isoformat(),
-        },
+        "create_manual_inventory_item", {**params, "p_cost": str(body.cost)}
     ).execute()
     new_item_id = (
         rpc_result.data[0]["id"] if isinstance(rpc_result.data, list) else rpc_result.data["id"]
@@ -331,6 +351,35 @@ def create_manual(
     assert item is not None
     _remember_measurement_choice(item.household_food_variant_id, body.preferred_unit)
     return item
+
+
+def create_manual_many(
+    household_id: UUID,
+    member_id: UUID,
+    body: CreateInventoryItemRequest,
+    count: int,
+    receipt_image_path: str | None = None,
+) -> list[InventoryItem]:
+    """Makes `count` separate, identical items (three cartons of milk) in one database
+    transaction: all of them or none. `body.cost` is the cost of ALL the containers
+    together; each gets its own cent-exact share (see split_cost) and its own purchase
+    record, so they stay fully independent afterwards."""
+    if count == 1:
+        return [create_manual(household_id, member_id, body, receipt_image_path)]
+    params = _creation_params(household_id, member_id, body, receipt_image_path)
+    costs = [str(c) for c in split_cost(body.cost, count)]
+    rpc_result = (
+        get_service_client()
+        .rpc("create_manual_inventory_items", {**params, "p_costs": costs})
+        .execute()
+    )
+    items = []
+    for row in rpc_result.data:
+        item = get_by_id(household_id, UUID(row["id"]))
+        assert item is not None
+        items.append(item)
+    _remember_measurement_choice(items[0].household_food_variant_id, body.preferred_unit)
+    return items
 
 
 def resolve_measurement_preference(

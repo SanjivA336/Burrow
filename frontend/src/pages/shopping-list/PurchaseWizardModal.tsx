@@ -13,6 +13,15 @@ import { UnitSelect } from '../../components/UnitSelect'
 import { useAuth } from '../../hooks/useAuth'
 import { FOOD_CATEGORY_LABELS } from '../../lib/foodCategories'
 import { shortDate } from '../../lib/formatDate'
+import { formatQuantity } from '../../lib/formatQuantity'
+import {
+  MAX_CONTAINERS,
+  lineTotalCost,
+  parseContainers,
+  suggestedCost,
+  type CostMode,
+} from '../../lib/containers'
+import { UNIT_LABELS } from '../../lib/units'
 import { PLACE_LABELS, placeForStorageType, shelfLifeDays } from '../../lib/shelfLife'
 import type {
   FoodDefinition,
@@ -52,9 +61,14 @@ interface Draft {
   food: FoodOption | null
   nickname: string
   storageLocationId: string
+  // The amount in ONE container.
   quantity: string
   unit: Unit | ''
+  // Typed as text so a half-typed box is allowed; see parseContainers.
+  containers: string
+  // What the cost box means: the price of all the containers together, or of one.
   cost: string
+  costMode: CostMode
   buyerId: string
   allowedMemberIds: string[]
   expiryDate: string
@@ -69,8 +83,14 @@ type AutofillField =
   | 'unit'
   | 'storage_location'
 
-const inputClass =
-  'w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field outline-none placeholder:text-faint focus:border-primary'
+// One fixed height for every field in this form. Left to themselves, a text box, a dropdown and a
+// button come out at different heights on an iPhone.
+const FIELD_HEIGHT = 'h-11'
+// Text and boxes get 16px on a touch screen (index.css does it for inputs and dropdowns, so iPhones
+// don't zoom in on tap). The button-style fields need it said explicitly to match.
+const FIELD_TEXT = 'pointer-coarse:text-[length:max(16px,1rem)]'
+
+const inputClass = `${FIELD_HEIGHT} w-full rounded-control border border-subtle bg-field px-2 py-2 text-sm text-text shadow-field outline-none placeholder:text-faint focus:border-primary`
 const fieldLabelClass = 'mb-1.5 block text-sm font-medium text-muted'
 
 // Same field, but with a swappable border color -- used for fields that can
@@ -96,7 +116,7 @@ function expiryHint(
 }
 
 const fieldClass = (autofilled: boolean) =>
-  `w-full rounded-control border ${autofilled ? 'border-primary' : 'border-subtle'} bg-field px-2 py-2 text-sm text-text shadow-field outline-none placeholder:text-faint focus:border-primary`
+  `${FIELD_HEIGHT} w-full rounded-control border ${autofilled ? 'border-primary' : 'border-subtle'} bg-field px-2 py-2 text-sm text-text shadow-field outline-none placeholder:text-faint focus:border-primary`
 
 function todayPlusDays(days: number): string {
   const d = new Date()
@@ -122,7 +142,10 @@ function draftFromItem(
     storageLocationId: item.storage_location_id ?? stickyStorageLocationId,
     quantity: item.quantity ?? '',
     unit: item.preferred_unit ?? '',
+    containers: String(item.container_count ?? 1),
     cost: item.cost ?? '',
+    // A saved line holds the combined total, so it always reopens as "combined".
+    costMode: 'combined',
     buyerId: item.buyer_member_id ?? stickyBuyer,
     allowedMemberIds:
       item.allowed_member_ids.length > 0 ? item.allowed_member_ids : activeMemberIds,
@@ -190,7 +213,11 @@ function buildManualPatchBody(draft: Draft): Record<string, unknown> {
   if (draft.quantity !== '' && !Number.isNaN(qty) && qty > 0) body.quantity = draft.quantity
   if (draft.unit) body.preferred_unit = draft.unit
   const cost = Number(draft.cost)
-  if (draft.cost === '' || (!Number.isNaN(cost) && cost >= 0)) body.cost = draft.cost || '0'
+  const containers = parseContainers(draft.containers)
+  body.container_count = containers
+  if (draft.cost === '' || (!Number.isNaN(cost) && cost >= 0)) {
+    body.cost = lineTotalCost(draft.cost, draft.costMode, containers) || '0'
+  }
   if (draft.allowedMemberIds.length > 0) {
     body.allowed_member_ids = draft.allowedMemberIds
     body.accounting_type = draft.allowedMemberIds.length <= 1 ? 'PERSONAL' : 'SHARED'
@@ -492,7 +519,10 @@ export function PurchaseWizardModal({
         case 'unit':
           return { ...prev, unit: previous.unit }
         case 'cost':
-          return { ...prev, cost: previous.cost }
+          return {
+            ...prev,
+            cost: suggestedCost(previous.cost, prev.costMode, parseContainers(prev.containers)),
+          }
         case 'allowed_member_ids':
           return previous.allowed_member_ids.length > 0
             ? { ...prev, allowedMemberIds: previous.allowed_member_ids }
@@ -546,7 +576,15 @@ export function PurchaseWizardModal({
           `/api/households/${householdId}/inventory-items/last-cost?global_food_definition_id=${foodId}&quantity=${qty}&unit=${unit}`,
         )
         if (lastCost !== null && !customized.cost) {
-          setDraft((prev) => (prev ? { ...prev, cost: lastCost } : prev))
+          // The past price is for one container; "combined" needs it multiplied up.
+          setDraft((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  cost: suggestedCost(lastCost, prev.costMode, parseContainers(prev.containers)),
+                }
+              : prev,
+          )
         }
       } catch {
         // Best-effort convenience autofill -- a failed lookup just means no
@@ -555,7 +593,15 @@ export function PurchaseWizardModal({
     }, 400)
     return () => clearTimeout(costLookupRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft?.food?.id, draft?.quantity, draft?.unit, householdId, customized.cost])
+  }, [
+    draft?.food?.id,
+    draft?.quantity,
+    draft?.unit,
+    draft?.containers,
+    draft?.costMode,
+    householdId,
+    customized.cost,
+  ])
 
   const patchSelected = async (body: Record<string, unknown>) => {
     if (!selectedId) return
@@ -603,7 +649,8 @@ export function PurchaseWizardModal({
         storage_location_id: draft.storageLocationId,
         quantity: draft.quantity,
         preferred_unit: draft.unit,
-        cost: draft.cost || '0',
+        container_count: parseContainers(draft.containers),
+        cost: lineTotalCost(draft.cost, draft.costMode, parseContainers(draft.containers)) || '0',
         allowed_member_ids: draft.allowedMemberIds,
         // Just PERSONAL vs SHARED, fully derived from the final roster
         // size -- there's no split-method choice to make (see
@@ -650,6 +697,7 @@ export function PurchaseWizardModal({
                       food_name: draft.food!.name,
                       category: draft.food!.category ?? it.category,
                       cost: (body.cost as string | undefined) ?? it.cost,
+                      container_count: body.container_count as number,
                     }
                   : it,
               ),
@@ -1029,12 +1077,15 @@ export function PurchaseWizardModal({
                         )}
                       </div>
 
-                      <div className="flex gap-2">
-                        <div className="flex-1">
+                      {/* "Quantity x Containers", then the unit: the box before the x is what ONE container
+                          holds. A 12-column grid, like Bootstrap's: Quantity 4, the x 1, Containers 4,
+                          Unit 3. (Spans include the gaps between columns, so they are not exact thirds.) */}
+                      <div className="grid grid-cols-12 items-end gap-x-2">
+                        <div className="col-span-4 min-w-0">
                           <div className="flex items-start justify-start gap-1">
                             <label htmlFor="purchasewizardmodal-920" className={fieldLabelClass}>
                               Quantity
-                              <FieldTooltip text="This becomes both the amount you have right now and the 100% mark it's tracked against as you use it up." />
+                              <FieldTooltip text="This becomes both the amount you have right now and the 100% mark it's tracked against as you use it up. With several containers, it is the amount in each one." />
                             </label>
                             <FillFromPreviousButton
                               field="quantity"
@@ -1054,7 +1105,40 @@ export function PurchaseWizardModal({
                             }}
                           />
                         </div>
-                        <div className="w-32">
+                        <span
+                          aria-hidden="true"
+                          className={`col-span-1 pb-3 text-center text-sm leading-5 text-muted ${FIELD_TEXT}`}
+                        >
+                          ×
+                        </span>
+                        <div className="col-span-4 min-w-0">
+                          <label htmlFor="purchasewizard-containers" className={fieldLabelClass}>
+                            Containers
+                            <FieldTooltip
+                              text={`How many separate ones you bought, up to ${MAX_CONTAINERS}. Each becomes its own item, so you use them up and they expire one at a time. The quantity is for one container.`}
+                            />
+                          </label>
+                          <NumberInput
+                            id="purchasewizard-containers"
+                            decimals={0}
+                            maxLength={2}
+                            placeholder="1"
+                            className={inputClass}
+                            value={draft.containers}
+                            onChange={(e) => setDraft({ ...draft, containers: e.target.value })}
+                            onBlur={() =>
+                              setDraft((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      containers: String(parseContainers(prev.containers)),
+                                    }
+                                  : prev,
+                              )
+                            }
+                          />
+                        </div>
+                        <div className="col-span-3 min-w-0">
                           <div className="flex items-start justify-start gap-1">
                             <label htmlFor="purchasewizardmodal-933" className={fieldLabelClass}>
                               Unit
@@ -1067,7 +1151,7 @@ export function PurchaseWizardModal({
                           </div>
                           <UnitSelect
                             id="purchasewizardmodal-933"
-                            className={inputClass}
+                            className={inputClass.replace('px-2', 'px-1')}
                             value={draft.unit}
                             placeholder="Unit…"
                             onChange={(unit) => {
@@ -1077,6 +1161,18 @@ export function PurchaseWizardModal({
                           />
                         </div>
                       </div>
+
+                      {parseContainers(draft.containers) > 1 && (
+                        <p data-testid="containers-summary" className="-mt-1 text-xs text-muted">
+                          {parseContainers(draft.containers)} containers ×{' '}
+                          {formatQuantity(draft.quantity) || '?'}
+                          {draft.unit ? ` ${UNIT_LABELS[draft.unit]}` : ''}
+                          {Number(draft.quantity) > 0 &&
+                            ` = ${formatQuantity(
+                              Number(draft.quantity) * parseContainers(draft.containers),
+                            )}${draft.unit ? ` ${UNIT_LABELS[draft.unit]}` : ''} total`}
+                        </p>
+                      )}
 
                       <div className={`grid gap-x-2 ${splitCosts ? 'grid-cols-2' : 'grid-cols-1'}`}>
                         <div>
@@ -1091,42 +1187,82 @@ export function PurchaseWizardModal({
                               onClick={() => void refillField('cost')}
                             />
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <NumberInput
-                              id="purchasewizardmodal-946"
-                              decimals={2}
-                              placeholder="0.00"
-                              className={fieldClass(!customized.cost && !!draft.cost)}
-                              value={draft.cost}
-                              onChange={(e) => {
-                                setDraft({ ...draft, cost: e.target.value })
-                                markCustomized('cost')
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDraft({ ...draft, cost: '' })
-                                // Un-mark rather than mark customized: the
-                                // clear button's whole point is offering a
-                                // fresh autofill suggestion next time the
-                                // lookup fires, not declaring "hands off, I
-                                // typed this."
-                                setCustomized((prev) => ({ ...prev, cost: false }))
-                              }}
-                              title="Clear"
-                              aria-label="Clear cost"
-                              className="shrink-0 rounded-control p-2 text-faint transition-colors hover:bg-surface-hover hover:text-text"
-                            >
-                              <X size={16} strokeWidth={1.75} />
-                            </button>
+                          {/* Once there is more than one container, a small button beside the box says whether the
+                              price typed is the Total for all of them or the price Each. Tap to switch. */}
+                          <div className="flex items-center gap-2">
+                            {parseContainers(draft.containers) > 1 && (
+                              <button
+                                type="button"
+                                aria-label={
+                                  draft.costMode === 'each'
+                                    ? 'Each: the cost is per container. Switch to total for all together.'
+                                    : 'Total: the cost is for all containers together. Switch to each.'
+                                }
+                                onClick={() =>
+                                  setDraft({
+                                    ...draft,
+                                    costMode: draft.costMode === 'each' ? 'combined' : 'each',
+                                  })
+                                }
+                                className={`${FIELD_HEIGHT} ${FIELD_TEXT} w-14 shrink-0 rounded-control border border-primary bg-primary-soft px-1 text-sm font-medium text-primary shadow-field transition-colors hover:bg-primary-soft/70`}
+                              >
+                                {draft.costMode === 'each' ? 'Each' : 'Total'}
+                              </button>
+                            )}
+                            {/* The clear button sits inside the box, at its right end, like a select's arrow. */}
+                            <div className="relative min-w-0 flex-1">
+                              <NumberInput
+                                id="purchasewizardmodal-946"
+                                decimals={2}
+                                placeholder="0.00"
+                                className={`${fieldClass(!customized.cost && !!draft.cost)} pr-9`}
+                                value={draft.cost}
+                                onChange={(e) => {
+                                  setDraft({ ...draft, cost: e.target.value })
+                                  markCustomized('cost')
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDraft({ ...draft, cost: '' })
+                                  // Un-mark rather than mark customized: the
+                                  // clear button's whole point is offering a
+                                  // fresh autofill suggestion next time the
+                                  // lookup fires, not declaring "hands off, I
+                                  // typed this."
+                                  setCustomized((prev) => ({ ...prev, cost: false }))
+                                }}
+                                title="Clear"
+                                aria-label="Clear cost"
+                                className="absolute right-1 top-1/2 -translate-y-1/2 rounded-control p-1.5 text-faint transition-colors hover:bg-surface-hover hover:text-text"
+                              >
+                                <X size={16} strokeWidth={1.75} />
+                              </button>
+                            </div>
                           </div>
+                          {parseContainers(draft.containers) > 1 && Number(draft.cost) > 0 && (
+                            <p data-testid="cost-summary" className="mt-1 text-xs text-muted">
+                              {draft.costMode === 'each'
+                                ? `$${Number(
+                                    lineTotalCost(
+                                      draft.cost,
+                                      'each',
+                                      parseContainers(draft.containers),
+                                    ),
+                                  ).toFixed(2)} total`
+                                : `About $${(
+                                    Number(draft.cost) / parseContainers(draft.containers)
+                                  ).toFixed(2)} each`}
+                            </p>
+                          )}
                         </div>
                         {splitCosts && (
                           <>
                             <div>
                               <p className={fieldLabelClass}>Buyer</p>
                               <MemberPicker
+                                controlClassName={`${FIELD_HEIGHT} ${FIELD_TEXT}`}
                                 mode="single"
                                 members={activeMembers}
                                 value={draft.buyerId}
@@ -1151,6 +1287,7 @@ export function PurchaseWizardModal({
                             />
                           </div>
                           <MemberPicker
+                            controlClassName={`${FIELD_HEIGHT} ${FIELD_TEXT}`}
                             mode="multi"
                             members={activeMembers}
                             value={draft.allowedMemberIds}
@@ -1469,6 +1606,9 @@ function LineList({
               <span className="min-w-0 flex-1 truncate">
                 {item.food_name || item.raw_line_text || 'New item'}
               </span>
+              {item.container_count > 1 && (
+                <span className="shrink-0 text-xs text-faint">×{item.container_count}</span>
+              )}
               {item.status !== 'PENDING' && (
                 <Check
                   size={14}

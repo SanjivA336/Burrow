@@ -139,6 +139,7 @@ export const emptySession = {
       quantity: null,
       preferred_unit: null,
       cost: null,
+      container_count: 1,
       expiry_date: null,
       name_override: null,
       accounting_type: null,

@@ -285,8 +285,10 @@ html[data-theme='light'] body::before {
     --app-height: 100dvh;
   }
 
+  /* Not when the status bar is opaque (data-status-bar="opaque", set by lib/statusBar.ts): the
+     page then starts below it, the viewport is already right, and 100lvh would be 59px too tall. */
   @media (display-mode: standalone) {
-    :root {
+    :root:not([data-status-bar='opaque']) {
       --app-height: 100lvh;
     }
   }
@@ -361,7 +363,7 @@ html[data-theme='light'] body::before {
   instead. Deliberately unlayered so it overrides the `bottom-0` utility.
 */
 @media (display-mode: standalone) {
-  .tab-bar {
+  :root:not([data-status-bar='opaque']) .tab-bar {
     bottom: auto;
     top: calc(100lvh - 4rem - var(--bottom-bar-gap));
   }
@@ -375,7 +377,7 @@ html[data-theme='light'] body::before {
   and zero once iOS corrects itself. Unlayered so it overrides `bottom-0`.
 */
 @media (display-mode: standalone) {
-  .pin-bottom {
+  :root:not([data-status-bar='opaque']) .pin-bottom {
     bottom: calc(100dvh - 100lvh);
   }
 }

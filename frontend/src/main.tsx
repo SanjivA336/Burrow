@@ -13,6 +13,7 @@ import {
   getThemeChoice,
 } from './lib/appearance.ts'
 import { lockZoomWhenInstalled } from './lib/lockZoom.ts'
+import { trackStatusBarStyle } from './lib/statusBar.ts'
 
 // A no-op until VITE_SENTRY_DSN is actually set -- no account needed for
 // local dev. Sentry's browser SDK auto-captures uncaught errors and
@@ -32,6 +33,7 @@ applyDisplaySize(getDisplaySize())
 applyTheme(getThemeChoice())
 followDeviceTheme()
 lockZoomWhenInstalled()
+trackStatusBarStyle()
 startDiagnosticsRecording()
 
 createRoot(document.getElementById('root')!).render(

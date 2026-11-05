@@ -65,9 +65,13 @@ class PurchaseSessionItem(BaseModel):
     category: FoodCategory | None
     storage_location_id: UUID | None
     storage_location_name: str | None
+    # The amount in ONE container (1 L of milk), not the line's total.
     quantity: Decimal | None
     preferred_unit: Unit | None
+    # What the whole line cost, all containers together; finalize splits it between them.
     cost: Decimal | None
+    # How many separate items this line becomes (three cartons). Each is independent afterwards.
+    container_count: int = 1
     expiry_date: date | None
     # A per-line label, mirroring InventoryItem.name_override -- carried
     # straight through to the real item's own name_override on finalize.
@@ -130,6 +134,7 @@ class UpdatePurchaseSessionItemRequest(BaseModel):
     quantity: Decimal | None = Field(default=None, gt=0)
     preferred_unit: Unit | None = None
     cost: Decimal | None = Field(default=None, ge=0)
+    container_count: int | None = Field(default=None, ge=1, le=24)
     expiry_date: date | None = None
     name_override: str | None = Field(default=None, max_length=200)
     accounting_type: AccountingType | None = None

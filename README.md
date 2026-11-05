@@ -360,6 +360,12 @@ leaving localhost.
   2026-10-15. (Moving an item between places is done as of 2026-10-17: swipe an
   item right on a phone, or use the three-dots menu on a computer; changing the
   storage location on the item's own page still works too.)
+- [ ] **Rapid barcode scanning.** Setting up a whole kitchen item by item is slow,
+  and it is the most common complaint from new people. Idea: open the camera
+  once and scan items one after another, each landing in a list that is checked
+  and saved together, with a name typed in for anything not recognised. Scanning
+  a photo of a shelf was considered and ruled out, since it can look complete
+  when it is not. Not started; set aside on 2026-11-02.
 - [x] **Update the Terms about expiry dates (Privacy needs no change).** The
   "Expiry and freshness" paragraph (`frontend/src/legal/terms.ts` and the Word
   copy in `legal/`) no longer says "best-by"; it says dates come from entered

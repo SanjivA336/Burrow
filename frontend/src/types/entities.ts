@@ -451,7 +451,10 @@ export interface PurchaseSessionItem {
   storage_location_name: string | null
   quantity: string | null
   preferred_unit: Unit | null
+  // What the whole line cost (all containers together).
   cost: string | null
+  // How many separate items this line becomes when the order is submitted (1 to 24).
+  container_count: number
   expiry_date: string | null
   name_override: string | null
   accounting_type: AccountingType | null

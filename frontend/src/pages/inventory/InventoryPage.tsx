@@ -54,6 +54,14 @@ import {
   sortInventory,
   type InventorySort,
 } from '../../lib/inventorySort'
+import {
+  DEFAULT_INVENTORY_GROUP,
+  INVENTORY_GROUPS,
+  INVENTORY_GROUP_LABELS,
+  groupFromStored,
+  groupToStored,
+  type InventoryGroup,
+} from '../../lib/inventoryGroup'
 import { UNIT_LABELS } from '../../lib/units'
 import { EmptyState } from '../../components/EmptyState'
 import { UseItemModal } from './UseItemModal'
@@ -89,15 +97,13 @@ const inputClass =
 const addChoiceClass =
   'flex flex-1 flex-col items-center justify-center gap-2 rounded-card border border-dashed border-subtle p-6 text-sm font-medium text-muted transition-colors hover:border-subtle-strong hover:text-text'
 
-type ViewMode = 'flat' | 'sectional'
-
 // Per (user, household) rather than per user globally -- someone in a
 // household with 2 storage locations gets little from the grouped view,
 // while someone in one with 8 might always want it; the two shouldn't share
 // a single global default. Only ever written when the user actively
-// switches views (see changeView below), never on load -- so anyone who's
-// never touched it keeps riding whatever the app's default is, even if that
-// default changes later.
+// changes the grouping (see changeGroup below), never on load -- so anyone
+// who's never touched it keeps riding whatever the app's default is, even if
+// that default changes later.
 function viewPrefKey(userId: string, householdId: string): string {
   return `burrow-inventory-view:${userId}:${householdId}`
 }
@@ -190,22 +196,25 @@ export function InventoryPage() {
   // full option list, so they share one popover pattern instead of a
   // native <select> now that they're too narrow to also show their
   // selected option's text.
-  const [openFilter, setOpenFilter] = useState<'category' | 'storage' | 'sort' | null>(null)
+  const [openFilter, setOpenFilter] = useState<'category' | 'storage' | 'sort' | 'group' | null>(
+    null,
+  )
   const [sort, setSort] = useState<InventorySort>(DEFAULT_INVENTORY_SORT)
   const [addPickerOpen, setAddPickerOpen] = useState(false)
   const [storageModal, setStorageModal] = useState<
     { mode: 'add' } | { mode: 'edit'; location: StorageLocation } | null
   >(null)
-  const [view, setView] = useState<ViewMode>('flat')
+  const [group, setGroup] = useState<InventoryGroup>(DEFAULT_INVENTORY_GROUP)
   // Tracks collapsed sections rather than expanded ones -- an empty set
   // means every section starts expanded by default, with no need to know
-  // location ids (which aren't loaded yet) at initial state.
+  // section ids (which aren't loaded yet) at initial state. Keys are a
+  // storage location's id or a food type's name, which never collide.
   const [collapsedLocations, setCollapsedLocations] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!user?.id || !householdId) return
-    const stored = localStorage.getItem(viewPrefKey(user.id, householdId))
-    if (stored === 'flat' || stored === 'sectional') setView(stored)
+    const storedGroup = groupFromStored(localStorage.getItem(viewPrefKey(user.id, householdId)))
+    if (storedGroup) setGroup(storedGroup)
     const storedSort = localStorage.getItem(sortPrefKey(user.id, householdId))
     if (isInventorySort(storedSort)) setSort(storedSort)
   }, [user?.id, householdId])
@@ -218,10 +227,11 @@ export function InventoryPage() {
     }
   }
 
-  const changeView = (next: ViewMode) => {
-    setView(next)
+  const changeGroup = (next: InventoryGroup) => {
+    setGroup(next)
+    setOpenFilter(null)
     if (user?.id && householdId) {
-      localStorage.setItem(viewPrefKey(user.id, householdId), next)
+      localStorage.setItem(viewPrefKey(user.id, householdId), groupToStored(next))
     }
   }
 
@@ -295,7 +305,10 @@ export function InventoryPage() {
   // Grouping only makes sense while browsing, not while actively searching
   // -- typing a term flips back to a flat filtered list so every match is
   // visible at once instead of scattered across collapsed sections.
-  const showSectional = view === 'sectional' && !storageLocationId && !search.trim()
+  // Grouping by storage location also makes no sense on a single location's own page.
+  const activeGroup: InventoryGroup =
+    search.trim() || (group === 'storage' && storageLocationId) ? 'none' : group
+  const showSectional = activeGroup === 'storage'
 
   const groupedByLocation = useMemo(() => {
     const map = new Map<string, InventoryItem[]>()
@@ -303,6 +316,21 @@ export function InventoryPage() {
       map.set(item.storage_location_id, [...(map.get(item.storage_location_id) ?? []), item])
     }
     return map
+  }, [filtered])
+
+  // Food type sections, in the app's usual category order. Only types that have an item show,
+  // since an empty "Beverages" heading would just be noise. Items keep the chosen sort inside each.
+  const groupedByCategory = useMemo(() => {
+    const map = new Map<FoodCategory, InventoryItem[]>()
+    for (const item of filtered) {
+      // An item whose food type was removed has no category; it goes under Other.
+      const category: FoodCategory =
+        item.category && item.category in FOOD_CATEGORY_LABELS ? item.category : 'OTHER'
+      map.set(category, [...(map.get(category) ?? []), item])
+    }
+    return FOOD_CATEGORIES.filter((category) => map.has(category)).map(
+      (category) => [category, map.get(category) ?? []] as const,
+    )
   }, [filtered])
 
   const noFiltersActive = !search.trim() && !categoryFilter && !storageTypeFilter
@@ -655,25 +683,45 @@ export function InventoryPage() {
             </div>
           )}
 
-          {!storageLocationId && (
+          <div className="relative shrink-0">
             <button
               type="button"
-              onClick={() => changeView(view === 'flat' ? 'sectional' : 'flat')}
-              title={
-                view === 'flat' ? 'Switch to grouped-by-storage view' : 'Switch to flat grid view'
-              }
-              aria-label={
-                view === 'flat' ? 'Switch to grouped-by-storage view' : 'Switch to flat grid view'
-              }
-              className="shrink-0 rounded-control border border-subtle bg-field p-2 text-text shadow-field transition-colors hover:bg-surface-hover"
+              onClick={() => setOpenFilter(openFilter === 'group' ? null : 'group')}
+              title={`Group: ${INVENTORY_GROUP_LABELS[group]}`}
+              aria-label="Group items"
+              aria-haspopup="menu"
+              aria-expanded={openFilter === 'group'}
+              className="rounded-control border border-subtle bg-field p-2 text-text shadow-field transition-colors hover:bg-surface-hover"
             >
-              {view === 'flat' ? (
+              {group === 'none' ? (
                 <LayoutGrid size={16} strokeWidth={1.75} />
               ) : (
                 <Rows3 size={16} strokeWidth={1.75} />
               )}
             </button>
-          )}
+            {openFilter === 'group' && (
+              <div
+                role="menu"
+                className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-card border border-subtle bg-surface-2 py-1 shadow-raised"
+              >
+                {INVENTORY_GROUPS.filter(
+                  // A single storage location's page has nothing to group by place.
+                  (option) => !(option === 'storage' && storageLocationId),
+                ).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={group === option}
+                    onClick={() => changeGroup(option)}
+                    className={`block w-full px-3 py-2 text-left text-sm hover:bg-surface-hover ${group === option ? 'font-medium text-primary' : 'text-muted'}`}
+                  >
+                    {INVENTORY_GROUP_LABELS[option]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="relative shrink-0">
             <button
@@ -795,6 +843,43 @@ export function InventoryPage() {
                       {locItems.map(renderItemCard)}
                     </ul>
                   ))}
+              </div>
+            )
+          })}
+        </div>
+      ) : activeGroup === 'category' ? (
+        <div className="flex flex-col gap-5">
+          {groupedByCategory.map(([category, categoryItems]) => {
+            const isOpen = !collapsedLocations.has(category)
+            return (
+              <div
+                key={category}
+                data-testid={`group-${category}`}
+                className="-mx-2 rounded-card px-2 py-2 transition-colors hover:bg-surface-hover"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleLocationCollapsed(category)}
+                  aria-expanded={isOpen}
+                  className="flex w-full items-center gap-2 text-left"
+                >
+                  <span className="shrink-0 rounded-control p-1 text-faint">
+                    {isOpen ? (
+                      <ChevronDown size={16} strokeWidth={2} />
+                    ) : (
+                      <ChevronRight size={16} strokeWidth={2} />
+                    )}
+                  </span>
+                  <CategoryDot category={category} />
+                  <span className="truncate font-medium">{FOOD_CATEGORY_LABELS[category]}</span>
+                  <span className="shrink-0 text-xs text-faint">{categoryItems.length}</span>
+                </button>
+                <div className="mt-2 mb-3 border-b border-subtle" />
+                {isOpen && (
+                  <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {categoryItems.map(renderItemCard)}
+                  </ul>
+                )}
               </div>
             )
           })}

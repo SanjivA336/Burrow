@@ -597,13 +597,20 @@ def finalize(
         # Per-line buyer, falling back to whoever created the session (not
         # the finalizer -- they may differ).
         buyer_id = item.buyer_member_id or session.created_by_member_id
-        created = inventory_service.create_manual(
-            household_id, buyer_id, body, receipt_image_path=session.image_path
+        # A line with several containers becomes that many separate items, made together or
+        # not at all, so a retry after a failure never leaves a half-imported line. The line
+        # keeps a link to the first one (it only needs to know it has been imported).
+        created = inventory_service.create_manual_many(
+            household_id,
+            buyer_id,
+            body,
+            item.container_count,
+            receipt_image_path=session.image_path,
         )
         _ = finalized_by_member_id  # reserved for an audit trail later
 
         client.table(_ITEMS_TABLE).update(
-            {"status": "IMPORTED", "created_inventory_item_id": str(created.id)}
+            {"status": "IMPORTED", "created_inventory_item_id": str(created[0].id)}
         ).eq("id", str(item.id)).execute()
 
     client.table(_SESSIONS_TABLE).update({"status": "FINALIZED"}).eq(

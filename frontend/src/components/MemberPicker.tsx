@@ -13,6 +13,9 @@ interface CommonProps {
   // Buyer control sits in a half-width column, so its list opens in a
   // full-width slot below the row).
   panelContainer?: HTMLElement | null
+  // Extra classes for the buttons themselves, for a form that wants them to match its other
+  // fields (the order form sets one fixed height on every field). Empty by default.
+  controlClassName?: string
 }
 
 interface MultiProps extends CommonProps {
@@ -39,7 +42,7 @@ const triggerClass =
 // a row, with a short last row centred. Multi stays open while you pick; single
 // closes as soon as you choose someone.
 export function MemberPicker(props: MultiProps | SingleProps) {
-  const { members, autofilled = false, panelContainer } = props
+  const { members, autofilled = false, panelContainer, controlClassName = '' } = props
   const sorted = useMemo(
     () => [...members].sort((a, b) => a.nickname.localeCompare(b.nickname)),
     [members],
@@ -73,7 +76,7 @@ export function MemberPicker(props: MultiProps | SingleProps) {
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
-          className={`${triggerClass} ${autofilled ? 'border-primary' : ''}`}
+          className={`${triggerClass} ${autofilled ? 'border-primary' : ''} ${controlClassName}`}
         >
           <span className="min-w-0 truncate">{chosen?.nickname ?? 'Pick…'}</span>
           <ChevronDown
@@ -101,7 +104,7 @@ export function MemberPicker(props: MultiProps | SingleProps) {
           type="button"
           aria-pressed={allSelected}
           onClick={() => onChange(allSelected ? [] : sorted.map((m) => m.id))}
-          className={`shrink-0 rounded-control border px-3 py-2 text-sm font-medium transition-colors ${
+          className={`shrink-0 rounded-control border px-3 py-2 text-sm font-medium transition-colors ${controlClassName} ${
             allSelected
               ? 'border-primary bg-primary-soft text-primary'
               : 'border-subtle bg-surface text-muted hover:bg-surface-hover hover:text-text'
@@ -113,7 +116,7 @@ export function MemberPicker(props: MultiProps | SingleProps) {
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
-          className={`${triggerClass} min-w-0 flex-1 ${open ? 'border-primary' : ''}`}
+          className={`${triggerClass} min-w-0 flex-1 ${open ? 'border-primary' : ''} ${controlClassName}`}
         >
           <span className="min-w-0 truncate">{onlyOne ? onlyOne.nickname : 'Choose people'}</span>
           <span className="flex shrink-0 items-center gap-1.5">
