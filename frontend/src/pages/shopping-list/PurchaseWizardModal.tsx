@@ -11,6 +11,8 @@ import { Modal } from '../../components/Modal'
 import { TypeSearchField, type TypeSearchFieldHandle } from '../../components/TypeSearchField'
 import { UnitSelect } from '../../components/UnitSelect'
 import { useAuth } from '../../hooks/useAuth'
+import { useIsDeveloper } from '../../hooks/useIsDeveloper'
+import { BarcodeScanSheet } from './BarcodeScanSheet'
 import { FOOD_CATEGORY_LABELS } from '../../lib/foodCategories'
 import { shortDate } from '../../lib/formatDate'
 import { formatQuantity } from '../../lib/formatQuantity'
@@ -24,6 +26,7 @@ import {
 import { UNIT_LABELS } from '../../lib/units'
 import { PLACE_LABELS, placeForStorageType, shelfLifeDays } from '../../lib/shelfLife'
 import type {
+  BarcodeLookup,
   FoodDefinition,
   InventoryItem,
   LastPurchase,
@@ -227,14 +230,12 @@ function buildManualPatchBody(draft: Draft): Record<string, unknown> {
   return body
 }
 
-// What's tucked away inside "More details", as one short line, so a collapsed
-// section never hides a value (an autofilled expiry date, say).
+// What the collapsed "More details" row shows: just the expiry date, so an autofilled date is
+// never hidden. The nickname is left out on purpose. It can be long (a scanned product name),
+// and a long line there used to stretch the whole form past the screen; it is shown by its own
+// box once the section is open.
 function moreSummary(draft: Draft): string {
-  const parts: string[] = []
-  const nickname = draft.nickname.trim()
-  if (nickname && nickname !== draft.food?.name) parts.push(`"${nickname}"`)
-  if (draft.expiryDate) parts.push(`Expires ${shortDate(draft.expiryDate)}`)
-  return parts.length > 0 ? parts.join(' · ') : 'Nickname, expiry date'
+  return draft.expiryDate ? `Expires ${shortDate(draft.expiryDate)}` : 'Nickname, expiry date'
 }
 
 export function PurchaseWizardModal({
@@ -312,6 +313,29 @@ export function PurchaseWizardModal({
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const foodFieldRef = useRef<TypeSearchFieldHandle>(null)
+
+  // Barcode scanning (developer-only while it is being tested).
+  const isDeveloper = useIsDeveloper()
+  const [scanOpen, setScanOpen] = useState(false)
+  // True while the server is looking a scanned barcode up (the camera is already off by then).
+  // The counter lets the person dismiss the wait: an answer that arrives after that is ignored.
+  const [scanLooking, setScanLooking] = useState(false)
+  const scanRequestId = useRef(0)
+  // What the last scan turned up, shown in a sheet when the person still has to choose or retry.
+  const [scanOutcome, setScanOutcome] = useState<
+    { kind: 'choose'; lookup: BarcodeLookup } | { kind: 'miss'; message: string } | null
+  >(null)
+  // What a scan supplied for the food about to be picked: the nickname, and for a barcode this
+  // burrow has confirmed before, the size. The effects that fill things in from the food (its
+  // own name, its last purchase) read this so a scan's values win, while the fields still count
+  // as filled by the app (green border) and not typed by hand. foodId null = whichever food the
+  // person picks next.
+  const scanPreset = useRef<{
+    foodId: string | null
+    nickname?: string
+    quantity?: string
+    unit?: Unit
+  } | null>(null)
   // Manual entry's autosave PATCHes fire straight from the currently open
   // draft (see syncManualLine below); when one lands, it updates `session`
   // itself so the LineList checkmarks and the header Submit button's
@@ -377,6 +401,98 @@ export function PurchaseWizardModal({
     }
   }, [session, selectedId, activeMemberIds, stickyBuyer, stickyStorageLocationId])
 
+  // The scan's values for this food, if a scan supplied any. A preset waiting for "the next food"
+  // (foodId null) is claimed by the first food picked, so it can't leak onto a later one.
+  const presetFor = (foodId: string) => {
+    const preset = scanPreset.current
+    if (!preset) return null
+    if (preset.foodId === null) scanPreset.current = { ...preset, foodId }
+    return preset.foodId === null || preset.foodId === foodId ? preset : null
+  }
+
+  // A number came off the scanner: ask the server what it is, then fill the form or ask the
+  // person to choose / retry. The camera is already off by now.
+  const handleScannedCode = async (code: string) => {
+    setScanOpen(false)
+    setScanLooking(true)
+    const requestId = ++scanRequestId.current
+    // The line the scan was for, in case the person moves to another while it is looked up.
+    const lineId = selectedId
+    try {
+      const lookup = await apiClient.get<BarcodeLookup>(
+        `/api/households/${householdId}/barcodes/${encodeURIComponent(code)}`,
+      )
+      if (requestId !== scanRequestId.current) return // dismissed while waiting
+      // Attach the barcode to the line, even when nothing was found, so finishing the purchase
+      // teaches the app what it is (see the server's finalize). Best effort: a failure here
+      // only means the barcode isn't remembered. Store-printed codes are never remembered.
+      if (lineId && lookup.status !== 'store_code') {
+        apiClient
+          .patch(`${base}/items/${lineId}`, { scanned_barcode: lookup.gtin })
+          .catch(() => undefined)
+      }
+      if (lookup.status === 'remembered' && lookup.remembered) {
+        const known = lookup.remembered
+        applyScannedFood(known.food, {
+          nickname: known.name_override ?? undefined,
+          quantity: known.quantity ? String(Number(known.quantity)) : undefined,
+          unit: known.unit ?? undefined,
+          containers: known.container_count > 1 ? String(known.container_count) : undefined,
+        })
+      } else if (lookup.status === 'found') {
+        setScanOutcome({ kind: 'choose', lookup })
+      } else if (lookup.status === 'store_code') {
+        setScanOutcome({
+          kind: 'miss',
+          message:
+            "That's a store's own label (like a deli or by-weight sticker). It only means something inside that store.",
+        })
+      } else {
+        setScanOutcome({
+          kind: 'miss',
+          message: "We couldn't find that item in the product database.",
+        })
+      }
+    } catch (err) {
+      if (requestId !== scanRequestId.current) return
+      setScanOutcome({
+        kind: 'miss',
+        message: err instanceof ApiError ? err.message : "Couldn't look that barcode up.",
+      })
+    } finally {
+      if (requestId === scanRequestId.current) setScanLooking(false)
+    }
+  }
+
+  // Puts a scanned food on the current line. Only what the scan really supplies is set: a
+  // remembered size, if there is one, and the nickname. Everything else fills in as usual
+  // from the food.
+  const applyScannedFood = (
+    food: FoodDefinition,
+    scanned: { nickname?: string; quantity?: string; unit?: Unit; containers?: string },
+  ) => {
+    scanPreset.current = {
+      foodId: food.id,
+      nickname: scanned.nickname,
+      quantity: scanned.quantity,
+      unit: scanned.unit,
+    }
+    // The scan replaces whatever the app filled in before; anything typed by hand is kept.
+    setCustomized((prev) => ({ ...prev, nickname: false }))
+    setDraft((prev) =>
+      prev
+        ? {
+            ...prev,
+            food,
+            nickname: scanned.nickname ?? food.name,
+            quantity: scanned.quantity ?? prev.quantity,
+            unit: scanned.unit ?? (prev.unit || food.preferred_unit),
+            containers: scanned.containers ?? prev.containers,
+          }
+        : prev,
+    )
+  }
+
   const selectedItem = session?.items.find((i) => i.id === selectedId) ?? null
   const selectedIndex = session?.items.findIndex((i) => i.id === selectedId) ?? -1
   const allComplete =
@@ -412,7 +528,8 @@ export function PurchaseWizardModal({
   // just refreshes it, same as never having been filled in at all.
   useEffect(() => {
     if (!draft?.food || customized.nickname) return
-    const name = draft.food.name
+    const preset = presetFor(draft.food.id)
+    const name = preset?.nickname ?? draft.food.name
     setDraft((prev) => (prev ? { ...prev, nickname: name } : prev))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft?.food?.id])
@@ -446,6 +563,7 @@ export function PurchaseWizardModal({
     const typedNickname =
       customizedRef.current.nickname && draft.nickname.trim() ? draft.nickname.trim() : ''
     const nicknameQuery = typedNickname ? `&nickname=${encodeURIComponent(typedNickname)}` : ''
+    const scanned = presetFor(foodId)
     apiClient
       .get<LastPurchase | null>(
         `${base}/last-purchase?global_food_definition_id=${foodId}${nicknameQuery}`,
@@ -456,7 +574,7 @@ export function PurchaseWizardModal({
           const preference = await apiClient.get<MeasurementPreference>(
             `${base}/measurement-preference?global_food_definition_id=${foodId}`,
           )
-          if (!customizedRef.current.unit) {
+          if (!customizedRef.current.unit && !scanned?.unit) {
             setDraft((prev) => (prev ? { ...prev, unit: preference.unit } : prev))
           }
           return
@@ -467,13 +585,19 @@ export function PurchaseWizardModal({
           prev
             ? {
                 ...prev,
-                unit: mine.unit ? prev.unit : last.unit,
-                quantity: mine.quantity ? prev.quantity : String(Number(last.quantity)),
+                unit: mine.unit || scanned?.unit ? prev.unit : last.unit,
+                quantity:
+                  mine.quantity || scanned?.quantity
+                    ? prev.quantity
+                    : String(Number(last.quantity)),
                 storageLocationId:
                   mine.storage_location || !knownPlace
                     ? prev.storageLocationId
                     : last.storage_location_id,
-                nickname: mine.nickname || !last.nickname ? prev.nickname : last.nickname,
+                nickname:
+                  mine.nickname || scanned?.nickname || !last.nickname
+                    ? prev.nickname
+                    : last.nickname,
                 allowedMemberIds:
                   mine.allowed_member_ids || last.allowed_member_ids.length === 0
                     ? prev.allowedMemberIds
@@ -1039,9 +1163,13 @@ export function PurchaseWizardModal({
               ) : (
                 <>
                   <div data-sheet-scroll className="min-h-0 flex-1 overflow-y-auto p-4">
+                    {/* min-w-0: a fieldset will not shrink below its content's natural width unless
+                        told it may. Without it, one long line that is clipped with `truncate` (the
+                        "More details" summary of a long nickname) still stretches the whole form
+                        past the screen. */}
                     <fieldset
                       disabled={locked}
-                      className="m-0 flex flex-col gap-3 border-0 p-0 disabled:opacity-60"
+                      className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0 disabled:opacity-60"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
@@ -1049,6 +1177,7 @@ export function PurchaseWizardModal({
                           <TypeSearchField
                             ref={foodFieldRef}
                             value={draft.food}
+                            onScan={isDeveloper && !locked ? () => setScanOpen(true) : undefined}
                             onChange={(food) =>
                               setDraft({
                                 ...draft,
@@ -1335,17 +1464,19 @@ export function PurchaseWizardModal({
                         )}
                       </div>
 
-                      <div className="rounded-control border border-subtle">
+                      <div className="min-w-0 rounded-control border border-subtle">
                         <button
                           type="button"
                           aria-expanded={showMore}
                           onClick={() => setShowMore((v) => !v)}
                           className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
                         >
-                          <span className="text-sm font-medium text-muted">More details</span>
-                          <span className="flex min-w-0 items-center gap-2">
-                            <span className="truncate text-xs text-faint">
-                              {moreSummary(draft)}
+                          <span className="shrink-0 whitespace-nowrap text-sm font-medium text-muted">
+                            More details
+                          </span>
+                          <span className="flex min-w-0 max-w-[65%] items-center gap-2">
+                            <span className="min-w-0 truncate text-xs text-faint">
+                              {showMore ? '' : moreSummary(draft)}
                             </span>
                             <ChevronDown
                               size={16}
@@ -1567,6 +1698,117 @@ export function PurchaseWizardModal({
               className="rounded-control border border-danger/40 px-3 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger-soft disabled:opacity-50"
             >
               {cancelling ? 'Discarding…' : 'Discard'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {scanOpen && (
+        <BarcodeScanSheet
+          onCode={(code) => void handleScannedCode(code)}
+          onClose={() => setScanOpen(false)}
+        />
+      )}
+
+      {scanLooking && (
+        <Modal
+          title="Looking for that item…"
+          onClose={() => {
+            scanRequestId.current += 1 // the answer, when it comes, is ignored
+            setScanLooking(false)
+          }}
+        >
+          <div role="status" className="flex flex-col items-center gap-3 py-4">
+            <span
+              aria-hidden="true"
+              className="size-7 animate-spin rounded-full border-2 border-subtle border-t-primary"
+            />
+            <p className="text-center text-sm text-muted">Checking the product database…</p>
+          </div>
+        </Modal>
+      )}
+
+      {scanOutcome?.kind === 'miss' && (
+        <Modal title="Couldn't find that item" onClose={() => setScanOutcome(null)}>
+          <p className="mb-4 text-sm text-muted">{scanOutcome.message}</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setScanOutcome(null)
+                setScanOpen(true)
+              }}
+              className="flex-1 rounded-control bg-primary px-3 py-2 text-sm font-medium text-on-accent hover:bg-primary-hover"
+            >
+              Scan again
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setScanOutcome(null)
+                foodFieldRef.current?.focus()
+              }}
+              className="flex-1 rounded-control border border-subtle px-3 py-2 text-sm font-medium text-muted hover:bg-surface-hover hover:text-text"
+            >
+              Enter manually
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {scanOutcome?.kind === 'choose' && (
+        <Modal title="Which food is this?" onClose={() => setScanOutcome(null)}>
+          <p className="mb-1 text-sm font-medium">
+            {scanOutcome.lookup.suggested_nickname ?? 'Unnamed product'}
+          </p>
+          <p className="mb-3 text-sm text-muted">
+            {scanOutcome.lookup.candidates.length > 0
+              ? 'Pick the food type that fits. These are guesses.'
+              : "We found the product but couldn't match it to a food type. Search for one yourself."}
+          </p>
+          <div className="mb-3 flex flex-col gap-1">
+            {scanOutcome.lookup.candidates.map((food) => (
+              <button
+                key={food.id}
+                type="button"
+                onClick={() => {
+                  applyScannedFood(food, {
+                    nickname: scanOutcome.lookup.suggested_nickname ?? undefined,
+                  })
+                  setScanOutcome(null)
+                }}
+                className="flex w-full items-center gap-2 rounded-control border border-subtle bg-surface-2 px-2 py-2 text-left text-sm hover:bg-surface-hover"
+              >
+                <CategoryDot category={food.category} />
+                <span className="flex-1">{food.name}</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                // Keep the product's name for whichever food the person searches up.
+                scanPreset.current = {
+                  foodId: null,
+                  nickname: scanOutcome.lookup.suggested_nickname ?? undefined,
+                }
+                setScanOutcome(null)
+                foodFieldRef.current?.focus()
+              }}
+              className="flex-1 rounded-control border border-subtle px-3 py-2 text-sm font-medium text-muted hover:bg-surface-hover hover:text-text"
+            >
+              Search myself
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setScanOutcome(null)
+                setScanOpen(true)
+              }}
+              className="flex-1 rounded-control border border-subtle px-3 py-2 text-sm font-medium text-muted hover:bg-surface-hover hover:text-text"
+            >
+              Scan again
             </button>
           </div>
         </Modal>

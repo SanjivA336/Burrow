@@ -17,6 +17,7 @@ from app.schemas.purchase_session import (
     UpdatePurchaseSessionItemRequest,
 )
 from app.schemas.units import coerce_unit_from_ai
+from app.services import food_barcodes as food_barcodes_service
 from app.services import food_definitions as food_definitions_service
 from app.services import inventory_items as inventory_service
 from app.services import receipt_parsing
@@ -533,6 +534,27 @@ def add_blank_item(household_id: UUID, session_id: UUID) -> PurchaseSessionItem:
     return _flatten_item(enriched.data)
 
 
+def _remember_scanned_barcode(household_id: UUID, item: PurchaseSessionItem) -> None:
+    """Saves what the person confirmed on a scanned line (food type, nickname, size) against
+    its barcode, so the next scan of that product fills the line by itself. Runs only once a
+    line has been imported, and it is best effort: the items are already in the inventory by
+    now, so a failure here is logged and never fails (or undoes) the purchase."""
+    if not item.scanned_barcode or not item.global_food_definition_id:
+        return
+    try:
+        food_barcodes_service.remember(
+            household_id,
+            item.scanned_barcode,
+            food_definition_id=item.global_food_definition_id,
+            name_override=item.name_override,
+            quantity=item.quantity,
+            unit=item.preferred_unit,
+            container_count=item.container_count,
+        )
+    except Exception:
+        _logger.exception("Couldn't remember scanned barcode %s", item.scanned_barcode)
+
+
 def finalize(
     household_id: UUID, session_id: UUID, finalized_by_member_id: UUID
 ) -> PurchaseSessionWithItems:
@@ -612,6 +634,7 @@ def finalize(
         client.table(_ITEMS_TABLE).update(
             {"status": "IMPORTED", "created_inventory_item_id": str(created[0].id)}
         ).eq("id", str(item.id)).execute()
+        _remember_scanned_barcode(household_id, item)
 
     client.table(_SESSIONS_TABLE).update({"status": "FINALIZED"}).eq(
         "id", str(session_id)

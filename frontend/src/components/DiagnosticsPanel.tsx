@@ -13,6 +13,9 @@ import {
 function Panel() {
   const [now, setNow] = useState(fullSnapshot)
   const [copied, setCopied] = useState(false)
+  // Collapsed to a small pill so the screen underneath can be used (the panel covers half of
+  // it). The log keeps recording either way; it starts at app launch, not when this opens.
+  const [collapsed, setCollapsed] = useState(false)
   const entries = useDiagnosticsLog()
 
   useEffect(() => {
@@ -21,6 +24,19 @@ function Panel() {
   }, [])
 
   const log = formatLog(entries)
+
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={() => setCollapsed(false)}
+        aria-label="Show diagnostics"
+        className="fixed right-2 top-2 z-50 rounded-pill border border-subtle bg-surface/95 px-3 py-1 text-xs font-semibold text-text shadow-raised"
+      >
+        Diag
+      </button>
+    )
+  }
 
   return (
     <div className="fixed inset-x-2 top-14 z-50 rounded-card border border-subtle bg-surface/95 p-3 text-text shadow-raised">
@@ -36,6 +52,13 @@ function Panel() {
           className="rounded-control bg-primary px-3 py-1.5 text-sm font-semibold text-on-accent"
         >
           {copied ? 'Copied' : 'Copy'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setCollapsed(true)}
+          className="rounded-control border border-subtle px-3 py-1.5 text-sm text-text"
+        >
+          Hide
         </button>
         <button
           type="button"

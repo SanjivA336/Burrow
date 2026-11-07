@@ -290,6 +290,7 @@
   {"name": "Sparkling Water", "preferred_unit": "count", "category": "BEVERAGES", "pantry_shelf_life_days": 270, "fridge_shelf_life_days": -3, "freezer_shelf_life_days": -2},
   {"name": "Soda", "preferred_unit": "count", "category": "BEVERAGES", "pantry_shelf_life_days": 270, "fridge_shelf_life_days": -3, "freezer_shelf_life_days": -2},
   {"name": "Energy Drink", "preferred_unit": "count", "category": "BEVERAGES", "pantry_shelf_life_days": 365, "fridge_shelf_life_days": -3, "freezer_shelf_life_days": -2},
+  {"name": "Protein Shake", "preferred_unit": "count", "category": "BEVERAGES", "pantry_shelf_life_days": 270, "fridge_shelf_life_days": 7, "freezer_shelf_life_days": -2},
   {"name": "Bottled Water", "preferred_unit": "count", "category": "BEVERAGES", "pantry_shelf_life_days": -1, "fridge_shelf_life_days": -3, "freezer_shelf_life_days": -2},
   {"name": "Coconut Water", "preferred_unit": "ml", "category": "BEVERAGES", "pantry_shelf_life_days": 270, "fridge_shelf_life_days": 2, "freezer_shelf_life_days": -2},
   {"name": "Beer", "preferred_unit": "count", "category": "BEVERAGES", "pantry_shelf_life_days": 180, "fridge_shelf_life_days": 270, "freezer_shelf_life_days": -2},

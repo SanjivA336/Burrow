@@ -435,6 +435,26 @@ export interface PurchaseSession {
   updated_at: string
 }
 
+// What scanning a barcode suggests (GET /households/{id}/barcodes/{code}). Everything here is
+// a suggestion to confirm. It never carries a size from the product database.
+export interface BarcodeLookup {
+  gtin: string
+  // remembered: this burrow confirmed it before. found: the product database knew it.
+  // not_found / store_code: nothing usable (store_code = a code only one store understands).
+  status: 'remembered' | 'found' | 'not_found' | 'store_code'
+  product_name: string | null
+  brand: string | null
+  suggested_nickname: string | null
+  candidates: FoodDefinition[]
+  remembered: {
+    food: FoodDefinition
+    name_override: string | null
+    quantity: string | null
+    unit: Unit | null
+    container_count: number
+  } | null
+}
+
 export interface PurchaseSessionItem {
   id: string
   session_id: string
@@ -455,6 +475,8 @@ export interface PurchaseSessionItem {
   cost: string | null
   // How many separate items this line becomes when the order is submitted (1 to 24).
   container_count: number
+  // The normalized barcode this line was scanned from, if any.
+  scanned_barcode: string | null
   expiry_date: string | null
   name_override: string | null
   accounting_type: AccountingType | null

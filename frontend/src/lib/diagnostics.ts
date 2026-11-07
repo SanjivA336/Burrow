@@ -91,6 +91,28 @@ function brief(): string {
   ].join(' | ')
 }
 
+// Elements whose right edge is past the screen's, which is how a form ends up "too wide to fit".
+// Only the innermost ones are listed: a wide child makes every ancestor wide too, and the child
+// is the one worth looking at. Shown as tag.classes, left-right (width).
+function overflowing(): string {
+  const limit = innerWidth + 1
+  const wide = new Set<Element>()
+  for (const el of document.body.querySelectorAll('*')) {
+    const rect = el.getBoundingClientRect()
+    if (rect.width > 0 && rect.right > limit) wide.add(el)
+  }
+  const innermost = [...wide].filter((el) => ![...el.children].some((child) => wide.has(child)))
+  if (innermost.length === 0) return 'none'
+  return innermost
+    .slice(0, 5)
+    .map((el) => {
+      const rect = el.getBoundingClientRect()
+      const classes = String(el.getAttribute('class') ?? '').slice(0, 70)
+      return `${el.tagName.toLowerCase()}.${classes} ${round(rect.left)}-${round(rect.right)} (${round(rect.width)})`
+    })
+    .join('\n    ')
+}
+
 // Everything, one value per line, for the "now" section.
 export function fullSnapshot(): string {
   const vv = window.visualViewport
@@ -109,6 +131,7 @@ export function fullSnapshot(): string {
     ['safe-area insets T/B/L/R', `${inset('Top')} / ${inset('Bottom')} / ${inset('Left')} / ${inset('Right')}`],
     ['scrollY / docH / bodyH', `${round(scrollY)} / ${document.documentElement.scrollHeight} / ${document.body.scrollHeight}`],
     ['pixel ratio', devicePixelRatio],
+    ['past the right edge', overflowing()],
   ]
   return rows.map(([k, v]) => `${k}: ${v}`).join('\n')
 }

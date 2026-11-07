@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, ScanBarcode } from 'lucide-react'
 import { apiClient } from '../lib/apiClient'
 import { CategoryDot } from './CategoryDot'
 import { CreateFoodForm } from './CreateFoodForm'
@@ -14,6 +14,9 @@ interface Props {
   // delivers the full FoodDefinition, straight from a real API response.
   value: (Pick<FoodDefinition, 'id' | 'name'> & Partial<Omit<FoodDefinition, 'id' | 'name'>>) | null
   onChange: (food: FoodDefinition | null) => void
+  // When given, a barcode button appears beside the "+" and calls this. Left out where scanning
+  // isn't offered (it is developer-only for now, and only the Add item form uses it).
+  onScan?: () => void
 }
 
 export interface TypeSearchFieldHandle {
@@ -26,7 +29,7 @@ export interface TypeSearchFieldHandle {
 // Item form wants this to read as one continuous list of fields, not a
 // popover sitting on top of the rest of the form.
 export const TypeSearchField = forwardRef<TypeSearchFieldHandle, Props>(function TypeSearchField(
-  { value, onChange },
+  { value, onChange, onScan },
   ref,
 ) {
   const [query, setQuery] = useState('')
@@ -81,7 +84,7 @@ export const TypeSearchField = forwardRef<TypeSearchFieldHandle, Props>(function
     return (
       <div className="flex items-center gap-2 rounded-control border border-subtle bg-surface-2 px-2 py-2">
         <CategoryDot category={value.category ?? null} />
-        <span className="flex-1">{value.name}</span>
+        <span className="min-w-0 flex-1">{value.name}</span>
         <button
           type="button"
           onClick={clear}
@@ -114,6 +117,17 @@ export const TypeSearchField = forwardRef<TypeSearchFieldHandle, Props>(function
         >
           <Plus size={18} strokeWidth={2} />
         </button>
+        {onScan && (
+          <button
+            type="button"
+            onClick={onScan}
+            title="Scan a barcode"
+            aria-label="Scan a barcode"
+            className="flex shrink-0 items-center justify-center rounded-control bg-primary-soft px-3 text-primary transition-colors hover:bg-primary hover:text-on-accent"
+          >
+            <ScanBarcode size={18} strokeWidth={2} />
+          </button>
+        )}
       </div>
       {results.length > 0 && (
         <div className="mt-2 flex flex-col gap-1">

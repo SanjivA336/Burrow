@@ -86,6 +86,9 @@ class PurchaseSessionItem(BaseModel):
     shopping_list_item_id: UUID | None
     status: PurchaseSessionItemStatus
     created_inventory_item_id: UUID | None
+    # The 14-digit barcode this line was scanned from, if any (set even when the scan found
+    # nothing). Finalize remembers it against the confirmed food and size.
+    scanned_barcode: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -140,4 +143,6 @@ class UpdatePurchaseSessionItemRequest(BaseModel):
     accounting_type: AccountingType | None = None
     allowed_member_ids: list[UUID] | None = None
     buyer_member_id: UUID | None = None
+    # The normalized barcode a scan produced (see services/gtin.normalize_gtin).
+    scanned_barcode: str | None = Field(default=None, pattern=r"^[0-9]{14}$")
     status: PurchaseSessionItemStatus | None = None

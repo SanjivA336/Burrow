@@ -88,6 +88,11 @@ class Settings(BaseSettings):
     # today; see app/core/auth.py's is_developer/require_developer.
     developer_user_ids: str = ""
 
+    # Sent to the barcode product database (Open Food Facts) with every lookup. They
+    # ask API users to identify themselves as "AppName/Version (contact)" so they can
+    # reach out instead of blocking an app that misbehaves; set a real contact here.
+    barcode_user_agent: str = "BurrowPantryApp/1.0 (barcode lookup)"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
