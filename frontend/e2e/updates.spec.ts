@@ -9,17 +9,17 @@ import { accessibilityProblems } from './support/axe'
 const dialog = (page: import('@playwright/test').Page) =>
   page.getByRole('dialog', { name: 'Updates' })
 
-test.describe('an unread major article, with a newer minor one above it (phone)', () => {
+test.describe('an unread major article (phone)', () => {
   test.use({ ...IPHONE, updatesRead: false })
 
   test('opens by itself once, is marked read, and does not come back', async ({ page }) => {
     await page.goto(`/households/${HID}`)
     await expect(dialog(page)).toBeVisible({ timeout: 5000 })
-    await expect(dialog(page).getByRole('heading', { name: 'Make Burrow yours' })).toBeVisible()
+    await expect(dialog(page).getByRole('heading', { name: 'Scan a barcode' })).toBeVisible()
     // The banner shows the caption (the version); the title is only for screen readers.
-    await expect(dialog(page).getByText('v0.14.0')).toBeVisible()
-    // A newer, minor note sits above it, but the card starts on the major one that was missed.
-    await expect(dialog(page).getByText('v0.14.0')).toBeInViewport()
+    await expect(dialog(page).getByText('v0.17.0')).toBeVisible()
+    // The newest note is the major one, so the card opens on it.
+    await expect(dialog(page).getByText('v0.17.0')).toBeInViewport()
     expect(await accessibilityProblems(page)).toEqual([])
 
     await dialog(page).getByRole('button', { name: 'Close' }).first().click()
