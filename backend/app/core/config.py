@@ -90,8 +90,9 @@ class Settings(BaseSettings):
 
     # Sent to the barcode product database (Open Food Facts) with every lookup. They
     # ask API users to identify themselves as "AppName/Version (contact)" so they can
-    # reach out instead of blocking an app that misbehaves; set a real contact here.
-    barcode_user_agent: str = "BurrowPantryApp/1.0 (barcode lookup)"
+    # reach out instead of blocking an app that misbehaves. The contact is the app's website
+    # (not a personal email); override with BARCODE_USER_AGENT if that ever changes.
+    barcode_user_agent: str = "BurrowPantryApp/1.0 (https://burrowapp.site)"
 
     @property
     def cors_origin_list(self) -> list[str]:
