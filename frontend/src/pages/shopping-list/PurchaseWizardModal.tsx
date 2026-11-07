@@ -11,7 +11,6 @@ import { Modal } from '../../components/Modal'
 import { TypeSearchField, type TypeSearchFieldHandle } from '../../components/TypeSearchField'
 import { UnitSelect } from '../../components/UnitSelect'
 import { useAuth } from '../../hooks/useAuth'
-import { useIsDeveloper } from '../../hooks/useIsDeveloper'
 import { BarcodeScanSheet } from './BarcodeScanSheet'
 import { FOOD_CATEGORY_LABELS } from '../../lib/foodCategories'
 import { shortDate } from '../../lib/formatDate'
@@ -314,8 +313,7 @@ export function PurchaseWizardModal({
   const [cancelling, setCancelling] = useState(false)
   const foodFieldRef = useRef<TypeSearchFieldHandle>(null)
 
-  // Barcode scanning (developer-only while it is being tested).
-  const isDeveloper = useIsDeveloper()
+  // Barcode scanning.
   const [scanOpen, setScanOpen] = useState(false)
   // True while the server is looking a scanned barcode up (the camera is already off by then).
   // The counter lets the person dismiss the wait: an answer that arrives after that is ignored.
@@ -1177,7 +1175,7 @@ export function PurchaseWizardModal({
                           <TypeSearchField
                             ref={foodFieldRef}
                             value={draft.food}
-                            onScan={isDeveloper && !locked ? () => setScanOpen(true) : undefined}
+                            onScan={locked ? undefined : () => setScanOpen(true)}
                             onChange={(food) =>
                               setDraft({
                                 ...draft,

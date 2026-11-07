@@ -15,7 +15,7 @@ interface Props {
   value: (Pick<FoodDefinition, 'id' | 'name'> & Partial<Omit<FoodDefinition, 'id' | 'name'>>) | null
   onChange: (food: FoodDefinition | null) => void
   // When given, a barcode button appears beside the "+" and calls this. Left out where scanning
-  // isn't offered (it is developer-only for now, and only the Add item form uses it).
+  // isn't offered (only the Add item form uses it).
   onScan?: () => void
 }
 

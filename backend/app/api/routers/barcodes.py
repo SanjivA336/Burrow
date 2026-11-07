@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.auth import require_developer, require_household_membership
+from app.core.auth import require_household_membership
 from app.core.responses import Envelope, ok
 from app.schemas.barcode import BarcodeLookup
 from app.schemas.member import Member
@@ -10,8 +10,8 @@ from app.services import barcode_lookup as barcode_lookup_service
 from app.services.gtin import InvalidBarcodeError
 
 # Household-scoped because the lookup checks what this household has already scanned and
-# confirmed (the food_barcodes memory) before asking the product database. Developer-only
-# while barcode scanning is in testing.
+# confirmed (the food_barcodes memory) before asking the product database. Any member of the
+# household can use it.
 router = APIRouter(prefix="/households/{household_id}/barcodes", tags=["barcodes"])
 
 
@@ -20,7 +20,6 @@ def look_up_barcode(
     household_id: UUID,
     barcode: str,
     _member: Member = Depends(require_household_membership),
-    _dev: UUID = Depends(require_developer),
 ) -> Envelope[BarcodeLookup]:
     try:
         return ok(barcode_lookup_service.lookup(household_id, barcode))

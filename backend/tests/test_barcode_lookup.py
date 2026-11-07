@@ -10,7 +10,7 @@ from app.schemas.food_definition import AccountingType, FoodCategory, FoodDefini
 from app.schemas.units import Unit
 from app.services import barcode_lookup as svc
 from app.services import gtin as codes
-from tests.conftest import auth_header, make_developer, make_member
+from tests.conftest import auth_header, make_member
 
 _HOUSEHOLD_ID = uuid.uuid4()
 
@@ -183,19 +183,9 @@ async def test_non_member_cannot_look_up(client, fake_members) -> None:
     assert response.status_code == 403
 
 
-async def test_member_who_is_not_a_developer_is_refused(client, fake_members) -> None:
+async def test_an_ordinary_member_gets_the_lookup(client, fake_members, monkeypatch) -> None:
     household_id, user_id = uuid.uuid4(), uuid.uuid4()
     fake_members.seed(make_member(household_id, user_id))
-
-    response = await client.get(_url(household_id), headers=auth_header(user_id))
-
-    assert response.status_code == 403
-
-
-async def test_developer_member_gets_the_lookup(client, fake_members, monkeypatch) -> None:
-    household_id, user_id = uuid.uuid4(), uuid.uuid4()
-    fake_members.seed(make_member(household_id, user_id))
-    make_developer(monkeypatch, user_id)
     monkeypatch.setattr(
         "app.services.barcode_lookup.lookup",
         lambda household_id, barcode: BarcodeLookup(
@@ -215,7 +205,6 @@ async def test_developer_member_gets_the_lookup(client, fake_members, monkeypatc
 async def test_bad_barcode_is_a_422(client, fake_members, monkeypatch) -> None:
     household_id, user_id = uuid.uuid4(), uuid.uuid4()
     fake_members.seed(make_member(household_id, user_id))
-    make_developer(monkeypatch, user_id)
 
     response = await client.get(_url(household_id, "036000291453"), headers=auth_header(user_id))
 
@@ -225,7 +214,6 @@ async def test_bad_barcode_is_a_422(client, fake_members, monkeypatch) -> None:
 async def test_provider_outage_is_a_502(client, fake_members, monkeypatch) -> None:
     household_id, user_id = uuid.uuid4(), uuid.uuid4()
     fake_members.seed(make_member(household_id, user_id))
-    make_developer(monkeypatch, user_id)
 
     def down(household_id, barcode):
         raise svc.BarcodeProviderError("down")
