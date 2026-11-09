@@ -6,6 +6,7 @@ import { Plus, TriangleAlert, X } from 'lucide-react'
 import { AutoGrowTextarea } from '../../components/AutoGrowTextarea'
 import { FoodSearchInput } from '../../components/FoodSearchInput'
 import { ApiError } from '../../lib/apiClient'
+import { ChangeFoodSheet } from './ChangeFoodSheet'
 import { MatchToItemsSheet } from './MatchToItemsSheet'
 import { PickFoodSheet } from './PickFoodSheet'
 import {
@@ -15,6 +16,7 @@ import {
   changeMention,
   checkMentions,
   findMentions,
+  foodForLabel,
   removeBrackets,
   sameName,
   toEditText,
@@ -165,6 +167,12 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
   const [showRowErrors, setShowRowErrors] = useState(false)
   // A line above the buttons after an automatic change (a merge, a rewrite), with an Undo.
   const [matchOpen, setMatchOpen] = useState(false)
+  // A linked food in a step that the person tapped to change.
+  const [changing, setChanging] = useState<{
+    step: number
+    index: number
+    food: MentionFood
+  } | null>(null)
   // A bracket in a step that names no ingredient, while the person is choosing which food it is.
   const [pickFor, setPickFor] = useState<{ step: number; label: string } | null>(null)
   const [notice, setNotice] = useState<{ text: string; undo: () => void } | null>(null)
@@ -187,6 +195,13 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
 
   const foods: MentionFood[] = ingredients.flatMap((row) => (row.food ? [row.food] : []))
   const mentionCheck = checkMentions(instructions, foods)
+  // Every food named in the steps that is one of the ingredients, one entry per mention.
+  const linkedMentions = instructions.flatMap((text, step) =>
+    findMentions(text).flatMap((m) => {
+      const food = foodForLabel(m.label, foods)
+      return food ? [{ step, index: m.index, food }] : []
+    }),
+  )
 
   // An ingredient row's food changed: mentions of the old food follow it, and a food that is
   // already listed merges (the old row goes, the existing row keeps its amount).
@@ -251,6 +266,31 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
     )
     setIngredients(result.rows)
     setInstructions(result.steps)
+  }
+
+  // The person changed a linked food in a step: this mention only ('one', the new food is added
+  // and the old ingredient stays) or all of them ('all', the ingredient swaps too).
+  const applyChange = (food: MentionFood, scope: 'one' | 'all') => {
+    if (!changing) return
+    const old = changing.food
+    const result = changeMention(
+      ingredients,
+      instructions,
+      { step: changing.step, index: changing.index },
+      food,
+      scope,
+      (picked) => ({ ...emptyIngredientRow(), food: picked }),
+    )
+    announce(
+      result.merged
+        ? `Merged ${old.name} into ${food.name}`
+        : result.added
+          ? `Changed ${old.name} to ${food.name} and added it to the ingredients`
+          : `Changed ${old.name} to ${food.name}`,
+    )
+    setIngredients(result.rows)
+    setInstructions(result.steps)
+    setChanging(null)
   }
 
   const submit = async (values: RecipeFormValues) => {
@@ -586,6 +626,27 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
             >
               Match to items
             </button>
+            {linkedMentions.length > 0 && (
+              <div className="mt-3">
+                <p className="mb-1.5 text-xs font-medium text-muted">
+                  Foods in your steps (tap one to change it)
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {linkedMentions.map((m) => (
+                    <button
+                      key={`${m.step}-${m.index}`}
+                      type="button"
+                      onClick={() => setChanging(m)}
+                      aria-label={`Change ${m.food.name} in step ${m.step + 1}`}
+                      className="inline-flex items-center gap-1 rounded-pill bg-primary-soft px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary hover:text-on-accent"
+                    >
+                      {m.food.name}
+                      <span className="opacity-70">step {m.step + 1}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {mentionCheck.missing.length > 0 && (
               <div
                 role="alert"
@@ -683,6 +744,15 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
             setMatchOpen(false)
           }}
           onClose={() => setMatchOpen(false)}
+        />
+      )}
+      {changing && (
+        <ChangeFoodSheet
+          current={changing.food}
+          mentionCount={linkedMentions.filter((m) => m.food.id === changing.food.id).length}
+          otherIngredients={foods}
+          onApply={applyChange}
+          onClose={() => setChanging(null)}
         />
       )}
       {pickFor && (

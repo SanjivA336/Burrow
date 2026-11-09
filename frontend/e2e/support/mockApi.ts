@@ -166,7 +166,10 @@ export async function mockApi(page: Page, state: ApiState): Promise<void> {
         terms.includes('butter') ? [{ term: 'butter', matches: [{ food: butter, score: 1 }] }] : [],
       )
     }
-    if (path === '/api/food-definitions/search') return reply(route, [wholeMilk])
+    if (path === '/api/food-definitions/search') {
+      const query = new URL(request.url()).searchParams.get('query') ?? ''
+      return reply(route, query.toLowerCase().includes('butter') ? [butter] : [wholeMilk])
+    }
 
     // The Add Item sheet opens a manual order, then saves each change to it as you type.
     if (path === `${base}/purchase-sessions/manual`) return reply(route, emptySession)
