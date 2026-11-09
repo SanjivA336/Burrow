@@ -122,8 +122,11 @@ def test_thin_record_still_gives_a_nickname(monkeypatch, searches) -> None:
     assert result.status is BarcodeLookupStatus.FOUND
     assert result.gtin == "00811620124171"
     assert result.suggested_nickname == "fairlife Nutrition Plan Vanilla"
-    # No category data, so the name's words are the only clue: the whole phrase, then each word.
-    assert searches["queries"] == ["nutrition plan vanilla", "nutrition", "plan", "vanilla"]
+    # No category data, so the name's words are the only clue: the whole phrase and each word.
+    # Sorted, because the searches run side by side and finish in no fixed order.
+    assert sorted(searches["queries"]) == sorted(
+        ["nutrition plan vanilla", "nutrition", "plan", "vanilla"]
+    )
     assert result.candidates == []
 
 
