@@ -1,14 +1,15 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useParams } from 'react-router-dom'
 import { NumberInput } from '../../components/NumberInput'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, TriangleAlert, X } from 'lucide-react'
-import { AutoGrowTextarea } from '../../components/AutoGrowTextarea'
 import { FoodSearchInput } from '../../components/FoodSearchInput'
-import { ApiError } from '../../lib/apiClient'
+import { ApiError, apiClient } from '../../lib/apiClient'
 import { ChangeFoodSheet } from './ChangeFoodSheet'
 import { MatchToItemsSheet } from './MatchToItemsSheet'
 import { PickFoodSheet } from './PickFoodSheet'
+import { StepEditor } from './StepEditor'
 import {
   addIngredientIfMissing,
   appendMention,
@@ -23,17 +24,24 @@ import {
   toStoredText,
   type MentionFood,
 } from '../../lib/recipeMentions'
-import { DIMENSION_LABELS, UNITS_BY_DIMENSION, UNIT_LABELS } from '../../lib/units'
-import type { Dimension, FoodDefinition, Unit } from '../../types/entities'
+import { DIMENSION_LABELS, UNITS_BY_DIMENSION, UNIT_LABELS, guessDimension } from '../../lib/units'
+import type { Dimension, FoodDefinition, MeasurementPreference, Unit } from '../../types/entities'
 import { recipeSchema, type RecipeForm as RecipeFormValues, type RecipeFormInput } from './schema'
 
 const DIMENSIONS: Dimension[] = ['WEIGHT', 'VOLUME', 'COUNT']
+
+// The unit menu's groups, with the kind of measure this kitchen uses for the food first.
+function dimensionsFor(preference: MeasurementPreference | undefined): Dimension[] {
+  if (!preference) return DIMENSIONS
+  return [preference.dimension, ...DIMENSIONS.filter((d) => d !== preference.dimension)]
+}
 
 export interface RecipeIngredientBody {
   global_food_definition_id: string
   quantity: string
   unit: Unit
   note: string | null
+  is_optional: boolean
 }
 
 export interface RecipeSubmitBody {
@@ -60,6 +68,7 @@ export interface RecipeFormInitialIngredient {
   // to pre-seed FoodSearchInput's search box with, so the user isn't stuck
   // re-typing what the AI already told us before they can even search.
   suggestedName?: string
+  optional?: boolean
 }
 
 export interface RecipeFormInitial {
@@ -76,11 +85,12 @@ interface IngredientRow {
   food: Pick<FoodDefinition, 'id' | 'name'> | null
   quantity: string
   unit: Unit | ''
+  // Notes can no longer be typed, but a recipe saved with one keeps it: it is carried through
+  // unchanged so editing never loses it.
   note: string
   suggestedName?: string
-  // The note box is tucked behind a "+ note" button until it's needed (or until the
-  // row already has a note). Not saved; it only controls what's shown.
-  noteOpen?: boolean
+  // A garnish or seasoning the recipe works without.
+  optional?: boolean
   // The food this row held before "Change" cleared it, so picking the next food can carry the
   // steps' mentions across. Not saved.
   was?: MentionFood | null
@@ -147,6 +157,7 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
           unit: ing.unit,
           note: ing.note,
           suggestedName: ing.suggestedName,
+          optional: ing.optional,
         }))
       : [emptyIngredientRow()],
   )
@@ -162,10 +173,22 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
         )
       : [''],
   )
+  // One stable id per step, so a step keeps its place (and focus) while the order changes.
+  const nextStepKey = useRef(0)
+  const [stepKeys, setStepKeys] = useState<number[]>(() =>
+    instructions.map(() => nextStepKey.current++),
+  )
   const [formError, setFormError] = useState<string | null>(null)
   // Row problems ("An amount is required") only show once a save has been tried.
   const [showRowErrors, setShowRowErrors] = useState(false)
   // A line above the buttons after an automatic change (a merge, a rewrite), with an Undo.
+  const { householdId } = useParams<{ householdId: string }>()
+  // What this kitchen measures each ingredient by (weight, volume or count), asked once per food.
+  // It only ever guides: the unit is filled in when blank and the menu lists that kind first, but
+  // any unit can still be chosen, since a recipe is written the way people cook, not the way a
+  // pantry is tracked.
+  const [kitchenUnits, setKitchenUnits] = useState<Record<string, MeasurementPreference>>({})
+  const asked = useRef(new Set<string>())
   const [matchOpen, setMatchOpen] = useState(false)
   // A linked food in a step that the person tapped to change.
   const [changing, setChanging] = useState<{
@@ -190,8 +213,25 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
     setIngredients((prev) => prev.filter((_, i) => i !== index))
   const updateInstruction = (index: number, text: string) =>
     setInstructions((prev) => prev.map((step, i) => (i === index ? text : step)))
-  const removeInstruction = (index: number) =>
+  const removeInstruction = (index: number) => {
     setInstructions((prev) => prev.filter((_, i) => i !== index))
+    setStepKeys((prev) => prev.filter((_, i) => i !== index))
+  }
+  const addInstruction = () => {
+    setInstructions((prev) => [...prev, ''])
+    setStepKeys((prev) => [...prev, nextStepKey.current++])
+  }
+  // Moves a step to a new place, shifting the ones in between.
+  const moveInstruction = (from: number, to: number) => {
+    const reorder = <T,>(list: T[]) => {
+      const next = [...list]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return next
+    }
+    setInstructions(reorder)
+    setStepKeys(reorder)
+  }
 
   const foods: MentionFood[] = ingredients.flatMap((row) => (row.food ? [row.food] : []))
   const mentionCheck = checkMentions(instructions, foods)
@@ -232,6 +272,32 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
       setNotice({ text: `Changed ${from.name} to ${food.name} in ${where}`, undo })
     }
   }
+
+  const foodIdKey = foods.map((f) => f.id).join(',')
+  useEffect(() => {
+    if (!householdId) return
+    for (const id of foodIdKey.split(',').filter(Boolean)) {
+      if (asked.current.has(id)) continue
+      asked.current.add(id)
+      apiClient
+        .get<MeasurementPreference>(
+          `/api/households/${householdId}/inventory-items/measurement-preference?global_food_definition_id=${id}`,
+        )
+        .then((preference) => {
+          setKitchenUnits((prev) => ({ ...prev, [id]: preference }))
+          // Fill the unit only where it is still blank: never over one the person (or an
+          // import) already chose.
+          setIngredients((prev) =>
+            prev.map((row) =>
+              row.food?.id === id && row.unit === '' ? { ...row, unit: preference.unit } : row,
+            ),
+          )
+        })
+        .catch(() => {
+          // Best effort: the unit simply stays blank for the person to choose.
+        })
+    }
+  }, [foodIdKey, householdId])
 
   // Puts a notice with an Undo that restores the rows and steps as they were.
   const announce = (text: string) => {
@@ -301,7 +367,13 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
       setTab('ingredients')
       return
     }
-    const validIngredients = ingredients.filter((row) => row.food)
+    // Required ingredients first, optional ones at the end; within each group the order the
+    // person set is kept.
+    const withFood = ingredients.filter((row) => row.food)
+    const validIngredients = [
+      ...withFood.filter((row) => row.optional !== true),
+      ...withFood.filter((row) => row.optional === true),
+    ]
     if (validIngredients.length === 0) {
       setFormError('Add at least one ingredient')
       setTab('ingredients')
@@ -330,6 +402,7 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
           quantity: row.quantity,
           unit: row.unit as Unit,
           note: row.note.trim() || null,
+          is_optional: row.optional === true,
         })),
       })
     } catch (err) {
@@ -489,25 +562,37 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
                       }
                     >
                       <option value="">Unit…</option>
-                      {DIMENSIONS.map((dim) => (
-                        <optgroup key={dim} label={DIMENSION_LABELS[dim]}>
-                          {UNITS_BY_DIMENSION[dim].map((u) => (
-                            <option key={u} value={u}>
-                              {UNIT_LABELS[u]}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
+                      {dimensionsFor(row.food ? kitchenUnits[row.food.id] : undefined).map(
+                        (dim) => (
+                          <optgroup key={dim} label={DIMENSION_LABELS[dim]}>
+                            {UNITS_BY_DIMENSION[dim].map((u) => (
+                              <option key={u} value={u}>
+                                {UNIT_LABELS[u]}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ),
+                      )}
                     </select>
-                    {!row.noteOpen && row.note === '' && (
-                      <button
-                        type="button"
-                        onClick={() => updateIngredient(index, { noteOpen: true })}
-                        className="shrink-0 rounded-control px-2 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary-soft"
-                      >
-                        + note
-                      </button>
-                    )}
+                    {/* Says what the ingredient is now and flips on tap: filled in for required,
+                        outline only for optional. */}
+                    <button
+                      type="button"
+                      title={
+                        row.optional === true
+                          ? 'Optional: the recipe works without it. Tap to make it required.'
+                          : 'Required. Tap to make it optional (a garnish or seasoning).'
+                      }
+                      aria-label={`Ingredient ${index + 1} is ${row.optional === true ? 'optional' : 'required'}. Tap to change.`}
+                      onClick={() => updateIngredient(index, { optional: row.optional !== true })}
+                      className={`shrink-0 rounded-control border px-2.5 py-2 text-sm font-medium transition-colors ${
+                        row.optional === true
+                          ? 'border-primary bg-transparent text-primary hover:bg-primary-soft'
+                          : 'border-primary bg-primary text-on-accent hover:bg-primary-hover'
+                      }`}
+                    >
+                      {row.optional === true ? 'Optional' : 'Required'}
+                    </button>
                     <button
                       type="button"
                       title="Remove ingredient"
@@ -518,6 +603,24 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
                       <X size={16} strokeWidth={1.75} />
                     </button>
                   </div>
+                  {row.food &&
+                    row.unit &&
+                    kitchenUnits[row.food.id] &&
+                    guessDimension(row.unit) !== kitchenUnits[row.food.id].dimension && (
+                      <p className="flex items-start gap-1.5 text-xs text-muted">
+                        <TriangleAlert
+                          size={14}
+                          strokeWidth={1.75}
+                          aria-hidden="true"
+                          className="mt-0.5 shrink-0 text-warning"
+                        />
+                        <span>
+                          Your kitchen tracks {row.food.name} by{' '}
+                          {DIMENSION_LABELS[kitchenUnits[row.food.id].dimension].toLowerCase()}, so
+                          this can't be checked against what you have.
+                        </span>
+                      </p>
+                    )}
                   {showRowErrors && rowProblem(row) && (
                     <p role="alert" className="text-sm text-danger">
                       {rowProblem(row)}
@@ -554,20 +657,6 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
                         </select>
                       </div>
                     )}
-                  {(row.noteOpen || row.note !== '') && (
-                    <input
-                      type="text"
-                      placeholder="Note (optional)"
-                      autoFocus={row.noteOpen && row.note === ''}
-                      className={`w-full ${fieldClass}`}
-                      value={row.note}
-                      onChange={(e) => updateIngredient(index, { note: e.target.value })}
-                      onBlur={() => {
-                        // An opened-but-left-empty note folds back into "+ note".
-                        if (row.note === '') updateIngredient(index, { noteOpen: false })
-                      }}
-                    />
-                  )}
                 </div>
               ))}
             </div>
@@ -588,31 +677,18 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
             id="recipe-panel-instructions"
             aria-labelledby="recipe-tab-instructions"
           >
-            <div className="flex flex-col gap-2">
-              {instructions.map((step, index) => (
-                <div key={index} className="flex items-start gap-2">
-                  <span className="mt-2 text-sm text-faint">{index + 1}.</span>
-                  <AutoGrowTextarea
-                    aria-label={`Step ${index + 1}`}
-                    className={`flex-1 ${inputClass}`}
-                    value={step}
-                    onChange={(e) => updateInstruction(index, e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    title="Remove step"
-                    aria-label="Remove step"
-                    onClick={() => removeInstruction(index)}
-                    className="shrink-0 rounded-control p-2 text-faint transition-colors hover:bg-danger-soft hover:text-danger"
-                  >
-                    <X size={16} strokeWidth={1.75} />
-                  </button>
-                </div>
-              ))}
-            </div>
+            <StepEditor
+              steps={instructions}
+              keys={stepKeys}
+              linked={linkedMentions}
+              onText={updateInstruction}
+              onRemove={removeInstruction}
+              onMove={moveInstruction}
+              onChip={setChanging}
+            />
             <button
               type="button"
-              onClick={() => setInstructions((prev) => [...prev, ''])}
+              onClick={addInstruction}
               className="mt-2 flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary-hover"
             >
               <Plus size={16} strokeWidth={2.25} />
@@ -626,27 +702,6 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
             >
               Match to items
             </button>
-            {linkedMentions.length > 0 && (
-              <div className="mt-3">
-                <p className="mb-1.5 text-xs font-medium text-muted">
-                  Foods in your steps (tap one to change it)
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {linkedMentions.map((m) => (
-                    <button
-                      key={`${m.step}-${m.index}`}
-                      type="button"
-                      onClick={() => setChanging(m)}
-                      aria-label={`Change ${m.food.name} in step ${m.step + 1}`}
-                      className="inline-flex items-center gap-1 rounded-pill bg-primary-soft px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary hover:text-on-accent"
-                    >
-                      {m.food.name}
-                      <span className="opacity-70">step {m.step + 1}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
             {mentionCheck.missing.length > 0 && (
               <div
                 role="alert"

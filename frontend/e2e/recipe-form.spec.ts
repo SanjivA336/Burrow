@@ -185,3 +185,163 @@ test('changing a food in a step, all mentions: the ingredient swaps too', async 
   await page.getByRole('button', { name: 'Undo' }).click()
   await expect(page.getByLabel('Step 1', { exact: true })).toHaveValue('Pour [Whole Milk].')
 })
+
+test('an ingredient can be marked optional and is saved that way', async ({ page }) => {
+  await openNewRecipe(page)
+  await pickMilk(page)
+  await page.getByPlaceholder('Qty').fill('1')
+  await page.getByLabel('Unit for ingredient 1').selectOption('cup')
+  // It starts as a filled "Required" button; tapping it flips to an outline "Optional".
+  await expect(page.getByRole('button', { name: 'Required' })).toBeVisible()
+  await page.getByRole('button', { name: 'Required' }).click()
+  await expect(page.getByRole('button', { name: 'Optional' })).toBeVisible()
+
+  const saved = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/recipes'))
+  await page.getByRole('button', { name: 'Create recipe' }).click()
+  const body = (await saved).postDataJSON() as { ingredients: { is_optional: boolean }[] }
+  expect(body.ingredients[0].is_optional).toBe(true)
+})
+
+test('an ingredient is required unless it is marked optional', async ({ page }) => {
+  await openNewRecipe(page)
+  await pickMilk(page)
+  await page.getByPlaceholder('Qty').fill('1')
+  await page.getByLabel('Unit for ingredient 1').selectOption('cup')
+
+  const saved = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/recipes'))
+  await page.getByRole('button', { name: 'Create recipe' }).click()
+  const body = (await saved).postDataJSON() as { ingredients: { is_optional: boolean }[] }
+  expect(body.ingredients[0].is_optional).toBe(false)
+})
+
+test('there is no way to type a note on an ingredient any more', async ({ page }) => {
+  await openNewRecipe(page)
+  await pickMilk(page)
+  await expect(page.getByRole('button', { name: '+ note' })).toHaveCount(0)
+  await expect(page.getByPlaceholder('Note (optional)')).toHaveCount(0)
+})
+
+async function threeSteps(page: import('@playwright/test').Page) {
+  await openNewRecipe(page)
+  await page.getByRole('tab', { name: /Instructions/ }).click()
+  await page.getByLabel('Step 1', { exact: true }).fill('First')
+  await page.getByRole('button', { name: 'Add step' }).click()
+  await page.getByLabel('Step 2', { exact: true }).fill('Second')
+  await page.getByRole('button', { name: 'Add step' }).click()
+  await page.getByLabel('Step 3', { exact: true }).fill('Third')
+}
+
+async function stepTexts(page: import('@playwright/test').Page) {
+  return [1, 2, 3].map((n) => page.getByLabel(`Step ${n}`, { exact: true }))
+}
+
+test('a step moves up and down with its arrows, and the ends cannot move past', async ({
+  page,
+}) => {
+  await threeSteps(page)
+  await expect(page.getByRole('button', { name: 'Move step 1 up' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Move step 3 down' })).toBeDisabled()
+
+  await page.getByRole('button', { name: 'Move step 3 up' }).click()
+  const [one, two, three] = await stepTexts(page)
+  await expect(one).toHaveValue('First')
+  await expect(two).toHaveValue('Third')
+  await expect(three).toHaveValue('Second')
+
+  await page.getByRole('button', { name: 'Move step 1 down' }).click()
+  await expect(one).toHaveValue('Third')
+  await expect(two).toHaveValue('First')
+})
+
+test('each step lists the foods it names as chips under its text', async ({ page }) => {
+  await openNewRecipe(page)
+  await pickMilk(page)
+  await page.getByPlaceholder('Qty').fill('1')
+  await page.getByLabel('Unit for ingredient 1').selectOption('cup')
+  await page.getByRole('tab', { name: /Instructions/ }).click()
+  await page.getByLabel('Step 1', { exact: true }).fill('Pour [Whole Milk].')
+  await expect(page.getByRole('button', { name: 'Change Whole Milk in step 1' })).toBeVisible()
+})
+
+test('picking a food fills in the unit the kitchen tracks it by', async ({ page }) => {
+  await openNewRecipe(page)
+  await pickMilk(page)
+  // The fake kitchen tracks milk by volume, in millilitres.
+  await expect(page.getByLabel('Unit for ingredient 1')).toHaveValue('ml')
+  // The menu lists that kind of measure first, but every kind is still there.
+  await expect(
+    page.getByLabel('Unit for ingredient 1').locator('optgroup').first(),
+  ).toHaveAttribute('label', /volume/i)
+  await expect(page.getByLabel('Unit for ingredient 1').locator('optgroup')).toHaveCount(3)
+})
+
+test('a unit already chosen is not replaced, and a different kind of measure gets a soft note', async ({
+  page,
+}) => {
+  await openNewRecipe(page)
+  await page.getByLabel('Unit for ingredient 1').selectOption('g')
+  await pickMilk(page)
+
+  await expect(page.getByText('Your kitchen tracks Whole Milk by volume')).toBeVisible()
+  await expect(page.getByLabel('Unit for ingredient 1')).toHaveValue('g')
+
+  // It only guides: the recipe still saves with the unit as chosen.
+  await page.getByPlaceholder('Qty').fill('200')
+  const saved = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/recipes'))
+  await page.getByRole('button', { name: 'Create recipe' }).click()
+  const body = (await saved).postDataJSON() as { ingredients: { unit: string }[] }
+  expect(body.ingredients[0].unit).toBe('g')
+})
+
+test('a unit of the same kind as the kitchen uses shows no note', async ({ page }) => {
+  await openNewRecipe(page)
+  await pickMilk(page)
+  await page.getByLabel('Unit for ingredient 1').selectOption('cup')
+  await expect(page.getByText('Your kitchen tracks')).toHaveCount(0)
+})
+
+test('saving puts required ingredients first and optional ones last, keeping each group in order', async ({
+  page,
+}) => {
+  await openNewRecipe(page)
+  const dialog = page.getByRole('dialog', { name: 'New recipe' })
+
+  // Row 1: milk, marked optional.
+  await pickMilk(page)
+  await page.getByPlaceholder('Qty').first().fill('1')
+  await page.getByLabel('Unit for ingredient 1').selectOption('cup')
+  await page.getByRole('button', { name: 'Required' }).click()
+
+  // Row 2: butter, left required.
+  await page.getByRole('button', { name: 'Add ingredient' }).click()
+  const searched = page.waitForResponse((r) => r.url().includes('/api/food-definitions/search'))
+  await dialog.getByPlaceholder('Search for a food (e.g. milk)').fill('butter')
+  await searched
+  await dialog
+    .getByRole('button', { name: /Butter/ })
+    .first()
+    .click()
+  await page.getByPlaceholder('Qty').nth(1).fill('2')
+  await page.getByLabel('Unit for ingredient 2').selectOption('cup')
+
+  const saved = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/recipes'))
+  await page.getByRole('button', { name: 'Create recipe' }).click()
+  const body = (await saved).postDataJSON() as {
+    ingredients: { global_food_definition_id: string; is_optional: boolean }[]
+  }
+  // Butter (required) comes first although it was added second; milk (optional) is last.
+  expect(body.ingredients.map((i) => i.is_optional)).toEqual([false, true])
+  expect(body.ingredients[0].global_food_definition_id).toBe('f-butter')
+  expect(body.ingredients[1].global_food_definition_id).toBe('f-milk')
+})
+
+test('editing a saved recipe shows each ingredient as it was saved, required or optional', async ({
+  page,
+}) => {
+  await page.goto(`/households/${HID}/recipes/r1/edit`)
+  const dialog = page.getByRole('dialog', { name: 'Edit recipe' })
+  await expect(dialog).toBeVisible()
+  // The sample recipe has one optional ingredient (parsley) among three required ones.
+  await expect(dialog.getByRole('button', { name: 'Optional' })).toHaveCount(1)
+  await expect(dialog.getByRole('button', { name: 'Required' })).toHaveCount(3)
+})

@@ -142,3 +142,66 @@ def test_updating_nonexistent_recipe_raises_before_any_rpc_call(monkeypatch, rpc
         )
 
     assert rpc_calls == []
+
+
+def test_the_optional_flag_is_sent_when_ingredients_are_replaced(monkeypatch, rpc_calls) -> None:
+    existing_row, existing_ingredients = _existing()
+    monkeypatch.setattr(
+        recipe_service,
+        "_fetch_recipe_and_ingredients",
+        lambda uid, rid: (existing_row, existing_ingredients),
+    )
+
+    recipe_service.update_recipe(
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+        UpdateRecipeRequest(
+            ingredients=[
+                {
+                    "global_food_definition_id": uuid.uuid4(),
+                    "quantity": "1",
+                    "unit": "cup",
+                    "is_optional": True,
+                },
+                {"global_food_definition_id": uuid.uuid4(), "quantity": "2", "unit": "cup"},
+            ]
+        ),
+    )
+
+    _, params = rpc_calls[0]
+    assert [ing["is_optional"] for ing in params["p_ingredients"]] == [True, False]
+
+
+def test_untouched_ingredients_keep_their_optional_flag(monkeypatch, rpc_calls) -> None:
+    existing_row, existing_ingredients = _existing()
+    existing_ingredients[0]["is_optional"] = True
+    monkeypatch.setattr(
+        recipe_service,
+        "_fetch_recipe_and_ingredients",
+        lambda uid, rid: (existing_row, existing_ingredients),
+    )
+
+    recipe_service.update_recipe(
+        uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), UpdateRecipeRequest(name="Waffles")
+    )
+
+    _, params = rpc_calls[0]
+    assert params["p_ingredients"][0]["is_optional"] is True
+
+
+def test_a_stored_row_without_the_flag_counts_as_required(monkeypatch, rpc_calls) -> None:
+    # Rows read before migration 0055 added the column have no `is_optional` key at all.
+    existing_row, existing_ingredients = _existing()
+    monkeypatch.setattr(
+        recipe_service,
+        "_fetch_recipe_and_ingredients",
+        lambda uid, rid: (existing_row, existing_ingredients),
+    )
+
+    recipe_service.update_recipe(
+        uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), UpdateRecipeRequest(name="Waffles")
+    )
+
+    _, params = rpc_calls[0]
+    assert params["p_ingredients"][0]["is_optional"] is False

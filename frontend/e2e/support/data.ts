@@ -120,6 +120,61 @@ export const butter = {
   category: 'DAIRY_ALTERNATIVES',
 }
 
+// Real ids look like UUIDs, which is what a food link in a step is made of.
+const MILK_ID = '11111111-1111-4111-8111-aaaaaaaaaaaa'
+const BUTTER_ID = '11111111-1111-4111-8111-bbbbbbbbbbbb'
+
+// A saved recipe, for the recipe page: one ingredient in stock, one short, one missing, and one
+// optional that is missing (which is never shown as a problem).
+const recipeIngredient = (
+  id: string,
+  food: { id: string; name: string },
+  quantity: string,
+  extra: Record<string, unknown>,
+) => ({
+  id,
+  recipe_id: 'r1',
+  global_food_definition_id: food.id,
+  food_name: food.name,
+  category: 'DAIRY_ALTERNATIVES',
+  quantity,
+  unit: 'cup',
+  note: null,
+  position: 0,
+  is_optional: false,
+  available: true,
+  available_quantity: '10',
+  ...extra,
+})
+
+export const recipeDetail = {
+  id: 'r1',
+  created_by_user_id: 'u1',
+  name: 'Cereal',
+  description: null,
+  servings: 2,
+  prep_time_minutes: null,
+  cook_time_minutes: null,
+  instructions: [`Pour [Whole Milk](${MILK_ID}) into a bowl, then add [Butter](${BUTTER_ID}).`],
+  created_at: LONG_AGO,
+  updated_at: LONG_AGO,
+  ingredients: [
+    recipeIngredient('i-milk', { id: MILK_ID, name: 'Whole Milk' }, '1', {}),
+    recipeIngredient('i-butter', { id: BUTTER_ID, name: 'Butter' }, '4', {
+      available_quantity: '1.5',
+    }),
+    recipeIngredient('i-garlic', { id: 'f-garlic', name: 'Garlic' }, '2', {
+      available: false,
+      available_quantity: null,
+    }),
+    recipeIngredient('i-parsley', { id: 'f-parsley', name: 'Parsley' }, '1', {
+      available: false,
+      available_quantity: null,
+      is_optional: true,
+    }),
+  ],
+}
+
 // An empty manual order, which is what the Add Item sheet creates when it opens.
 export const emptySession = {
   id: 'sess-1',

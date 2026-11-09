@@ -7,6 +7,7 @@ import {
   items,
   locations,
   members,
+  recipeDetail,
   spending,
   wholeMilk,
 } from './data'
@@ -166,6 +167,7 @@ export async function mockApi(page: Page, state: ApiState): Promise<void> {
         terms.includes('butter') ? [{ term: 'butter', matches: [{ food: butter, score: 1 }] }] : [],
       )
     }
+    if (path === `${base}/recipes/r1`) return reply(route, recipeDetail)
     if (path === '/api/food-definitions/search') {
       const query = new URL(request.url()).searchParams.get('query') ?? ''
       return reply(route, query.toLowerCase().includes('butter') ? [butter] : [wholeMilk])

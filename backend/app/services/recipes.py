@@ -188,6 +188,7 @@ def create_recipe(household_id: UUID, user_id: UUID, body: CreateRecipeRequest) 
                     "quantity": str(units_service.to_base(ing.quantity, ing.unit)),
                     "unit": ing.unit.value,
                     "note": ing.note,
+                    "is_optional": ing.is_optional,
                 }
                 for ing in body.ingredients
             ],
@@ -223,6 +224,7 @@ def update_recipe(
                 "quantity": str(units_service.to_base(ing.quantity, ing.unit)),
                 "unit": ing.unit.value,
                 "note": ing.note,
+                "is_optional": ing.is_optional,
             }
             for ing in body.ingredients
         ]
@@ -236,6 +238,7 @@ def update_recipe(
                 "quantity": str(row["quantity"]),
                 "unit": row["display_unit"],
                 "note": row["note"],
+                "is_optional": row.get("is_optional", False),
             }
             for row in existing_ingredient_rows
         ]

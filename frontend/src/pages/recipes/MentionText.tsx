@@ -1,22 +1,21 @@
 import { Fragment } from 'react'
-import { CategoryDot } from '../../components/CategoryDot'
 import { findMentions } from '../../lib/recipeMentions'
+import { FoodChip } from './ingredientStock'
 import type { RecipeIngredient } from '../../types/entities'
 
 interface Props {
   // A saved step: foods appear as `[Label](food-id)`.
   text: string
-  ingredients: readonly Pick<
-    RecipeIngredient,
-    'global_food_definition_id' | 'food_name' | 'category'
-  >[]
+  ingredients: readonly RecipeIngredient[]
+  // The servings scale, so the chip's popout shows the amount for the servings chosen.
+  scale: number
 }
 
 // A step as read on the recipe page: each saved food mention becomes a small chip with the food's
-// category dot and its current name. A mention whose food is not one of the ingredients (or a
+// category dot and its current name; tapping it shows the amount. A mention whose food is not one of the ingredients (or a
 // plain `[bracket]` with no id) is shown as ordinary text, so odd brackets in older recipes do
 // no harm.
-export function MentionText({ text, ingredients }: Props) {
+export function MentionText({ text, ingredients, scale }: Props) {
   const parts: React.ReactNode[] = []
   let cursor = 0
   for (const mention of findMentions(text)) {
@@ -25,15 +24,7 @@ export function MentionText({ text, ingredients }: Props) {
       : undefined
     if (!food) continue
     if (mention.start > cursor) parts.push(text.slice(cursor, mention.start))
-    parts.push(
-      <span
-        key={mention.start}
-        className="inline-flex items-center gap-1 rounded-pill bg-primary-soft px-2 py-0.5 align-baseline text-xs font-medium text-primary"
-      >
-        <CategoryDot category={food.category} />
-        {food.food_name}
-      </span>,
-    )
+    parts.push(<FoodChip key={mention.start} ingredient={food} scale={scale} />)
     cursor = mention.end
   }
   if (cursor === 0) return <>{plainText(text)}</>

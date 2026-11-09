@@ -1,4 +1,4 @@
-import { useContext, useState, type ReactNode } from 'react'
+import { useContext, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   ALargeSmall,
@@ -7,6 +7,7 @@ import {
   Compass,
   ExternalLink,
   FileText,
+  FlaskConical,
   History,
   Home,
   LogOut,
@@ -31,6 +32,8 @@ import { DeleteBurrowModal } from '../../components/DeleteBurrowModal'
 import { LogoutConfirmModal } from '../../components/LogoutConfirmModal'
 import { ShellChromeContext } from '../../context/shellChrome'
 import { useAuth } from '../../hooks/useAuth'
+import { useIsDeveloperAccount } from '../../hooks/useIsDeveloper'
+import { getDevFeaturesOn, setDevFeaturesOn, subscribeDevFeatures } from '../../lib/devFeatures'
 import { useTour } from '../../tour/useTour'
 import { InviteCard } from './InviteCard'
 import type { SettingsContext } from './settingsContext'
@@ -123,6 +126,32 @@ function ActionRow(props: RowProps & { onClick: () => void }) {
   )
 }
 
+// "Developer features": a switch row, shown only to accounts on the developer list. It shows or
+// hides the features still being tested on this device; the server still decides who may use them.
+function DeveloperRow() {
+  const on = useSyncExternalStore(subscribeDevFeatures, getDevFeaturesOn)
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={() => setDevFeaturesOn(!on)}
+      className={`${rowClass} text-text hover:bg-surface-hover`}
+    >
+      <FlaskConical size={18} strokeWidth={1.75} className="shrink-0" />
+      <span className="min-w-0 flex-1 truncate">Developer features</span>
+      <span
+        aria-hidden="true"
+        className={`rounded-pill px-2 py-0.5 text-xs font-medium ${
+          on ? 'bg-primary text-on-accent' : 'border border-subtle text-muted'
+        }`}
+      >
+        {on ? 'On' : 'Off'}
+      </span>
+    </button>
+  )
+}
+
 function Group({
   title,
   danger,
@@ -161,6 +190,7 @@ export function SettingsList({ ctx }: { ctx: SettingsContext }) {
   const navigate = useNavigate()
   const shell = useContext(ShellChromeContext)
   const tour = useTour()
+  const isDeveloperAccount = useIsDeveloperAccount()
   const [logoutOpen, setLogoutOpen] = useState(false)
   const [installOpen, setInstallOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -213,6 +243,18 @@ export function SettingsList({ ctx }: { ctx: SettingsContext }) {
         />
         <ActionRow danger icon={LogOut} label="Log out" onClick={() => setLogoutOpen(true)} />
       </Group>
+
+      {isDeveloperAccount && (
+        <section>
+          <Group title="Developer">
+            <DeveloperRow />
+          </Group>
+          <p className="mt-2 px-1 text-xs text-faint">
+            Shows the features still being tested. Off shows Burrow the way everyone else sees it.
+            This is saved on this device only.
+          </p>
+        </section>
+      )}
 
       <Group title="Help and about">
         <ActionRow icon={Compass} label="Take the tour" onClick={tour.start} />

@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react'
+import { getDevFeaturesOn, subscribeDevFeatures } from '../lib/devFeatures'
 import { useAuth } from './useAuth'
 
 // Mirrors the backend's DEVELOPER_USER_IDS (see backend/app/core/auth.py) --
@@ -12,7 +14,17 @@ const DEVELOPER_USER_IDS = new Set(
     .filter(Boolean),
 )
 
-export function useIsDeveloper(): boolean {
+// Is this account on the developer list? (Decides whether the Settings switch is shown at all.)
+export function useIsDeveloperAccount(): boolean {
   const { user } = useAuth()
   return !!user && DEVELOPER_USER_IDS.has(user.id)
+}
+
+// Should developer-only features be shown right now? The account has to be on the developer list
+// AND the person's own "Developer features" switch (Settings) has to be on, which it is unless
+// they turned it off to see the app as everyone else does.
+export function useIsDeveloper(): boolean {
+  const account = useIsDeveloperAccount()
+  const switchedOn = useSyncExternalStore(subscribeDevFeatures, getDevFeaturesOn)
+  return account && switchedOn
 }

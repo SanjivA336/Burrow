@@ -17,9 +17,15 @@ export function draftRecipeToFormInitial(draft: DraftRecipe): RecipeFormInitial 
       food: ing.global_food_definition_id
         ? { id: ing.global_food_definition_id, name: ing.name }
         : null,
-      quantity: ing.quantity ?? '',
+      // A plain number is tidied the way the inventory edit form does ("2.0" -> "2"); anything
+      // else the AI wrote ("a pinch") is left for the person to fix.
+      quantity:
+        ing.quantity && Number.isFinite(Number(ing.quantity))
+          ? String(Number(ing.quantity))
+          : (ing.quantity ?? ''),
       unit: ing.unit ?? '',
       note: ing.note ?? '',
+      optional: ing.is_optional ?? false,
       suggestedName: ing.name,
     })),
   }

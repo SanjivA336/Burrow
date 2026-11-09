@@ -376,6 +376,8 @@ export interface RecipeIngredient {
   unit: Unit
   note: string | null
   position: number
+  // A garnish or seasoning: the recipe works without it.
+  is_optional: boolean
   available: boolean
   available_quantity: string | null
 }
@@ -392,6 +394,8 @@ export interface DraftRecipeIngredient {
   quantity: string | null
   unit: Unit | null
   note: string | null
+  // Only set when the draft came from an exported recipe file.
+  is_optional?: boolean
   // Filled in server-side when the AI's ingredient name exactly matches a
   // real food (inventory first, then the wider catalog) -- null means no
   // confident match, same as today's manual-pick-required state.

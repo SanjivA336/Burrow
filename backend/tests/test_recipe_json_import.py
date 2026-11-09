@@ -101,3 +101,18 @@ async def test_import_json_with_valid_export_returns_draft(
     data = response.json()["data"]
     assert data["name"] == "Pancakes"
     assert data["ingredients"][0]["global_food_definition_id"] is None
+
+
+def test_draft_from_json_keeps_the_optional_flag() -> None:
+    payload = _export_payload()
+    payload["ingredients"][0]["is_optional"] = True
+
+    draft = recipe_ai_service._draft_from_json(payload)
+
+    assert draft.ingredients[0].is_optional is True
+
+
+def test_draft_from_json_without_the_flag_is_required() -> None:
+    draft = recipe_ai_service._draft_from_json(_export_payload())
+
+    assert draft.ingredients[0].is_optional is False

@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react'
 import { NumberInput } from '../../components/NumberInput'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Download } from 'lucide-react'
-import { formatQuantity } from '../../lib/formatQuantity'
 import { apiClient, ApiError } from '../../lib/apiClient'
-import { CategoryDot } from '../../components/CategoryDot'
 import { useHouseholdResource } from '../../hooks/useHouseholdResource'
 import { useIsDeveloper } from '../../hooks/useIsDeveloper'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { toEditText } from '../../lib/recipeMentions'
 import { UNIT_LABELS } from '../../lib/units'
 import { MentionText } from './MentionText'
+import { scaledQuantityLabel, stockOf } from '../../lib/ingredientStock'
+import { FoodChip, StockIcon } from './ingredientStock'
 import type { RecipeDetail, RecipeIngredient, SubstitutionSuggestion } from '../../types/entities'
 
 // A portable, human-readable export -- shared by hand (text/JSON file) with
@@ -44,6 +44,7 @@ function downloadRecipeAsJson(recipe: RecipeDetail) {
         quantity: ingredient.quantity,
         unit: ingredient.unit,
         note: ingredient.note,
+        is_optional: ingredient.is_optional,
       })),
   }
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
@@ -70,39 +71,6 @@ type SubstitutionState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
   | { status: 'loaded'; suggestions: SubstitutionSuggestion[] }
-
-function scaledQuantityLabel(ingredient: RecipeIngredient, scale: number): string {
-  // Scaling e.g. 1/3 servings can produce long floats that aren't meaningful at
-  // kitchen-measurement precision, so this shares the app-wide display rule:
-  // at most 2 decimal places, trailing zeros dropped.
-  return `${formatQuantity(Number(ingredient.quantity) * scale)} ${UNIT_LABELS[ingredient.unit]}`
-}
-
-function AvailabilityBadge({ ingredient, scale }: { ingredient: RecipeIngredient; scale: number }) {
-  if (!ingredient.available) {
-    return (
-      <span className="rounded-pill bg-danger-soft px-2 py-0.5 text-xs font-medium text-danger">
-        Missing
-      </span>
-    )
-  }
-  if (ingredient.available_quantity !== null) {
-    const needed = Number(ingredient.quantity) * scale
-    const onHand = Number(ingredient.available_quantity)
-    if (onHand < needed) {
-      return (
-        <span className="rounded-pill bg-warning-soft px-2 py-0.5 text-xs font-medium text-warning">
-          Not enough ({onHand} {UNIT_LABELS[ingredient.unit]} on hand)
-        </span>
-      )
-    }
-  }
-  return (
-    <span className="rounded-pill bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
-      In stock
-    </span>
-  )
-}
 
 export function RecipeDetailPage() {
   const { householdId, recipeId } = useParams<{ householdId: string; recipeId: string }>()
@@ -215,44 +183,46 @@ export function RecipeDetailPage() {
 
       <div>
         <h3 className="mb-2 text-sm font-semibold text-muted">Ingredients</h3>
+        {/* A checklist of what the app sees in the kitchen, not something to edit: a green check
+            (have it), a yellow warning (not enough) or a red X (none). */}
         <ul className="flex flex-col gap-2">
           {recipe.ingredients.map((ingredient) => {
             const substitution = substitutions[ingredient.id]
+            const stock = stockOf(ingredient, scale)
             return (
-              <li
-                key={ingredient.id}
-                className="rounded-card border border-subtle bg-surface px-4 py-3 shadow-card"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CategoryDot category={ingredient.category} />
-                    <span className="font-medium">{ingredient.food_name}</span>
-                    <span className="text-sm text-muted">
-                      {scaledQuantityLabel(ingredient, scale)}
-                    </span>
+              <li key={ingredient.id}>
+                <div className="flex items-start gap-2.5">
+                  <span className="mt-0.5">
+                    <StockIcon stock={stock.state} optional={ingredient.is_optional} />
+                  </span>
+                  <span className="min-w-0 flex-1 text-base leading-7">
+                    <span className="mr-1.5">{scaledQuantityLabel(ingredient, scale)}</span>
+                    <FoodChip ingredient={ingredient} scale={scale} />
+                    {ingredient.is_optional && (
+                      <span className="ml-2 rounded-pill border border-subtle px-1.5 py-0.5 text-xs text-muted">
+                        Optional
+                      </span>
+                    )}
                     {ingredient.note && (
-                      <span className="text-xs text-faint">({ingredient.note})</span>
+                      <span className="ml-2 text-sm text-faint">({ingredient.note})</span>
                     )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <AvailabilityBadge ingredient={ingredient} scale={scale} />
-                    {isDeveloper && (
-                      <button
-                        type="button"
-                        onClick={() => suggestSubstitute(ingredient)}
-                        disabled={substitution?.status === 'loading'}
-                        className="text-xs font-medium text-primary hover:underline disabled:opacity-50"
-                      >
-                        {substitution?.status === 'loading' ? 'Thinking…' : 'Suggest substitute'}
-                      </button>
-                    )}
-                  </div>
+                  </span>
+                  {isDeveloper && (
+                    <button
+                      type="button"
+                      onClick={() => suggestSubstitute(ingredient)}
+                      disabled={substitution?.status === 'loading'}
+                      className="mt-1 shrink-0 text-xs font-medium text-primary hover:underline disabled:opacity-50"
+                    >
+                      {substitution?.status === 'loading' ? 'Thinking…' : 'Suggest substitute'}
+                    </button>
+                  )}
                 </div>
                 {substitution?.status === 'error' && (
                   <p className="mt-2 text-xs text-danger">{substitution.message}</p>
                 )}
                 {substitution?.status === 'loaded' && (
-                  <ul className="mt-2 flex flex-col gap-1 border-t border-subtle pt-2">
+                  <ul className="ml-7 mt-2 flex flex-col gap-1 border-t border-subtle pt-2">
                     {substitution.suggestions.map((suggestion, index) => (
                       <li key={index} className="text-xs text-muted">
                         <span className="font-medium text-text">{suggestion.name}</span>
@@ -281,12 +251,12 @@ export function RecipeDetailPage() {
 
       <div>
         <h3 className="mb-2 text-sm font-semibold text-muted">Instructions</h3>
-        <ol className="flex flex-col gap-2 text-sm">
+        <ol className="flex flex-col gap-3 text-base leading-7">
           {recipe.instructions.map((step, index) => (
             <li key={index} className="flex gap-2">
-              <span className="text-faint">{index + 1}.</span>
+              <span className="shrink-0 text-faint">{index + 1}.</span>
               <span>
-                <MentionText text={step} ingredients={recipe.ingredients} />
+                <MentionText text={step} ingredients={recipe.ingredients} scale={scale} />
               </span>
             </li>
           ))}

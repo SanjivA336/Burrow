@@ -18,6 +18,8 @@ class DraftRecipeIngredient(BaseModel):
     quantity: str | None = None
     unit: Unit | None = None
     note: str | None = None
+    # Carried through an exported recipe file; an AI-parsed draft leaves it required.
+    is_optional: bool = False
     global_food_definition_id: UUID | None = None
 
     @field_validator("quantity", "note", mode="before")

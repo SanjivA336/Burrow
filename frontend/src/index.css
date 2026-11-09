@@ -83,6 +83,9 @@
   --color-danger-soft: #2b1717;
   --color-warning: #f0b84f;
   --color-warning-soft: #2b2314;
+  /* Green for "present / fine" marks (the recipe checklist). Fixed, unlike the accent, which
+     the person can change. */
+  --color-success: #3ecf8e;
   /* Between warning (yellow) and danger (red): the "expired" swipe action. */
   --color-orange: #ee8340;
   --color-orange-soft: #2c1b10;
@@ -178,6 +181,7 @@ html[data-theme='light'] {
   --color-danger-soft: #f8e0e0;
   --color-warning: #8c5f0c;
   --color-warning-soft: #f0eadf;
+  --color-success: #1d764e;
   --color-orange: #ab4b0f;
   --color-orange-soft: #f4e8e0;
   --color-info: #2a6ba6;

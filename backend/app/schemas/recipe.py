@@ -13,6 +13,8 @@ class RecipeIngredientInput(BaseModel):
     quantity: Decimal = Field(gt=0)
     unit: Unit
     note: str | None = None
+    # A garnish or seasoning: the recipe still works without it.
+    is_optional: bool = False
 
 
 class CreateRecipeRequest(BaseModel):
@@ -65,6 +67,9 @@ class RecipeIngredient(BaseModel):
     unit: Unit
     note: str | None
     position: int
+    # Defaults to required so a read still works if this runs before migration 0055 has added
+    # the column.
+    is_optional: bool = False
     # Enrichment computed live against current inventory -- never stored.
     # available_quantity is populated whenever on-hand stock converts into
     # this ingredient's unit (same-dimension, e.g. oz on hand for a recipe
