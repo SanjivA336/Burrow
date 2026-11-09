@@ -48,6 +48,7 @@ export function EditRecipePage() {
       <RecipeForm
         initial={recipeDetailToFormInitial(recipe)}
         submitLabel="Save changes"
+        onDiscard={() => navigate(`/households/${householdId}/recipes/${recipeId}`)}
         onSubmit={onSubmit}
       />
     </div>

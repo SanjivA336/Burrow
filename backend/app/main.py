@@ -24,7 +24,10 @@ settings = get_settings()
 # Skipped under pytest for the same reason the rate limiter is (see below):
 # with a real DSN in .env, tests that deliberately trigger the catch-all
 # handler would otherwise file fake errors in the real Sentry project.
-if settings.sentry_dsn and "pytest" not in sys.modules:
+#
+# Also only when ENVIRONMENT is "production" (render.yaml sets it): a dev machine
+# that has the DSN in its .env must not report its own errors to the live project.
+if settings.sentry_dsn and settings.environment == "production" and "pytest" not in sys.modules:
     sentry_sdk.init(dsn=settings.sentry_dsn, environment=settings.environment)
 
 app = FastAPI(title="Burrow API")

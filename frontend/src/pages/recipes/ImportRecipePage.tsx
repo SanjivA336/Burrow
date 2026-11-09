@@ -91,6 +91,7 @@ export function ImportRecipePage() {
         <RecipeForm
           initial={draftRecipeToFormInitial(draft)}
           submitLabel="Save recipe"
+          onDiscard={() => navigate(`/households/${householdId}/recipes`)}
           onSubmit={onSubmit}
         />
       </div>

@@ -20,7 +20,11 @@ export function AddRecipePage() {
   return (
     <div className="mx-auto max-w-2xl">
       <h2 className="mb-4 text-xl font-semibold">New recipe</h2>
-      <RecipeForm submitLabel="Create recipe" onSubmit={onSubmit} />
+      <RecipeForm
+        submitLabel="Create recipe"
+        onDiscard={() => navigate(`/households/${householdId}/recipes`)}
+        onSubmit={onSubmit}
+      />
     </div>
   )
 }

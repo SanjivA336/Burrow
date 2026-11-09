@@ -80,10 +80,13 @@ const inputClass = `w-full ${fieldClass}`
 interface Props {
   initial?: RecipeFormInitial
   submitLabel: string
+  // When given, a "Discard" button sits beside the save button and calls this. The page decides
+  // where leaving goes (back to the list, or back to the recipe being edited).
+  onDiscard?: () => void
   onSubmit: (body: RecipeSubmitBody) => Promise<void>
 }
 
-export function RecipeForm({ initial, submitLabel, onSubmit }: Props) {
+export function RecipeForm({ initial, submitLabel, onDiscard, onSubmit }: Props) {
   // The Save bar below takes the tab bar's place on a phone.
   useHideTabBar()
   const {
@@ -357,13 +360,25 @@ export function RecipeForm({ initial, submitLabel, onSubmit }: Props) {
           the end of the form from the desktop breakpoint up. */}
       <div className="pin-bottom fixed inset-x-0 bottom-0 z-20 border-t border-subtle bg-surface px-4 pb-[var(--bottom-bar-gap)] pt-3 md:static md:z-auto md:border-0 md:bg-transparent md:p-0">
         {formError && <p className="mb-2 text-sm text-danger md:mb-3">{formError}</p>}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded-control bg-primary px-3 py-2.5 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50 md:w-auto md:px-2 md:py-2"
-        >
-          {isSubmitting ? 'Saving…' : submitLabel}
-        </button>
+        <div className="flex gap-2">
+          {onDiscard && (
+            <button
+              type="button"
+              onClick={onDiscard}
+              disabled={isSubmitting}
+              className="flex-1 rounded-control border border-subtle px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-50 md:flex-none md:px-2 md:py-2"
+            >
+              Discard
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="flex-1 rounded-control bg-primary px-3 py-2.5 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover disabled:opacity-50 md:flex-none md:px-2 md:py-2"
+          >
+            {isSubmitting ? 'Saving…' : submitLabel}
+          </button>
+        </div>
       </div>
     </form>
   )

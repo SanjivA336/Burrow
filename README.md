@@ -360,6 +360,9 @@ leaving localhost.
   2026-10-15. (Moving an item between places is done as of 2026-10-17: swipe an
   item right on a phone, or use the three-dots menu on a computer; changing the
   storage location on the item's own page still works too.)
+- [ ] **Recipe screens redesign.** The recipe screens (new, edit, import and
+  generate) look dated next to the rest of the app. Plan: bring them in line
+  with how Add item and Edit item look. Not designed yet. Added 2026-11-09.
 - [ ] **Rapid barcode scanning.** Setting up a whole kitchen item by item is slow,
   and it is the most common complaint from new people. Idea: open the camera
   once and scan items one after another, each landing in a list that is checked
