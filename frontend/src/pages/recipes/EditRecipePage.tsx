@@ -3,6 +3,8 @@ import { apiClient } from '../../lib/apiClient'
 import { useHouseholdResource } from '../../hooks/useHouseholdResource'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import type { RecipeDetail } from '../../types/entities'
+import { RecipeDetailPage } from './RecipeDetailPage'
+import { RecipeSheet } from './RecipeSheet'
 import { RecipeForm, type RecipeFormInitial, type RecipeSubmitBody } from './RecipeForm'
 
 function recipeDetailToFormInitial(recipe: RecipeDetail): RecipeFormInitial {
@@ -42,15 +44,19 @@ export function EditRecipePage() {
   if (loading) return <p className="text-sm text-muted">Loading…</p>
   if (error || !recipe) return <p className="text-sm text-danger">{error ?? 'Recipe not found'}</p>
 
+  const discard = () => navigate(`/households/${householdId}/recipes/${recipeId}`)
+
   return (
-    <div className="mx-auto max-w-2xl">
-      <h2 className="mb-4 text-xl font-semibold">Edit recipe</h2>
-      <RecipeForm
-        initial={recipeDetailToFormInitial(recipe)}
-        submitLabel="Save changes"
-        onDiscard={() => navigate(`/households/${householdId}/recipes/${recipeId}`)}
-        onSubmit={onSubmit}
-      />
-    </div>
+    <>
+      <RecipeDetailPage />
+      <RecipeSheet title="Edit recipe" onClose={discard}>
+        <RecipeForm
+          initial={recipeDetailToFormInitial(recipe)}
+          submitLabel="Save changes"
+          onDiscard={discard}
+          onSubmit={onSubmit}
+        />
+      </RecipeSheet>
+    </>
   )
 }

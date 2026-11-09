@@ -6,7 +6,9 @@ import { useIsDeveloper } from '../../hooks/useIsDeveloper'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import type { DraftRecipe, RecipeDetail } from '../../types/entities'
 import { draftRecipeToFormInitial } from './aiDraftAdapter'
+import { RecipesPage } from '.'
 import { RecipeForm, type RecipeSubmitBody } from './RecipeForm'
+import { RecipeSheet } from './RecipeSheet'
 
 // The backend allows up to ai_request_timeout_seconds (60s) for the
 // initial call plus one repair retry on bad output -- worst case ~120s
@@ -81,20 +83,25 @@ export function ImportRecipePage() {
   }
 
   if (draft) {
+    const discard = () => navigate(`/households/${householdId}/recipes`)
     return (
-      <div className="mx-auto max-w-2xl">
-        <h2 className="mb-1 text-xl font-semibold">Review imported recipe</h2>
-        <p className="mb-4 text-sm text-muted">
-          Check the AI's work below, especially quantities and units, then pick a real food for each
-          ingredient before saving.
-        </p>
-        <RecipeForm
-          initial={draftRecipeToFormInitial(draft)}
-          submitLabel="Save recipe"
-          onDiscard={() => navigate(`/households/${householdId}/recipes`)}
-          onSubmit={onSubmit}
-        />
-      </div>
+      <>
+        <RecipesPage />
+        <RecipeSheet title="Review imported recipe" onClose={discard}>
+          <RecipeForm
+            initial={draftRecipeToFormInitial(draft)}
+            submitLabel="Save recipe"
+            onDiscard={discard}
+            intro={
+              <p className="text-sm text-muted">
+                Check the AI's work below, especially quantities and units, then pick a real food
+                for each ingredient before saving.
+              </p>
+            }
+            onSubmit={onSubmit}
+          />
+        </RecipeSheet>
+      </>
     )
   }
 
