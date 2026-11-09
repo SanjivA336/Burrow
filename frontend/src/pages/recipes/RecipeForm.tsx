@@ -1,11 +1,20 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { NumberInput } from '../../components/NumberInput'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Plus, X } from 'lucide-react'
+import { Plus, TriangleAlert, X } from 'lucide-react'
 import { AutoGrowTextarea } from '../../components/AutoGrowTextarea'
 import { FoodSearchInput } from '../../components/FoodSearchInput'
 import { ApiError } from '../../lib/apiClient'
+import {
+  appendMention,
+  changeIngredientFood,
+  checkMentions,
+  removeBrackets,
+  toEditText,
+  toStoredText,
+  type MentionFood,
+} from '../../lib/recipeMentions'
 import { DIMENSION_LABELS, UNITS_BY_DIMENSION, UNIT_LABELS } from '../../lib/units'
 import type { Dimension, FoodDefinition, Unit } from '../../types/entities'
 import { recipeSchema, type RecipeForm as RecipeFormValues, type RecipeFormInput } from './schema'
@@ -64,6 +73,19 @@ interface IngredientRow {
   // The note box is tucked behind a "+ note" button until it's needed (or until the
   // row already has a note). Not saved; it only controls what's shown.
   noteOpen?: boolean
+  // The food this row held before "Change" cleared it, so picking the next food can carry the
+  // steps' mentions across. Not saved.
+  was?: MentionFood | null
+}
+
+// What is wrong with a row, if anything. A completely blank row is just ignored.
+function rowProblem(row: IngredientRow): string | null {
+  const hasContent =
+    row.food || row.quantity.trim() || row.unit || row.note.trim() || row.suggestedName
+  if (!hasContent) return null
+  if (!row.food) return 'Pick a food'
+  if (!row.quantity.trim() || !row.unit) return 'An amount is required'
+  return null
 }
 
 const emptyIngredientRow = (): IngredientRow => ({ food: null, quantity: '', unit: '', note: '' })
@@ -120,10 +142,28 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
         }))
       : [emptyIngredientRow()],
   )
+  // Steps are edited as plain text with foods written `[Milk]`; the ids are added back on save
+  // (see lib/recipeMentions).
   const [instructions, setInstructions] = useState<string[]>(
-    initial && initial.instructions.length > 0 ? initial.instructions : [''],
+    initial && initial.instructions.length > 0
+      ? initial.instructions.map((step) =>
+          toEditText(
+            step,
+            initial.ingredients.flatMap((ing) => (ing.food ? [ing.food] : [])),
+          ),
+        )
+      : [''],
   )
   const [formError, setFormError] = useState<string | null>(null)
+  // Row problems ("An amount is required") only show once a save has been tried.
+  const [showRowErrors, setShowRowErrors] = useState(false)
+  // A line above the buttons after an automatic change (a merge, a rewrite), with an Undo.
+  const [notice, setNotice] = useState<{ text: string; undo: () => void } | null>(null)
+  useEffect(() => {
+    if (!notice) return
+    const timer = setTimeout(() => setNotice(null), 10_000)
+    return () => clearTimeout(timer)
+  }, [notice])
   // Ingredients and instructions are long lists, so they share the space below the basics.
   const [tab, setTab] = useState<'ingredients' | 'instructions'>('ingredients')
 
@@ -136,17 +176,62 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
   const removeInstruction = (index: number) =>
     setInstructions((prev) => prev.filter((_, i) => i !== index))
 
+  const foods: MentionFood[] = ingredients.flatMap((row) => (row.food ? [row.food] : []))
+  const mentionCheck = checkMentions(instructions, foods)
+
+  // An ingredient row's food changed: mentions of the old food follow it, and a food that is
+  // already listed merges (the old row goes, the existing row keeps its amount).
+  const changeFood = (index: number, food: MentionFood | null) => {
+    const row = ingredients[index]
+    if (!row) return
+    if (!food) {
+      updateIngredient(index, { food: null, was: row.food ?? row.was ?? null })
+      return
+    }
+    const before = { ingredients, instructions }
+    const from = row.was ?? null
+    const result = changeIngredientFood(ingredients, instructions, index, food, from)
+    setIngredients(
+      result.rows.map((r) => (r.food && r.food.id === food.id ? { ...r, was: null } : r)),
+    )
+    setInstructions(result.steps)
+    const rewritten = result.steps.filter((step, i) => step !== instructions[i]).length
+    const undo = () => {
+      setIngredients(before.ingredients)
+      setInstructions(before.instructions)
+      setNotice(null)
+    }
+    if (result.merged && from) {
+      setNotice({ text: `Merged ${from.name} into ${food.name}`, undo })
+    } else if (rewritten > 0 && from) {
+      const where = rewritten === 1 ? '1 step' : `${rewritten} steps`
+      setNotice({ text: `Changed ${from.name} to ${food.name} in ${where}`, undo })
+    }
+  }
+
   const submit = async (values: RecipeFormValues) => {
     setFormError(null)
-    const validIngredients = ingredients.filter(
-      (row) => row.food && row.quantity.trim() && row.unit,
-    )
+    setShowRowErrors(true)
+    if (ingredients.some((row) => rowProblem(row))) {
+      setFormError('Fix the ingredients marked in red')
+      setTab('ingredients')
+      return
+    }
+    const validIngredients = ingredients.filter((row) => row.food)
     if (validIngredients.length === 0) {
       setFormError('Add at least one ingredient')
       setTab('ingredients')
       return
     }
-    const validInstructions = instructions.map((step) => step.trim()).filter(Boolean)
+    if (mentionCheck.missing.length > 0) {
+      setFormError("Some steps name a food that isn't in the ingredients")
+      setTab('instructions')
+      return
+    }
+    const validInstructions = instructions
+      .map((step) => step.trim())
+      .filter(Boolean)
+      .map((step) => toStoredText(step, foods).text)
 
     try {
       await onSubmit({
@@ -267,6 +352,11 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
               }`}
             >
               {label}
+              {key === 'instructions' && mentionCheck.missing.length > 0 && (
+                <span aria-label="has a problem" className="ml-1 text-danger">
+                  !
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -277,15 +367,24 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
             id="recipe-panel-ingredients"
             aria-labelledby="recipe-tab-ingredients"
           >
+            {!mentionCheck.anyMentions &&
+              foods.length > 0 &&
+              instructions.some((t) => t.trim()) && (
+                <p className="mb-2 text-xs text-muted">
+                  Tip: write an ingredient in [brackets] in a step, like [Milk], to link the two.
+                </p>
+              )}
             <div className="flex flex-col gap-2">
               {ingredients.map((row, index) => (
                 <div
                   key={index}
-                  className="flex flex-col gap-2 rounded-card border border-subtle bg-surface p-3"
+                  className={`flex flex-col gap-2 rounded-card border bg-surface p-3 ${
+                    showRowErrors && rowProblem(row) ? 'border-danger' : 'border-subtle'
+                  }`}
                 >
                   <FoodSearchInput
                     value={row.food}
-                    onChange={(food) => updateIngredient(index, { food })}
+                    onChange={(food) => changeFood(index, food)}
                     initialQuery={row.suggestedName}
                   />
                   <div className="flex items-center gap-2">
@@ -335,6 +434,42 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
                       <X size={16} strokeWidth={1.75} />
                     </button>
                   </div>
+                  {showRowErrors && rowProblem(row) && (
+                    <p role="alert" className="text-sm text-danger">
+                      {rowProblem(row)}
+                    </p>
+                  )}
+                  {row.food &&
+                    mentionCheck.anyMentions &&
+                    mentionCheck.unused.some((f) => f.id === row.food!.id) && (
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-warning">
+                        <TriangleAlert size={15} strokeWidth={1.75} aria-hidden="true" />
+                        <span>Unused ingredient</span>
+                        <select
+                          aria-label={`Add ${row.food.name} to a step`}
+                          className="rounded-control border border-subtle bg-field px-1.5 py-1 text-xs text-text"
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value === '') return
+                            const step = Number(e.target.value)
+                            setInstructions((prev) =>
+                              prev.map((text, i) =>
+                                i === step ? appendMention(text, row.food!) : text,
+                              ),
+                            )
+                          }}
+                        >
+                          <option value="">Add to a step…</option>
+                          {instructions.map((text, i) =>
+                            text.trim() ? (
+                              <option key={i} value={i}>
+                                Step {i + 1}
+                              </option>
+                            ) : null,
+                          )}
+                        </select>
+                      </div>
+                    )}
                   {(row.noteOpen || row.note !== '') && (
                     <input
                       type="text"
@@ -399,12 +534,47 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
               <Plus size={16} strokeWidth={2.25} />
               Add step
             </button>
+            {mentionCheck.missing.length > 0 && (
+              <div
+                role="alert"
+                className="mt-3 flex flex-col gap-2 rounded-control bg-danger-soft p-3 text-sm text-danger"
+              >
+                {mentionCheck.missing.map((m, i) => (
+                  <div key={i} className="flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                      Step {m.step + 1}: [{m.label}] isn&apos;t in your ingredients.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateInstruction(m.step, removeBrackets(instructions[m.step], m.label))
+                      }
+                      className="font-medium underline"
+                    >
+                      Remove brackets
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {/* Pinned under the scrolling body, like the Add item sheet's button row. */}
       <div className="shrink-0 border-t border-subtle bg-surface-2 px-4 pb-3 pt-3 max-md:pb-[calc(var(--bottom-bar-gap)+0.75rem)]">
+        {notice && (
+          <p className="mb-2 flex items-center justify-between gap-2 text-sm text-muted">
+            <span>{notice.text}</span>
+            <button
+              type="button"
+              onClick={notice.undo}
+              className="font-medium text-primary underline"
+            >
+              Undo
+            </button>
+          </p>
+        )}
         {formError && <p className="mb-2 text-sm text-danger">{formError}</p>}
         <div className="flex gap-2">
           {onDiscard && (

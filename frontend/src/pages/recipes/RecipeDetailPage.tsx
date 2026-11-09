@@ -8,7 +8,9 @@ import { CategoryDot } from '../../components/CategoryDot'
 import { useHouseholdResource } from '../../hooks/useHouseholdResource'
 import { useIsDeveloper } from '../../hooks/useIsDeveloper'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { toEditText } from '../../lib/recipeMentions'
 import { UNIT_LABELS } from '../../lib/units'
+import { MentionText } from './MentionText'
 import type { RecipeDetail, RecipeIngredient, SubstitutionSuggestion } from '../../types/entities'
 
 // A portable, human-readable export -- shared by hand (text/JSON file) with
@@ -24,7 +26,16 @@ function downloadRecipeAsJson(recipe: RecipeDetail) {
     servings: recipe.servings,
     prep_time_minutes: recipe.prep_time_minutes,
     cook_time_minutes: recipe.cook_time_minutes,
-    instructions: recipe.instructions,
+    // Ids are left off here like everywhere else in this file, so foods read as `[Milk]`.
+    instructions: recipe.instructions.map((step) =>
+      toEditText(
+        step,
+        recipe.ingredients.map((ing) => ({
+          id: ing.global_food_definition_id,
+          name: ing.food_name,
+        })),
+      ),
+    ),
     ingredients: recipe.ingredients
       .slice()
       .sort((a, b) => a.position - b.position)
@@ -274,7 +285,9 @@ export function RecipeDetailPage() {
           {recipe.instructions.map((step, index) => (
             <li key={index} className="flex gap-2">
               <span className="text-faint">{index + 1}.</span>
-              <span>{step}</span>
+              <span>
+                <MentionText text={step} ingredients={recipe.ingredients} />
+              </span>
             </li>
           ))}
         </ol>

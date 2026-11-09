@@ -117,6 +117,12 @@ test.describe('changing an ingredient row', () => {
     expect(result.steps).toEqual(['Pour [Oat Milk].'])
   })
 
+  test('a row cleared with Change and then given a new food still carries its mentions', () => {
+    const result = changeIngredientFood([row(null, '1')], ['Pour [Milk].'], 0, oatMilk, milk)
+    expect(result.steps).toEqual(['Pour [Oat Milk].'])
+    expect(result.rows[0].food).toBe(oatMilk)
+  })
+
   test('picking a first food in an empty row rewrites nothing', () => {
     const result = changeIngredientFood([row(null)], ['Pour [Milk].'], 0, oatMilk)
     expect(result.steps).toEqual(['Pour [Milk].'])

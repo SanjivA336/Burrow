@@ -1,0 +1,69 @@
+import { test, expect } from './support/fixtures'
+import { IPHONE } from './support/devices'
+import { HID } from './support/env'
+
+// The recipe sheet: the Ingredients and Instructions tabs, and the two rules that keep them in
+// step. A food named in a step that is not an ingredient blocks saving; an ingredient no step
+// mentions only warns; a row with a food but no amount says so instead of being dropped.
+
+test.use(IPHONE)
+
+async function openNewRecipe(page: import('@playwright/test').Page) {
+  await page.goto(`/households/${HID}/recipes/new`)
+  await expect(page.getByRole('dialog', { name: 'New recipe' })).toBeVisible()
+  await page.getByLabel('Recipe name').fill('Cereal')
+}
+
+async function pickMilk(page: import('@playwright/test').Page) {
+  const dialog = page.getByRole('dialog', { name: 'New recipe' })
+  const answered = page.waitForResponse((r) => r.url().includes('/api/food-definitions/search'))
+  await dialog.getByPlaceholder('Search for a food (e.g. milk)').fill('milk')
+  await answered
+  await dialog
+    .getByRole('button', { name: /Whole Milk/ })
+    .first()
+    .click()
+}
+
+test('a row with a food and no amount says an amount is required', async ({ page }) => {
+  await openNewRecipe(page)
+  await pickMilk(page)
+  await page.getByRole('button', { name: 'Create recipe' }).click()
+  await expect(page.getByText('An amount is required')).toBeVisible()
+})
+
+test('a food in a step that is not an ingredient blocks saving, and the brackets can be removed', async ({
+  page,
+}) => {
+  await openNewRecipe(page)
+  await pickMilk(page)
+  await page.getByPlaceholder('Qty').fill('1')
+  await page.getByLabel('Unit for ingredient 1').selectOption('cup')
+  await page.getByRole('tab', { name: /Instructions/ }).click()
+  await page.getByLabel('Step 1').fill('Pour [Whole Milk] and add [Garlic].')
+
+  await expect(page.getByText("[Garlic] isn't in your ingredients.")).toBeVisible()
+  await page.getByRole('button', { name: 'Create recipe' }).click()
+  await expect(page.getByText("Some steps name a food that isn't in the ingredients")).toBeVisible()
+
+  await page.getByRole('button', { name: 'Remove brackets' }).click()
+  await expect(page.getByLabel('Step 1')).toHaveValue('Pour [Whole Milk] and add Garlic.')
+  await expect(page.getByText("isn't in your ingredients.")).toHaveCount(0)
+})
+
+test('an ingredient no step mentions gets a warning once any step names a food', async ({
+  page,
+}) => {
+  await openNewRecipe(page)
+  await pickMilk(page)
+  await page.getByPlaceholder('Qty').fill('1')
+  await page.getByLabel('Unit for ingredient 1').selectOption('cup')
+  await page.getByRole('tab', { name: /Instructions/ }).click()
+  await page.getByLabel('Step 1').fill('Add [Garlic].')
+  await page.getByRole('tab', { name: /Ingredients/ }).click()
+  await expect(page.getByText('Unused ingredient')).toBeVisible()
+
+  await page.getByLabel('Add Whole Milk to a step').selectOption('0')
+  await page.getByRole('tab', { name: /Instructions/ }).click()
+  await expect(page.getByLabel('Step 1')).toHaveValue('Add [Garlic]. [Whole Milk]')
+})

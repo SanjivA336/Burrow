@@ -170,19 +170,20 @@ export function addIngredientIfMissing<T extends IngredientLike>(
 
 // An ingredient row's food was changed (Milk to Oat Milk). Every mention of the old food follows it.
 // If the new food is already another row, the two merge: the old row is deleted and the existing
-// row keeps its own amount.
+// row keeps its own amount. `from` is the old food when the row was cleared before the new one was
+// picked (the "Change" button); it defaults to whatever the row holds now.
 export function changeIngredientFood<T extends IngredientLike>(
   rows: readonly T[],
   steps: readonly string[],
   rowIndex: number,
   to: MentionFood,
+  from: MentionFood | null = rows[rowIndex]?.food ?? null,
 ): { rows: T[]; steps: string[]; merged: boolean } {
-  const old = rows[rowIndex]?.food ?? null
   const alreadyListed = rows.some((row, i) => i !== rowIndex && row.food && row.food.id === to.id)
   let nextRows: T[]
   if (alreadyListed) nextRows = rows.filter((_, i) => i !== rowIndex)
   else nextRows = rows.map((row, i) => (i === rowIndex ? { ...row, food: to } : row))
-  const nextSteps = old && old.id !== to.id ? rewriteMentions(steps, old, to) : [...steps]
+  const nextSteps = from && from.id !== to.id ? rewriteMentions(steps, from, to) : [...steps]
   return { rows: nextRows, steps: nextSteps, merged: alreadyListed }
 }
 
