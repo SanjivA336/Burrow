@@ -2,9 +2,11 @@ import { expect, test } from '@playwright/test'
 import {
   addIngredientIfMissing,
   appendMention,
+  applyFoodMatches,
   changeIngredientFood,
   changeMention,
   checkMentions,
+  findFoodMatches,
   findMentions,
   foodForLabel,
   removeBrackets,
@@ -223,5 +225,40 @@ test.describe('small helpers', () => {
   test('adding a mention to a step', () => {
     expect(appendMention('Pour it in.', milk)).toBe('Pour it in. [Milk]')
     expect(appendMention('  ', milk)).toBe('[Milk]')
+  })
+})
+
+test.describe('match to items', () => {
+  test('finds plain words, plurals and phrases, and skips what is already in brackets', () => {
+    const matches = findFoodMatches(
+      ['Pour milk over onions, then [Onion] again.', 'Stir the oat milk.'],
+      [milk, onion, oatMilk],
+    )
+    expect(matches.map((m) => [m.step, m.text, m.food.name])).toEqual([
+      [0, 'milk', 'Milk'],
+      [0, 'onions', 'Onion'],
+      [1, 'oat milk', 'Oat Milk'],
+    ])
+  })
+
+  test('does not match inside a longer word', () => {
+    expect(findFoodMatches(['Use a milkshake machine.'], [milk])).toEqual([])
+  })
+
+  test('applying wraps only the chosen matches, with the food name', () => {
+    const steps = ['Pour milk over onions.']
+    const matches = findFoodMatches(steps, [milk, onion])
+    expect(applyFoodMatches(steps, matches)).toEqual(['Pour [Milk] over [Onion].'])
+    expect(applyFoodMatches(steps, [matches[1]])).toEqual(['Pour milk over [Onion].'])
+    // A match given a different food uses that food's name.
+    expect(applyFoodMatches(steps, [{ ...matches[0], food: oatMilk }])).toEqual([
+      'Pour [Oat Milk] over onions.',
+    ])
+  })
+
+  test('words are matched after applying too: a second pass finds nothing new', () => {
+    const steps = ['Pour milk.']
+    const once = applyFoodMatches(steps, findFoodMatches(steps, [milk]))
+    expect(findFoodMatches(once, [milk])).toEqual([])
   })
 })

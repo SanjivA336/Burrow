@@ -6,11 +6,16 @@ import { Plus, TriangleAlert, X } from 'lucide-react'
 import { AutoGrowTextarea } from '../../components/AutoGrowTextarea'
 import { FoodSearchInput } from '../../components/FoodSearchInput'
 import { ApiError } from '../../lib/apiClient'
+import { MatchToItemsSheet } from './MatchToItemsSheet'
+import { PickFoodSheet } from './PickFoodSheet'
 import {
   appendMention,
   changeIngredientFood,
+  changeMention,
   checkMentions,
+  findMentions,
   removeBrackets,
+  sameName,
   toEditText,
   toStoredText,
   type MentionFood,
@@ -158,6 +163,9 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
   // Row problems ("An amount is required") only show once a save has been tried.
   const [showRowErrors, setShowRowErrors] = useState(false)
   // A line above the buttons after an automatic change (a merge, a rewrite), with an Undo.
+  const [matchOpen, setMatchOpen] = useState(false)
+  // A bracket in a step that names no ingredient, while the person is choosing which food it is.
+  const [pickFor, setPickFor] = useState<{ step: number; label: string } | null>(null)
   const [notice, setNotice] = useState<{ text: string; undo: () => void } | null>(null)
   useEffect(() => {
     if (!notice) return
@@ -207,6 +215,41 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
       const where = rewritten === 1 ? '1 step' : `${rewritten} steps`
       setNotice({ text: `Changed ${from.name} to ${food.name} in ${where}`, undo })
     }
+  }
+
+  // Puts a notice with an Undo that restores the rows and steps as they were.
+  const announce = (text: string) => {
+    const before = { ingredients, instructions }
+    setNotice({
+      text,
+      undo: () => {
+        setIngredients(before.ingredients)
+        setInstructions(before.instructions)
+        setNotice(null)
+      },
+    })
+  }
+
+  // "Add it": the person picked a food for a bracket that matched no ingredient. The food joins
+  // the ingredients (with no amount yet) and every bracket with that label becomes its name.
+  const addPickedFood = (food: FoodDefinition) => {
+    if (!pickFor) return
+    const mention = findMentions(instructions[pickFor.step] ?? '').find((m) =>
+      sameName(m.label, pickFor.label),
+    )
+    setPickFor(null)
+    if (!mention) return
+    announce(`Added ${food.name} to the ingredients`)
+    const result = changeMention(
+      ingredients,
+      instructions,
+      { step: pickFor.step, index: mention.index },
+      { id: food.id, name: food.name },
+      'all',
+      (picked) => ({ ...emptyIngredientRow(), food: picked }),
+    )
+    setIngredients(result.rows)
+    setInstructions(result.steps)
   }
 
   const submit = async (values: RecipeFormValues) => {
@@ -534,6 +577,14 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
               <Plus size={16} strokeWidth={2.25} />
               Add step
             </button>
+            <button
+              type="button"
+              onClick={() => setMatchOpen(true)}
+              disabled={foods.length === 0 || !instructions.some((t) => t.trim())}
+              className="mt-2 text-sm font-medium text-primary hover:text-primary-hover disabled:opacity-40"
+            >
+              Match to items
+            </button>
             {mentionCheck.missing.length > 0 && (
               <div
                 role="alert"
@@ -544,15 +595,24 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
                     <span>
                       Step {m.step + 1}: [{m.label}] isn&apos;t in your ingredients.
                     </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateInstruction(m.step, removeBrackets(instructions[m.step], m.label))
-                      }
-                      className="font-medium underline"
-                    >
-                      Remove brackets
-                    </button>
+                    <span className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPickFor({ step: m.step, label: m.label })}
+                        className="font-medium underline"
+                      >
+                        Add it
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateInstruction(m.step, removeBrackets(instructions[m.step], m.label))
+                        }
+                        className="font-medium underline"
+                      >
+                        Remove brackets
+                      </button>
+                    </span>
                   </div>
                 ))}
               </div>
@@ -596,6 +656,25 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
           </button>
         </div>
       </div>
+      {matchOpen && (
+        <MatchToItemsSheet
+          steps={instructions}
+          foods={foods}
+          onApply={(steps, linked) => {
+            announce(`Linked ${linked} ${linked === 1 ? 'food' : 'foods'} in your steps`)
+            setInstructions(steps)
+            setMatchOpen(false)
+          }}
+          onClose={() => setMatchOpen(false)}
+        />
+      )}
+      {pickFor && (
+        <PickFoodSheet
+          label={pickFor.label}
+          onPick={addPickedFood}
+          onClose={() => setPickFor(null)}
+        />
+      )}
     </form>
   )
 }

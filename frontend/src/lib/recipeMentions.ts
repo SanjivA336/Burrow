@@ -240,3 +240,61 @@ export function appendMention(text: string, food: MentionFood): string {
   const trimmed = text.trimEnd()
   return trimmed === '' ? `[${food.name}]` : `${trimmed} [${food.name}]`
 }
+
+// ---------------------------------------------------------------------------------------------
+// "Match to items": finding the ingredients that a step names in plain words.
+
+export interface FoodMatch {
+  step: number
+  start: number
+  end: number
+  // The words as written in the step ("onions").
+  text: string
+  food: MentionFood
+}
+
+// The food's name as a pattern: whole words only, and a plural ("onions", "berries") counts.
+function namePattern(name: string): RegExp {
+  const trimmed = name.trim()
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+')
+  const alternatives = [`${escaped}(?:e?s)?`]
+  if (/y$/i.test(trimmed)) alternatives.push(`${escaped.slice(0, -1)}ies`)
+  return new RegExp(`(?<![\\p{L}\\p{N}])(?:${alternatives.join('|')})(?![\\p{L}\\p{N}])`, 'giu')
+}
+
+// Every place a step names one of these foods in plain words (not already in brackets). A longer
+// name wins over a shorter one inside it ("Oat Milk" over "Milk"), and one stretch of text is only
+// ever matched once.
+export function findFoodMatches(
+  steps: readonly string[],
+  foods: readonly MentionFood[],
+): FoodMatch[] {
+  const byLength = [...foods]
+    .filter((food) => food.name.trim() !== '')
+    .sort((a, b) => b.name.length - a.name.length)
+  const matches: FoodMatch[] = []
+  steps.forEach((text, step) => {
+    const taken: [number, number][] = findMentions(text).map((m) => [m.start, m.end])
+    const free = (start: number, end: number) => taken.every(([s, e]) => end <= s || start >= e)
+    for (const food of byLength) {
+      for (const hit of text.matchAll(namePattern(food.name))) {
+        const start = hit.index
+        const end = start + hit[0].length
+        if (!free(start, end)) continue
+        taken.push([start, end])
+        matches.push({ step, start, end, text: hit[0], food })
+      }
+    }
+  })
+  return matches.sort((a, b) => a.step - b.step || a.start - b.start)
+}
+
+// Wraps the chosen matches in brackets, using each match's (possibly changed) food.
+export function applyFoodMatches(steps: readonly string[], chosen: readonly FoodMatch[]): string[] {
+  return steps.map((text, step) => {
+    const here = chosen.filter((m) => m.step === step).sort((a, b) => b.start - a.start)
+    let out = text
+    for (const m of here) out = `${out.slice(0, m.start)}[${m.food.name}]${out.slice(m.end)}`
+    return out
+  })
+}

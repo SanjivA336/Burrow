@@ -67,3 +67,41 @@ test('an ingredient no step mentions gets a warning once any step names a food',
   await page.getByRole('tab', { name: /Instructions/ }).click()
   await expect(page.getByLabel('Step 1')).toHaveValue('Add [Garlic]. [Whole Milk]')
 })
+
+test('Match to items links ingredients written in plain words, and can be undone', async ({
+  page,
+}) => {
+  await openNewRecipe(page)
+  await pickMilk(page)
+  await page.getByPlaceholder('Qty').fill('1')
+  await page.getByLabel('Unit for ingredient 1').selectOption('cup')
+  await page.getByRole('tab', { name: /Instructions/ }).click()
+  await page.getByLabel('Step 1').fill('Pour whole milk into a bowl.')
+
+  await page.getByRole('button', { name: 'Match to items' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Match to items' })
+  await expect(sheet.getByText('whole milk')).toBeVisible()
+  await sheet.getByRole('button', { name: 'Link 1' }).click()
+
+  await expect(page.getByLabel('Step 1')).toHaveValue('Pour [Whole Milk] into a bowl.')
+  await expect(page.getByText('Linked 1 food in your steps')).toBeVisible()
+  await page.getByRole('button', { name: 'Undo' }).click()
+  await expect(page.getByLabel('Step 1')).toHaveValue('Pour whole milk into a bowl.')
+})
+
+test('Add it offers a list of foods for a bracket that names no ingredient', async ({ page }) => {
+  await openNewRecipe(page)
+  await page.getByRole('tab', { name: /Instructions/ }).click()
+  await page.getByLabel('Step 1').fill('Stir in [Milk].')
+  await expect(page.getByText("[Milk] isn't in your ingredients.")).toBeVisible()
+
+  await page.getByRole('button', { name: 'Add it', exact: true }).click()
+  const sheet = page.getByRole('dialog', { name: /Which food is/ })
+  // It never picks by itself: the list has to be chosen from.
+  await expect(page.getByRole('tab', { name: /Ingredients \(0\)/ })).toBeVisible()
+  await sheet.getByRole('button', { name: /Whole Milk/ }).click()
+
+  await expect(page.getByLabel('Step 1')).toHaveValue('Stir in [Whole Milk].')
+  await expect(page.getByRole('tab', { name: /Ingredients \(1\)/ })).toBeVisible()
+  await expect(page.getByText("isn't in your ingredients.")).toHaveCount(0)
+})
