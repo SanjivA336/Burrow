@@ -1,6 +1,15 @@
 import type { Page, Route } from '@playwright/test'
 import { API, HID, MY_USER_ID, SESSION_KEY, SUPABASE_URL } from './env'
-import { emptySession, household, items, locations, members, spending, wholeMilk } from './data'
+import {
+  butter,
+  emptySession,
+  household,
+  items,
+  locations,
+  members,
+  spending,
+  wholeMilk,
+} from './data'
 
 // A fake of the backend (and of Supabase's login service), so the real frontend can be driven
 // without any real service. Each test gets its own `ApiState`: change it to change what the fake
@@ -149,6 +158,14 @@ export async function mockApi(page: Page, state: ApiState): Promise<void> {
       return reply(route, state.items.find((i) => i.id === one[1]) ?? null)
     if (/\/(consumption|corrections)$/.test(path)) return reply(route, [])
 
+    // Which of a recipe step's words are foods: the fake API knows only butter.
+    if (path === '/api/food-definitions/match' && method === 'POST') {
+      const { terms } = JSON.parse(request.postData() ?? '{}') as { terms: string[] }
+      return reply(
+        route,
+        terms.includes('butter') ? [{ term: 'butter', matches: [{ food: butter, score: 1 }] }] : [],
+      )
+    }
     if (path === '/api/food-definitions/search') return reply(route, [wholeMilk])
 
     // The Add Item sheet opens a manual order, then saves each change to it as you type.

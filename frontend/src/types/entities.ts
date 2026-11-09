@@ -505,3 +505,14 @@ export interface SpendingSummary {
   foods: { name: string; total: string; purchases: number }[]
   total: string
 }
+
+// POST /food-definitions/match: for a word from a recipe step, the foods that plausibly mean it.
+export interface ScoredFood {
+  food: FoodDefinition
+  score: number
+}
+
+export interface TermMatch {
+  term: string
+  matches: ScoredFood[]
+}

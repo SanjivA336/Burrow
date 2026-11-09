@@ -9,6 +9,7 @@ import { ApiError } from '../../lib/apiClient'
 import { MatchToItemsSheet } from './MatchToItemsSheet'
 import { PickFoodSheet } from './PickFoodSheet'
 import {
+  addIngredientIfMissing,
   appendMention,
   changeIngredientFood,
   changeMention,
@@ -660,9 +661,25 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
         <MatchToItemsSheet
           steps={instructions}
           foods={foods}
-          onApply={(steps, linked) => {
-            announce(`Linked ${linked} ${linked === 1 ? 'food' : 'foods'} in your steps`)
+          onApply={(steps, linked, newFoods) => {
+            const added =
+              newFoods.length > 0 ? ` and added ${newFoods.length} to the ingredients` : ''
+            announce(`Linked ${linked} ${linked === 1 ? 'food' : 'foods'} in your steps${added}`)
             setInstructions(steps)
+            // New foods join the ingredients with no amount; saving asks for one.
+            if (newFoods.length > 0) {
+              setIngredients((prev) => {
+                // Fill a blank row first, so applying doesn't leave an empty one behind.
+                let rows = prev.filter((row) => row.food || rowProblem(row))
+                for (const food of newFoods) {
+                  rows = addIngredientIfMissing(rows, food, (f) => ({
+                    ...emptyIngredientRow(),
+                    food: f,
+                  })).rows
+                }
+                return rows
+              })
+            }
             setMatchOpen(false)
           }}
           onClose={() => setMatchOpen(false)}

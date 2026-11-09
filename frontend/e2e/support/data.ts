@@ -112,6 +112,14 @@ export const wholeMilk = {
   updated_at: LONG_AGO,
 }
 
+// A second food, so a recipe can name one that is not an ingredient.
+export const butter = {
+  ...wholeMilk,
+  id: 'f-butter',
+  name: 'Butter',
+  category: 'DAIRY_ALTERNATIVES',
+}
+
 // An empty manual order, which is what the Add Item sheet creates when it opens.
 export const emptySession = {
   id: 'sess-1',

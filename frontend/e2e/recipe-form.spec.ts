@@ -105,3 +105,31 @@ test('Add it offers a list of foods for a bracket that names no ingredient', asy
   await expect(page.getByRole('tab', { name: /Ingredients \(1\)/ })).toBeVisible()
   await expect(page.getByText("isn't in your ingredients.")).toHaveCount(0)
 })
+
+test('Match to items also finds foods that are not ingredients, and adds the one you tick', async ({
+  page,
+}) => {
+  await openNewRecipe(page)
+  await pickMilk(page)
+  await page.getByPlaceholder('Qty').fill('1')
+  await page.getByLabel('Unit for ingredient 1').selectOption('cup')
+  await page.getByRole('tab', { name: /Instructions/ }).click()
+  await page.getByLabel('Step 1').fill('Melt butter, then pour in the whole milk.')
+
+  await page.getByRole('button', { name: 'Match to items' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Match to items' })
+  await expect(sheet.getByText('Other foods in your steps')).toBeVisible()
+  // The other foods start unticked: nothing is added unless it is chosen.
+  await expect(sheet.getByRole('button', { name: 'Link 1' })).toBeVisible()
+  await sheet.getByLabel(/Food for “butter”/).waitFor()
+  await sheet.getByRole('checkbox').last().check()
+  await sheet.getByRole('button', { name: 'Link 2' }).click()
+
+  await expect(page.getByLabel('Step 1')).toHaveValue(
+    'Melt [Butter], then pour in the [Whole Milk].',
+  )
+  await expect(
+    page.getByText('Linked 2 foods in your steps and added 1 to the ingredients'),
+  ).toBeVisible()
+  await expect(page.getByRole('tab', { name: /Ingredients \(2\)/ })).toBeVisible()
+})
