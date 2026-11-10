@@ -82,3 +82,33 @@ class RecipeIngredient(BaseModel):
 
 class RecipeDetail(Recipe):
     ingredients: list[RecipeIngredient]
+
+
+class UseRecipeRequest(BaseModel):
+    """Cooking a recipe: which ingredients were used, and for how many servings.
+
+    The amounts are not sent -- the server works them out from the recipe itself
+    (its quantity, scaled by servings / the recipe's own servings), so what is taken out
+    of the kitchen can never disagree with what the recipe says.
+    """
+
+    servings: Decimal = Field(gt=0)
+    ingredient_ids: list[UUID] = Field(min_length=1)
+    # Set once the person has seen the "this will use up ..." warning and said yes.
+    confirm_depletion: bool = False
+
+
+class UsedIngredient(BaseModel):
+    ingredient_id: UUID
+    food_name: str
+    # What was taken out, in the ingredient's own unit.
+    quantity: Decimal
+    unit: Unit
+    # How much the recipe wanted that the kitchen could not cover (0 when it all came out).
+    short_by: Decimal
+
+
+class UseRecipeResult(BaseModel):
+    used: list[UsedIngredient]
+    # Foods whose last of an item was used up by this.
+    emptied: list[str]

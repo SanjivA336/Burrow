@@ -8,34 +8,36 @@ import type { RecipeIngredient } from '../../types/entities'
 
 // The checklist mark, like a ticked box: a rounded square filled with the status colour and the
 // symbol drawn in the page's background colour. Green check (have it), yellow warning (not enough)
-// or red X (none). Something the recipe works without is never shown as a problem, so for an
-// optional ingredient the warning and the X are grey.
+// or red X (none). An optional ingredient has the same colours but an empty (transparent) box and
+// a dashed outline.
 export function StockIcon({ stock, optional }: { stock: Stock; optional: boolean }) {
   const label = stock === 'have' ? 'In stock' : stock === 'low' ? 'Not enough' : 'Not in stock'
+  // Required: a solid box with the symbol in the page colour. Optional: the reverse, an empty
+  // box with the symbol (and outline) in the status colour.
   const fill =
     stock === 'have'
-      ? 'bg-success'
-      : optional
-        ? 'bg-muted'
-        : stock === 'low'
-          ? 'bg-warning'
-          : 'bg-danger'
-  // Every mark gets a thin outline in its own colour with a small gap: solid for a required
-  // ingredient, dashed for an optional one (which is grey).
-  const ring = optional
-    ? 'outline outline-dashed outline-[1.5px] outline-offset-2 outline-muted'
-    : stock === 'have'
-      ? 'outline outline-[1.5px] outline-offset-2 outline-success'
+      ? optional
+        ? 'bg-transparent text-success'
+        : 'bg-success text-bg'
       : stock === 'low'
-        ? 'outline outline-[1.5px] outline-offset-2 outline-warning'
-        : 'outline outline-[1.5px] outline-offset-2 outline-danger'
+        ? optional
+          ? 'bg-transparent text-warning'
+          : 'bg-warning text-bg'
+        : optional
+          ? 'bg-transparent text-danger'
+          : 'bg-danger text-bg'
+  // Every mark gets a thin outline in its own colour with a small gap: solid for a required
+  // ingredient, dashed for an optional one. The colour is the same either way.
+  const outlineColor =
+    stock === 'have' ? 'outline-success' : stock === 'low' ? 'outline-warning' : 'outline-danger'
+  const ring = `outline outline-[1.5px] outline-offset-2 ${optional ? 'outline-dashed' : ''} ${outlineColor}`
   const Icon = stock === 'have' ? Check : stock === 'low' ? TriangleAlert : X
   return (
     <span
       role="img"
       aria-label={label}
       title={label}
-      className={`inline-flex size-5 shrink-0 items-center justify-center rounded-md text-bg ${fill} ${ring}`}
+      className={`inline-flex size-5 shrink-0 items-center justify-center rounded-md ${fill} ${ring}`}
     >
       <Icon size={14} strokeWidth={3} aria-hidden="true" />
     </span>

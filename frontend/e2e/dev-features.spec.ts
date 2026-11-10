@@ -4,16 +4,19 @@ import { IPHONE } from './support/devices'
 import { HID } from './support/env'
 import { getDevFeaturesOn, setDevFeaturesOn } from '../src/lib/devFeatures'
 
-// The Settings switch for developer-only features. The test build has no developer list, so the
-// fake user is an ordinary account: the switch must not be there for them.
+// The Settings switch for developer-only features. The fake user is on the developer list, so the
+// switch is there; the test fixture starts it off (an ordinary view of the app) unless a test asks
+// for developer: true.
 
 test.use(IPHONE)
 
-test('an ordinary account does not see the developer switch', async ({ page }) => {
+test('a developer account sees the switch, and it starts off here', async ({ page }) => {
   await page.goto(`/households/${HID}/settings`)
-  await fixtureExpect(page.getByRole('link', { name: /Appearance/ })).toBeVisible()
-  await fixtureExpect(page.getByRole('switch', { name: /Developer features/ })).toHaveCount(0)
-  await fixtureExpect(page.getByText('Developer', { exact: true })).toHaveCount(0)
+  const toggle = page.getByRole('switch', { name: /Developer features/ })
+  await fixtureExpect(toggle).toBeVisible()
+  await fixtureExpect(toggle).toHaveAttribute('aria-checked', 'false')
+  await toggle.click()
+  await fixtureExpect(toggle).toHaveAttribute('aria-checked', 'true')
 })
 
 // The switch's saved state (no browser: storage is faked).

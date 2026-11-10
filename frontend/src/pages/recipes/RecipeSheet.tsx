@@ -1,6 +1,7 @@
-import { useId, type ReactNode } from 'react'
-import { X } from 'lucide-react'
+import { useId, useState, type ReactNode } from 'react'
+import { Check, X } from 'lucide-react'
 import { useDialog } from '../../hooks/useDialog'
+import { BusyContext, RECIPE_FORM_ID } from './recipeSheetContext'
 
 interface Props {
   title: string
@@ -16,6 +17,7 @@ interface Props {
 export function RecipeSheet({ title, onClose, children }: Props) {
   const titleId = useId()
   const boxRef = useDialog<HTMLDivElement>(onClose)
+  const [busy, setBusy] = useState(false)
 
   return (
     <div className="fixed inset-x-0 top-0 z-40 flex h-[var(--app-height)] items-center justify-center md:inset-0 md:h-auto md:p-4">
@@ -32,16 +34,30 @@ export function RecipeSheet({ title, onClose, children }: Props) {
           <h3 id={titleId} className="min-w-0 truncate text-base font-semibold">
             {title}
           </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-control p-1.5 text-muted transition-colors hover:bg-surface-hover hover:text-text"
-          >
-            <X size={18} strokeWidth={1.75} />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            {/* Saves, like the check mark in the Add item sheet. It is outside the <form>, so the
+                form attribute points it at the form to submit. */}
+            <button
+              type="submit"
+              form={RECIPE_FORM_ID}
+              disabled={busy}
+              title="Save recipe"
+              aria-label="Save recipe"
+              className="rounded-control p-1.5 text-primary transition-colors hover:bg-primary-soft disabled:cursor-not-allowed disabled:text-faint disabled:hover:bg-transparent"
+            >
+              <Check size={18} strokeWidth={2.25} />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="rounded-control p-1.5 text-muted transition-colors hover:bg-surface-hover hover:text-text"
+            >
+              <X size={18} strokeWidth={1.75} />
+            </button>
+          </div>
         </div>
-        {children}
+        <BusyContext.Provider value={setBusy}>{children}</BusyContext.Provider>
       </div>
     </div>
   )

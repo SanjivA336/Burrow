@@ -16,7 +16,11 @@ function recipeDetailToFormInitial(recipe: RecipeDetail): RecipeFormInitial {
     cook_time_minutes: recipe.cook_time_minutes,
     instructions: recipe.instructions,
     ingredients: recipe.ingredients.map((ing) => ({
-      food: { id: ing.global_food_definition_id, name: ing.food_name },
+      food: {
+        id: ing.global_food_definition_id,
+        name: ing.food_name,
+        category: ing.category,
+      },
       // Same as the inventory edit form: the stored "1.000" fills the box as "1".
       quantity: String(Number(ing.quantity)),
       unit: ing.unit,

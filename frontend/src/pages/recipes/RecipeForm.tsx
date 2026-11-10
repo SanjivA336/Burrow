@@ -3,13 +3,14 @@ import { useParams } from 'react-router-dom'
 import { NumberInput } from '../../components/NumberInput'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Plus, TriangleAlert, X } from 'lucide-react'
+import { Plus, ScanSearch, TriangleAlert, X } from 'lucide-react'
 import { FoodSearchInput } from '../../components/FoodSearchInput'
 import { ApiError, apiClient } from '../../lib/apiClient'
 import { ChangeFoodSheet } from './ChangeFoodSheet'
 import { MatchToItemsSheet } from './MatchToItemsSheet'
 import { PickFoodSheet } from './PickFoodSheet'
 import { StepEditor } from './StepEditor'
+import { RECIPE_FORM_ID, useSetSheetBusy } from './recipeSheetContext'
 import {
   addIngredientIfMissing,
   appendMention,
@@ -60,7 +61,7 @@ export interface RecipeSubmitBody {
 // this via its own small mapping function rather than RecipeForm knowing
 // about either source directly.
 export interface RecipeFormInitialIngredient {
-  food: Pick<FoodDefinition, 'id' | 'name'> | null
+  food: MentionFood | null
   quantity: string
   unit: Unit | ''
   note: string
@@ -82,7 +83,7 @@ export interface RecipeFormInitial {
 }
 
 interface IngredientRow {
-  food: Pick<FoodDefinition, 'id' | 'name'> | null
+  food: MentionFood | null
   quantity: string
   unit: Unit | ''
   // Notes can no longer be typed, but a recipe saved with one keeps it: it is carried through
@@ -149,6 +150,13 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
       : { name: '', servings: 4 },
   })
 
+  // Tell the sheet's header check mark when a save is running, so it switches off like the button.
+  const setSheetBusy = useSetSheetBusy()
+  useEffect(() => {
+    setSheetBusy(isSubmitting)
+    return () => setSheetBusy(false)
+  }, [isSubmitting, setSheetBusy])
+
   const [ingredients, setIngredients] = useState<IngredientRow[]>(
     initial && initial.ingredients.length > 0
       ? initial.ingredients.map((ing) => ({
@@ -190,6 +198,9 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
   const [kitchenUnits, setKitchenUnits] = useState<Record<string, MeasurementPreference>>({})
   const asked = useRef(new Set<string>())
   const [matchOpen, setMatchOpen] = useState(false)
+  // The description box is tucked behind a "+ Description" button until it is needed (or the
+  // recipe already has one). Once opened it stays, so it cannot vanish while being edited.
+  const [descriptionOpen, setDescriptionOpen] = useState(!!initial?.description?.trim())
   // A linked food in a step that the person tapped to change.
   const [changing, setChanging] = useState<{
     step: number
@@ -411,7 +422,11 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
   }
 
   return (
-    <form onSubmit={handleSubmit(submit)} className="flex min-h-0 flex-1 flex-col">
+    <form
+      id={RECIPE_FORM_ID}
+      onSubmit={handleSubmit(submit)}
+      className="flex min-h-0 flex-1 flex-col"
+    >
       <div data-sheet-scroll className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         {intro}
         <div>
@@ -422,17 +437,29 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
           {errors.name && <p className="mt-1.5 text-sm text-danger">{errors.name.message}</p>}
         </div>
 
-        <div>
-          <label htmlFor="recipeform-175" className="mb-1.5 block text-sm font-medium text-muted">
-            Description (optional)
-          </label>
-          <textarea
-            id="recipeform-175"
-            rows={2}
-            className={inputClass}
-            {...register('description')}
-          />
-        </div>
+        {descriptionOpen ? (
+          <div>
+            <label htmlFor="recipeform-175" className="mb-1.5 block text-sm font-medium text-muted">
+              Description
+            </label>
+            <textarea
+              id="recipeform-175"
+              rows={2}
+              // Opened by tapping "+ Description", so it is ready to type in.
+              autoFocus={!initial?.description?.trim()}
+              className={inputClass}
+              {...register('description')}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setDescriptionOpen(true)}
+            className="-mt-2 self-start rounded-control px-2 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary-soft"
+          >
+            + Description
+          </button>
+        )}
 
         <div className="grid grid-cols-3 gap-2">
           <div>
@@ -483,39 +510,52 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
           </div>
         </div>
 
-        <div
-          role="tablist"
-          aria-label="Recipe sections"
-          className="flex gap-1 border-b border-subtle"
-        >
-          {(
-            [
-              ['ingredients', `Ingredients (${ingredients.filter((r) => r.food).length})`],
-              ['instructions', `Instructions (${instructions.filter((t) => t.trim()).length})`],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              id={`recipe-tab-${key}`}
-              aria-selected={tab === key}
-              aria-controls={`recipe-panel-${key}`}
-              onClick={() => setTab(key)}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
-                tab === key
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted hover:text-text'
-              }`}
-            >
-              {label}
-              {key === 'instructions' && mentionCheck.missing.length > 0 && (
-                <span aria-label="has a problem" className="ml-1 text-danger">
-                  !
-                </span>
-              )}
-            </button>
-          ))}
+        {/* The row is a grid of 22 parts to 2: the tabs share the first 22 equally (11 each) and the
+            button takes the last 2, a twelfth of the row. The tablist is only the tabs, since a
+            tablist may hold nothing else. */}
+        <div className="grid grid-cols-[22fr_2fr] border-b border-subtle">
+          <div role="tablist" aria-label="Recipe sections" className="grid grid-cols-2">
+            {(
+              [
+                ['ingredients', `Ingredients (${ingredients.filter((r) => r.food).length})`],
+                ['instructions', `Instructions (${instructions.filter((t) => t.trim()).length})`],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                id={`recipe-tab-${key}`}
+                aria-selected={tab === key}
+                aria-controls={`recipe-panel-${key}`}
+                onClick={() => setTab(key)}
+                className={`-mb-px border-b-2 px-2 py-2 text-center text-sm font-medium transition-colors ${
+                  tab === key
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted hover:text-text'
+                }`}
+              >
+                {label}
+                {key === 'instructions' && mentionCheck.missing.length > 0 && (
+                  <span aria-label="has a problem" className="ml-1 text-danger">
+                    !
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          {/* Not a tab: it looks through the steps for foods written in plain words. It sits in
+              the tab row, in the last twelfth of it, whichever tab is open. */}
+          <button
+            type="button"
+            onClick={() => setMatchOpen(true)}
+            disabled={foods.length === 0 || !instructions.some((t) => t.trim())}
+            aria-label="Find ingredients"
+            title="Find ingredients in your steps"
+            className="-mb-px flex items-center justify-center border-b-2 border-transparent py-2 text-primary transition-colors hover:text-primary-hover disabled:cursor-not-allowed disabled:text-faint"
+          >
+            <ScanSearch size={18} strokeWidth={2} />
+          </button>
         </div>
 
         {tab === 'ingredients' && (
@@ -575,7 +615,7 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
                       )}
                     </select>
                     {/* Says what the ingredient is now and flips on tap: filled in for required,
-                        outline only for optional. */}
+                        a dashed outline only for optional (like the marks on the recipe page). */}
                     <button
                       type="button"
                       title={
@@ -587,7 +627,7 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
                       onClick={() => updateIngredient(index, { optional: row.optional !== true })}
                       className={`shrink-0 rounded-control border px-2.5 py-2 text-sm font-medium transition-colors ${
                         row.optional === true
-                          ? 'border-primary bg-transparent text-primary hover:bg-primary-soft'
+                          ? 'border-dashed border-primary bg-transparent text-primary hover:bg-primary-soft'
                           : 'border-primary bg-primary text-on-accent hover:bg-primary-hover'
                       }`}
                     >
@@ -693,14 +733,6 @@ export function RecipeForm({ initial, submitLabel, onDiscard, intro, onSubmit }:
             >
               <Plus size={16} strokeWidth={2.25} />
               Add step
-            </button>
-            <button
-              type="button"
-              onClick={() => setMatchOpen(true)}
-              disabled={foods.length === 0 || !instructions.some((t) => t.trim())}
-              className="mt-2 text-sm font-medium text-primary hover:text-primary-hover disabled:opacity-40"
-            >
-              Match to items
             </button>
             {mentionCheck.missing.length > 0 && (
               <div

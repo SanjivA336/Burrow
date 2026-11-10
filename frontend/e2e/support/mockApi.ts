@@ -44,6 +44,11 @@ export interface ApiState {
   otherBurrows: { id: string; name: string }[]
   // Burrow ids that answer "403, not yours" when opened.
   forbiddenBurrows: string[]
+  // The bodies of POST .../recipes/r1/use requests (cooking the sample recipe).
+  recipeUses: Record<string, unknown>[]
+  // How the fake answers a use: 'ok', 'asks-first' (a 409 until confirm_depletion is set) or
+  // 'fails' (a plain error).
+  recipeUseOutcome: 'ok' | 'asks-first' | 'fails'
 }
 
 export function newState(overrides: Partial<ApiState> = {}): ApiState {
@@ -56,6 +61,8 @@ export function newState(overrides: Partial<ApiState> = {}): ApiState {
     householdPatches: [],
     otherBurrows: [],
     forbiddenBurrows: [],
+    recipeUses: [],
+    recipeUseOutcome: 'ok',
     ...overrides,
   }
 }
@@ -168,6 +175,26 @@ export async function mockApi(page: Page, state: ApiState): Promise<void> {
       )
     }
     if (path === `${base}/recipes/r1`) return reply(route, recipeDetail)
+    if (path === `${base}/recipes/r1/use` && method === 'POST') {
+      const body = JSON.parse(request.postData() ?? '{}') as Record<string, unknown>
+      state.recipeUses.push(body)
+      const fail = (status: number, message: string) =>
+        route.fulfill({
+          status,
+          headers: { ...CORS, 'content-type': 'application/json' },
+          body: JSON.stringify({
+            status: 'error',
+            data: null,
+            error: { code: String(status), message },
+            timestamp: new Date().toISOString(),
+          }),
+        })
+      if (state.recipeUseOutcome === 'fails') return fail(400, 'Your kitchen changed. Try again.')
+      if (state.recipeUseOutcome === 'asks-first' && body.confirm_depletion !== true) {
+        return fail(409, 'This will use up your Whole Milk')
+      }
+      return reply(route, { used: [], emptied: [] })
+    }
     if (path === '/api/food-definitions/search') {
       const query = new URL(request.url()).searchParams.get('query') ?? ''
       return reply(route, query.toLowerCase().includes('butter') ? [butter] : [wholeMilk])

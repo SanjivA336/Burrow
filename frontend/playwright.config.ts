@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test'
+import { MY_USER_ID } from './e2e/support/env'
 
 // Browser tests for the screens that are easy to break without noticing: the tour, the split-costs
 // modes, add-item autofill and an accessibility scan. They run the REAL frontend (a production
@@ -17,6 +18,9 @@ const BUILD_ENV = {
   VITE_SUPABASE_ANON_KEY: 'test-anon-key',
   VITE_API_BASE_URL: 'http://127.0.0.1:8010',
   VITE_SUPPORT_URL: 'https://example.com/support',
+  // The fake signed-in user is on the developer list. Tests see the app as an ordinary account
+  // unless they ask for `developer: true` (see e2e/support/fixtures.ts).
+  VITE_DEVELOPER_USER_IDS: MY_USER_ID,
 }
 
 export default defineConfig({

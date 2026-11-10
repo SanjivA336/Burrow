@@ -11,6 +11,7 @@ import { UNIT_LABELS } from '../../lib/units'
 import { MentionText } from './MentionText'
 import { scaledQuantityLabel, stockOf } from '../../lib/ingredientStock'
 import { FoodChip, StockIcon } from './ingredientStock'
+import { UseRecipeModal } from './UseRecipeModal'
 import type { RecipeDetail, RecipeIngredient, SubstitutionSuggestion } from '../../types/entities'
 
 // A portable, human-readable export -- shared by hand (text/JSON file) with
@@ -80,12 +81,15 @@ export function RecipeDetailPage() {
     data: recipe,
     loading,
     error,
+    reload,
   } = useHouseholdResource<RecipeDetail>(
     householdId && recipeId ? `/api/households/${householdId}/recipes/${recipeId}` : null,
   )
   usePageTitle(recipe?.name)
   const [servings, setServings] = useState<number | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [usingOpen, setUsingOpen] = useState(false)
+  const [usedNotice, setUsedNotice] = useState(false)
   const [substitutions, setSubstitutions] = useState<Record<string, SubstitutionState>>({})
 
   useEffect(() => {
@@ -262,6 +266,40 @@ export function RecipeDetailPage() {
           ))}
         </ol>
       </div>
+
+      {/* Takes what was used out of the kitchen. Developer-only while the redesign is on its branch. */}
+      {isDeveloper && (
+        <div>
+          {usedNotice && (
+            <p role="status" className="mb-2 text-sm text-success">
+              Removed from your kitchen.
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setUsedNotice(false)
+              setUsingOpen(true)
+            }}
+            className="w-full rounded-control border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-soft"
+          >
+            Mark as cooked
+          </button>
+        </div>
+      )}
+      {usingOpen && householdId && (
+        <UseRecipeModal
+          recipe={recipe}
+          householdId={householdId}
+          servings={servings ?? recipe.servings}
+          onClose={() => setUsingOpen(false)}
+          onUsed={() => {
+            setUsingOpen(false)
+            setUsedNotice(true)
+            reload()
+          }}
+        />
+      )}
     </div>
   )
 }

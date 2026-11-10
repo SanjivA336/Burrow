@@ -129,7 +129,7 @@ export function MatchToItemsSheet({ steps: stepsNow, foods: foodsNow, onApply, o
   }
 
   return (
-    <Modal title="Match to items" onClose={onClose}>
+    <Modal title="Find ingredients" onClose={onClose}>
       {nothingAtAll ? (
         <>
           <p className="text-sm text-muted">

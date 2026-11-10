@@ -9,7 +9,7 @@ interface Props {
   // edit form from a recipe ingredient, which doesn't carry the full
   // FoodDefinition) can pass just that much -- this component only ever
   // reads `.name`/`.category` off the current value.
-  value: (Pick<FoodDefinition, 'id' | 'name'> & Partial<Pick<FoodDefinition, 'category'>>) | null
+  value: (Pick<FoodDefinition, 'id' | 'name'> & { category?: FoodDefinition['category'] | null }) | null
   onChange: (food: FoodDefinition | null) => void
   // Pre-fills the search box (and fires the initial search) with a name
   // suggested by something upstream, e.g. an AI-parsed ingredient name that

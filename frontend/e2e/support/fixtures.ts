@@ -19,6 +19,8 @@ import {
 //   test.use({ installed: true })          running as an installed app
 //   test.use({ tourDone: false })          the guided tour has not been taken yet
 //   test.use({ updatesRead: false })       the newest Updates article has not been opened yet
+//   test.use({ developer: true })          developer-only features are shown (the account is on
+//                                          the developer list in every build; this is the switch)
 
 interface Options {
   signedIn: boolean
@@ -27,6 +29,7 @@ interface Options {
   splitCosts: boolean
   lastPurchase: LastPurchase | null
   updatesRead: boolean
+  developer: boolean
 }
 
 // The newest article's id (its file name; the names start with the date), so tests that are not
@@ -44,14 +47,23 @@ export const test = base.extend<Options & { api: ApiState }>({
   splitCosts: [true, { option: true }],
   lastPurchase: [null, { option: true }],
   updatesRead: [true, { option: true }],
+  developer: [false, { option: true }],
   // Runs for every test (auto) so the fake API is always in place; ask for `api` only when the
   // test wants to read or change its state.
   api: [
-    async ({ page, signedIn, tourDone, installed, splitCosts, lastPurchase, updatesRead }, use) => {
+    async (
+      { page, signedIn, tourDone, installed, splitCosts, lastPurchase, updatesRead, developer },
+      use,
+    ) => {
       const state = newState({ splitCosts, lastPurchase })
       await mockApi(page, state)
       if (signedIn) await signIn(page, { tourDone })
       if (installed) await pretendInstalled(page)
+      // Developer features are on by default for a developer account, so ordinary-account tests
+      // switch them off the way a person would (Settings, saved on the device).
+      if (!developer) {
+        await page.addInitScript(() => window.localStorage.setItem('burrow-dev-features', 'off'))
+      }
       if (updatesRead) {
         await page.addInitScript(
           (id) => window.localStorage.setItem('burrow-updates-seen', id),

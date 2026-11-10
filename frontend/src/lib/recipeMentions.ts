@@ -10,9 +10,13 @@
 // (no React, no network), so the rules can be tested without any screen. The plan is in the vault:
 // "Burrow Recipe Mentions Plan".
 
+import type { FoodCategory } from '../types/entities'
+
 export interface MentionFood {
   id: string
   name: string
+  // For the coloured dot beside the name; not every source of a food knows it.
+  category?: FoodCategory | null
 }
 
 // One bracketed word in a step.

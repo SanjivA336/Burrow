@@ -22,11 +22,13 @@ test('each ingredient has a mark: a check, a warning or an X', async ({ page }) 
   await expect(mark('Garlic')).toHaveAttribute('aria-label', 'Not in stock')
 })
 
-test('an optional ingredient that is missing is marked grey, not red', async ({ page }) => {
+test('an optional ingredient that is missing keeps its red mark, not grey', async ({ page }) => {
   const list = page.getByRole('list').first()
   const parsley = list.getByRole('listitem').filter({ hasText: 'Parsley' })
   await expect(parsley.getByText('Optional')).toBeVisible()
-  await expect(parsley.getByRole('img').first()).toHaveClass(/bg-muted/)
+  await expect(parsley.getByRole('img').first()).toHaveClass(/bg-transparent/)
+  await expect(parsley.getByRole('img').first()).toHaveClass(/text-danger/)
+  await expect(parsley.getByRole('img').first()).toHaveClass(/outline-danger/)
   const garlic = list.getByRole('listitem').filter({ hasText: 'Garlic' })
   await expect(garlic.getByRole('img').first()).toHaveClass(/bg-danger/)
 })

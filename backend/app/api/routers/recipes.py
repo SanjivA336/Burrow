@@ -2,10 +2,18 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.auth import get_current_user_id, require_household_membership
+from app.core.auth import get_current_user_id, require_developer, require_household_membership
 from app.core.responses import Envelope, ok
 from app.schemas.member import Member
-from app.schemas.recipe import CreateRecipeRequest, Recipe, RecipeDetail, UpdateRecipeRequest
+from app.schemas.recipe import (
+    CreateRecipeRequest,
+    Recipe,
+    RecipeDetail,
+    UpdateRecipeRequest,
+    UseRecipeRequest,
+    UseRecipeResult,
+)
+from app.services import recipe_use as recipe_use_service
 from app.services import recipes as recipe_service
 
 # Still nested under a household in the URL -- not because recipes belong to
@@ -75,3 +83,40 @@ def delete_recipe(
     if not deleted:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Recipe not found")
     return ok(None)
+
+
+@router.post("/{recipe_id}/use", response_model=Envelope[UseRecipeResult])
+def use_recipe(
+    household_id: UUID,
+    recipe_id: UUID,
+    body: UseRecipeRequest,
+    caller: Member = Depends(require_household_membership),
+    user_id: UUID = Depends(get_current_user_id),
+    _dev: UUID = Depends(require_developer),
+) -> Envelope[UseRecipeResult]:
+    """Cook the recipe: take the ticked ingredients out of this kitchen, all or nothing.
+
+    Developer-only while the recipe redesign is on its branch.
+    """
+    try:
+        result = recipe_use_service.use_recipe(household_id, caller, user_id, recipe_id, body)
+    except recipe_service.RecipeNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Recipe not found") from exc
+    except recipe_use_service.UnknownIngredientError as exc:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "That ingredient isn't in this recipe"
+        ) from exc
+    except recipe_use_service.CantUseError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, ". ".join(exc.problems)) from exc
+    except recipe_use_service.NeedsConfirmationError as exc:
+        # 409 means "ask the person first": resending with confirm_depletion set goes through.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This will use up your " + ", ".join(exc.foods),
+        ) from exc
+    except recipe_use_service.StockChangedError as exc:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Your kitchen changed while you were cooking. Nothing was removed; try again.",
+        ) from exc
+    return ok(result)

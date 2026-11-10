@@ -80,8 +80,8 @@ test('Match to items links ingredients written in plain words, and can be undone
   await page.getByRole('tab', { name: /Instructions/ }).click()
   await page.getByLabel('Step 1', { exact: true }).fill('Pour whole milk into a bowl.')
 
-  await page.getByRole('button', { name: 'Match to items' }).click()
-  const sheet = page.getByRole('dialog', { name: 'Match to items' })
+  await page.getByRole('button', { name: 'Find ingredients' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Find ingredients' })
   await expect(sheet.getByText('whole milk')).toBeVisible()
   await sheet.getByRole('button', { name: 'Link 1' }).click()
 
@@ -122,8 +122,8 @@ test('Match to items also finds foods that are not ingredients, and adds the one
   await page.getByRole('tab', { name: /Instructions/ }).click()
   await page.getByLabel('Step 1', { exact: true }).fill('Melt butter, then pour in the whole milk.')
 
-  await page.getByRole('button', { name: 'Match to items' }).click()
-  const sheet = page.getByRole('dialog', { name: 'Match to items' })
+  await page.getByRole('button', { name: 'Find ingredients' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Find ingredients' })
   await expect(sheet.getByText('Other foods in your steps')).toBeVisible()
   // The other foods start unticked: nothing is added unless it is chosen.
   await expect(sheet.getByRole('button', { name: 'Link 1' })).toBeVisible()
@@ -186,6 +186,60 @@ test('changing a food in a step, all mentions: the ingredient swaps too', async 
   await expect(page.getByLabel('Step 1', { exact: true })).toHaveValue('Pour [Whole Milk].')
 })
 
+test('the check mark in the header saves the recipe, like the button at the bottom', async ({
+  page,
+}) => {
+  await openNewRecipe(page)
+  await pickMilk(page)
+  await page.getByPlaceholder('Qty').fill('1')
+  await page.getByLabel('Unit for ingredient 1').selectOption('cup')
+
+  const saved = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/recipes'))
+  await page.getByRole('button', { name: 'Save recipe' }).click()
+  await saved
+})
+
+test('the tabs share the row equally and the Find ingredients button takes a twelfth of it', async ({
+  page,
+}) => {
+  await openNewRecipe(page)
+  const width = async (name: string | RegExp, role: 'tab' | 'button') =>
+    (await page.getByRole(role, { name }).boundingBox())!.width
+  const row = (await page.getByRole('tablist').locator('..').boundingBox())!.width
+  const ingredients = await width(/^Ingredients/, 'tab')
+  const instructions = await width(/^Instructions/, 'tab')
+  const find = await width('Find ingredients', 'button')
+  expect(Math.abs(ingredients - instructions)).toBeLessThan(1)
+  expect(Math.abs(find / row - 1 / 12)).toBeLessThan(0.01)
+  expect(ingredients + instructions + find).toBeCloseTo(row, 0)
+})
+
+test('the description box stays hidden until + Description is tapped', async ({ page }) => {
+  await openNewRecipe(page)
+  await expect(page.getByLabel('Description')).toHaveCount(0)
+  await page.getByRole('button', { name: '+ Description' }).click()
+  await expect(page.getByLabel('Description')).toBeFocused()
+  await expect(page.getByRole('button', { name: '+ Description' })).toHaveCount(0)
+
+  await page.getByLabel('Recipe name').fill('Toast')
+  await page.getByLabel('Description').fill('Quick one')
+  await pickMilk(page)
+  await page.getByPlaceholder('Qty').fill('1')
+  await page.getByLabel('Unit for ingredient 1').selectOption('cup')
+  const saved = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/recipes'))
+  await page.getByRole('button', { name: 'Create recipe' }).click()
+  expect(((await saved).postDataJSON() as { description: string }).description).toBe('Quick one')
+})
+
+test('editing a recipe with no description offers the + Description button too', async ({
+  page,
+}) => {
+  await page.goto(`/households/${HID}/recipes/r1/edit`)
+  const dialog = page.getByRole('dialog', { name: 'Edit recipe' })
+  await expect(dialog.getByRole('button', { name: '+ Description' })).toBeVisible()
+  await expect(dialog.getByLabel('Description')).toHaveCount(0)
+})
+
 test('an ingredient can be marked optional and is saved that way', async ({ page }) => {
   await openNewRecipe(page)
   await pickMilk(page)
@@ -195,6 +249,7 @@ test('an ingredient can be marked optional and is saved that way', async ({ page
   await expect(page.getByRole('button', { name: 'Required' })).toBeVisible()
   await page.getByRole('button', { name: 'Required' }).click()
   await expect(page.getByRole('button', { name: 'Optional' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Optional' })).toHaveClass(/border-dashed/)
 
   const saved = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/recipes'))
   await page.getByRole('button', { name: 'Create recipe' }).click()
@@ -260,7 +315,23 @@ test('each step lists the foods it names as chips under its text', async ({ page
   await page.getByLabel('Unit for ingredient 1').selectOption('cup')
   await page.getByRole('tab', { name: /Instructions/ }).click()
   await page.getByLabel('Step 1', { exact: true }).fill('Pour [Whole Milk].')
-  await expect(page.getByRole('button', { name: 'Change Whole Milk in step 1' })).toBeVisible()
+  const chip = page.getByRole('button', { name: 'Change Whole Milk in step 1' })
+  await expect(chip).toBeVisible()
+  // The chip carries the food's category dot, like the food chips on the recipe page.
+  await expect(chip.getByTitle('Dairy & Dairy Alternatives')).toBeVisible()
+})
+
+test('an ingredient row shows its food category dot, also when the recipe is edited', async ({
+  page,
+}) => {
+  await openNewRecipe(page)
+  await pickMilk(page)
+  const dialog = page.getByRole('dialog', { name: 'New recipe' })
+  await expect(dialog.getByTitle('Dairy & Dairy Alternatives')).toBeVisible()
+
+  await page.goto(`/households/${HID}/recipes/r1/edit`)
+  const edit = page.getByRole('dialog', { name: 'Edit recipe' })
+  await expect(edit.getByTitle('Dairy & Dairy Alternatives').first()).toBeVisible()
 })
 
 test('picking a food fills in the unit the kitchen tracks it by', async ({ page }) => {

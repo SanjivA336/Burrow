@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { ChevronDown, ChevronUp, X } from 'lucide-react'
 import { AutoGrowTextarea } from '../../components/AutoGrowTextarea'
+import { CategoryDot } from '../../components/CategoryDot'
 import type { MentionFood } from '../../lib/recipeMentions'
 
 // One food named in a step, as the form works it out.
@@ -101,8 +102,9 @@ export function StepEditor({ steps, keys, linked, onText, onRemove, onMove, onCh
                     type="button"
                     onClick={() => onChip(m)}
                     aria-label={`Change ${m.food.name} in step ${index + 1}`}
-                    className="inline-flex items-center rounded-pill bg-primary-soft px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary hover:text-on-accent"
+                    className="inline-flex items-center gap-1.5 rounded-pill bg-primary-soft px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary hover:text-on-accent"
                   >
+                    <CategoryDot category={m.food.category ?? null} />
                     {m.food.name}
                   </button>
                 ))}
