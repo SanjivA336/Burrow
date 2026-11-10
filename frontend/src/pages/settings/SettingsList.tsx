@@ -126,7 +126,7 @@ function ActionRow(props: RowProps & { onClick: () => void }) {
   )
 }
 
-// "Developer features": a switch row, shown only to accounts on the developer list. It shows or
+// "Experimental features": a switch row, shown only to accounts on the developer list. It shows or
 // hides the features still being tested on this device; the server still decides who may use them.
 function DeveloperRow() {
   const on = useSyncExternalStore(subscribeDevFeatures, getDevFeaturesOn)
@@ -139,7 +139,7 @@ function DeveloperRow() {
       className={`${rowClass} text-text hover:bg-surface-hover`}
     >
       <FlaskConical size={18} strokeWidth={1.75} className="shrink-0" />
-      <span className="min-w-0 flex-1 truncate">Developer features</span>
+      <span className="min-w-0 flex-1 truncate">Experimental features</span>
       <span
         aria-hidden="true"
         className={`rounded-pill px-2 py-0.5 text-xs font-medium ${
@@ -246,7 +246,7 @@ export function SettingsList({ ctx }: { ctx: SettingsContext }) {
 
       {isDeveloperAccount && (
         <section>
-          <Group title="Developer">
+          <Group title="Experimental">
             <DeveloperRow />
           </Group>
           <p className="mt-2 px-1 text-xs text-faint">

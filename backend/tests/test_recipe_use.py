@@ -6,10 +6,10 @@ import pytest
 from postgrest.exceptions import APIError
 
 from app.schemas.recipe import RecipeDetail, RecipeIngredient, UseRecipeRequest
-from app.schemas.units import Dimension
+from app.schemas.units import Dimension, Unit
 from app.services import recipe_use as use
 from app.services import recipes as recipe_service
-from tests.conftest import auth_header, make_developer, make_member
+from tests.conftest import auth_header, make_member
 
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
 
@@ -255,6 +255,88 @@ def test_an_ingredient_that_is_not_in_the_recipe_is_rejected() -> None:
         _plan(recipe, [], chosen=[uuid.uuid4()])
 
 
+# --- the preview ----------------------------------------------------------------------------
+
+
+def _preview(recipe, stock, servings="4", chosen=None):
+    ids = chosen if chosen is not None else [i.id for i in recipe.ingredients]
+    return use.preview_use(recipe, ids, Decimal(servings), stock)
+
+
+def test_the_preview_adds_up_every_usable_item_of_the_food() -> None:
+    milk = uuid.uuid4()
+    recipe = _recipe(_ingredient(milk, quantity="500"))
+    first = _stock(milk, "300", expiry=date(2026, 11, 20))
+    first.total, first.unit = Decimal("1000"), Unit.ML
+    second = _stock(milk, "700", expiry=date(2026, 12, 20))
+    second.total, second.unit = Decimal("1000"), Unit.ML
+
+    item = _preview(recipe, [first, second]).items[0]
+
+    assert (item.using, item.left, item.total) == (Decimal("500"), Decimal("1000"), Decimal("2000"))
+    assert item.unit == Unit.ML
+
+
+def test_the_preview_is_in_the_unit_the_food_is_stored_in_not_the_recipes() -> None:
+    milk = uuid.uuid4()
+    recipe = _recipe(_ingredient(milk, quantity="500", unit="ml"))
+    carton = _stock(milk, "2000")
+    carton.total, carton.unit = Decimal("4000"), Unit.L
+
+    item = _preview(recipe, [carton]).items[0]
+
+    assert item.unit == Unit.L
+    assert (item.using, item.left, item.total) == (Decimal("0.5"), Decimal("2"), Decimal("4"))
+
+
+def test_the_preview_never_uses_more_than_is_left() -> None:
+    milk = uuid.uuid4()
+    recipe = _recipe(_ingredient(milk, quantity="500"))
+    item = _stock(milk, "300")
+
+    preview = _preview(recipe, [item]).items[0]
+
+    assert preview.using == Decimal("300")
+    assert preview.left == Decimal("300")
+
+
+def test_the_preview_follows_the_servings() -> None:
+    milk = uuid.uuid4()
+    recipe = _recipe(_ingredient(milk, quantity="500"), servings=4)
+
+    assert _preview(recipe, [_stock(milk, "5000")], servings="8").items[0].using == Decimal("1000")
+
+
+def test_an_ingredient_that_cannot_be_used_is_reported_and_the_rest_still_get_a_bar() -> None:
+    milk = uuid.uuid4()
+    recipe = _recipe(_ingredient(milk, quantity="500"), _ingredient(uuid.uuid4(), name="Garlic"))
+
+    result = _preview(recipe, [_stock(milk, "1000")])
+
+    assert [i.food_name for i in result.items] == ["Milk"]
+    assert len(result.problems) == 1
+    assert "Garlic" in result.problems[0]
+
+
+def test_the_preview_changes_nothing_and_matches_what_using_would_take() -> None:
+    milk = uuid.uuid4()
+    recipe = _recipe(_ingredient(milk, quantity="500"))
+    stock = [_stock(milk, "200", expiry=date(2026, 11, 20)), _stock(milk, "1000")]
+
+    preview = _preview(recipe, stock).items[0]
+    plan = _plan(recipe, stock)
+
+    assert preview.using == sum(plan.takes.values(), Decimal(0))
+    assert [s.quantity for s in stock] == [Decimal("200"), Decimal("1000")]
+
+
+def test_previewing_an_ingredient_not_in_the_recipe_is_rejected() -> None:
+    recipe = _recipe(_ingredient(uuid.uuid4()))
+
+    with pytest.raises(use.UnknownIngredientError):
+        _preview(recipe, [], chosen=[uuid.uuid4()])
+
+
 # --- all or nothing -------------------------------------------------------------------------
 
 
@@ -393,7 +475,6 @@ async def test_the_route_maps_each_failure_to_a_status(
 ) -> None:
     household_id, user_id = uuid.uuid4(), uuid.uuid4()
     fake_members.seed(make_member(household_id, user_id))
-    make_developer(monkeypatch, user_id)
 
     def raising(*_args, **_kwargs):
         raise error
@@ -418,23 +499,9 @@ async def test_the_route_needs_a_login(client) -> None:
     assert response.status_code in (401, 403, 422)
 
 
-async def test_the_route_is_for_developer_accounts_only(client, fake_members) -> None:
-    household_id, user_id = uuid.uuid4(), uuid.uuid4()
-    fake_members.seed(make_member(household_id, user_id))
-
-    response = await client.post(
-        f"/api/households/{household_id}/recipes/{uuid.uuid4()}/use",
-        json={"servings": 4, "ingredient_ids": [str(uuid.uuid4())]},
-        headers=auth_header(user_id),
-    )
-
-    assert response.status_code == 403
-
-
 async def test_the_route_wants_at_least_one_ingredient(client, fake_members, monkeypatch) -> None:
     household_id, user_id = uuid.uuid4(), uuid.uuid4()
     fake_members.seed(make_member(household_id, user_id))
-    make_developer(monkeypatch, user_id)
 
     response = await client.post(
         f"/api/households/{household_id}/recipes/{uuid.uuid4()}/use",
@@ -443,3 +510,23 @@ async def test_the_route_wants_at_least_one_ingredient(client, fake_members, mon
     )
 
     assert response.status_code == 422
+
+
+async def test_the_preview_route_maps_a_missing_recipe_to_404(
+    client, fake_members, monkeypatch
+) -> None:
+    household_id, user_id = uuid.uuid4(), uuid.uuid4()
+    fake_members.seed(make_member(household_id, user_id))
+
+    def raising(*_args, **_kwargs):
+        raise recipe_service.RecipeNotFoundError
+
+    monkeypatch.setattr(use, "preview_recipe_use", raising)
+
+    response = await client.post(
+        f"/api/households/{household_id}/recipes/{uuid.uuid4()}/use-preview",
+        json={"servings": 4, "ingredient_ids": [str(uuid.uuid4())]},
+        headers=auth_header(user_id),
+    )
+
+    assert response.status_code == 404

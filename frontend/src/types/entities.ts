@@ -520,3 +520,20 @@ export interface TermMatch {
   term: string
   matches: ScoredFood[]
 }
+
+// What "Mark as cooked" would do to one ingredient's stock. The amounts are in the unit the food is
+// stored in, and `left` and `total` add up every usable item of that food.
+export interface UsePreviewItem {
+  ingredient_id: string
+  food_name: string
+  using: string
+  left: string
+  total: string
+  unit: Unit
+}
+
+export interface UsePreviewResult {
+  items: UsePreviewItem[]
+  problems: string[]
+}
+

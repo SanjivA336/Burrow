@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.auth import get_current_user_id, require_developer, require_household_membership
+from app.core.auth import get_current_user_id, require_household_membership
 from app.core.responses import Envelope, ok
 from app.schemas.member import Member
 from app.schemas.recipe import (
@@ -10,6 +10,7 @@ from app.schemas.recipe import (
     Recipe,
     RecipeDetail,
     UpdateRecipeRequest,
+    UsePreviewResult,
     UseRecipeRequest,
     UseRecipeResult,
 )
@@ -92,12 +93,8 @@ def use_recipe(
     body: UseRecipeRequest,
     caller: Member = Depends(require_household_membership),
     user_id: UUID = Depends(get_current_user_id),
-    _dev: UUID = Depends(require_developer),
 ) -> Envelope[UseRecipeResult]:
-    """Cook the recipe: take the ticked ingredients out of this kitchen, all or nothing.
-
-    Developer-only while the recipe redesign is on its branch.
-    """
+    """Cook the recipe: take the ticked ingredients out of this kitchen, all or nothing."""
     try:
         result = recipe_use_service.use_recipe(household_id, caller, user_id, recipe_id, body)
     except recipe_service.RecipeNotFoundError as exc:
@@ -118,5 +115,27 @@ def use_recipe(
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             "Your kitchen changed while you were cooking. Nothing was removed; try again.",
+        ) from exc
+    return ok(result)
+
+
+@router.post("/{recipe_id}/use-preview", response_model=Envelope[UsePreviewResult])
+def preview_use_recipe(
+    household_id: UUID,
+    recipe_id: UUID,
+    body: UseRecipeRequest,
+    caller: Member = Depends(require_household_membership),
+    user_id: UUID = Depends(get_current_user_id),
+) -> Envelope[UsePreviewResult]:
+    """What Mark as cooked would do to each ticked ingredient's stock. Changes nothing."""
+    try:
+        result = recipe_use_service.preview_recipe_use(
+            household_id, caller, user_id, recipe_id, body
+        )
+    except recipe_service.RecipeNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Recipe not found") from exc
+    except recipe_use_service.UnknownIngredientError as exc:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "That ingredient isn't in this recipe"
         ) from exc
     return ok(result)

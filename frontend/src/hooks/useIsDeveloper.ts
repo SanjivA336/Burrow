@@ -21,7 +21,7 @@ export function useIsDeveloperAccount(): boolean {
 }
 
 // Should developer-only features be shown right now? The account has to be on the developer list
-// AND the person's own "Developer features" switch (Settings) has to be on, which it is unless
+// AND the person's own "Experimental features" switch (Settings) has to be on, which it is unless
 // they turned it off to see the app as everyone else does.
 export function useIsDeveloper(): boolean {
   const account = useIsDeveloperAccount()

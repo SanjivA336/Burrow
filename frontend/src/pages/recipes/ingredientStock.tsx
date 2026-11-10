@@ -46,7 +46,8 @@ export function StockIcon({ stock, optional }: { stock: Stock; optional: boolean
 
 const POPOUT_WIDTH = 224
 
-// A food named in the recipe, as a small chip. Tapping it opens a little popout with how much the
+// A food named in the recipe, as a small chip: filled for a required ingredient, an empty chip with a
+// dashed outline for an optional one (the same cue as the dashed marks and the Optional button). Tapping it opens a little popout with how much the
 // recipe needs (scaled to the servings) and how that stands in the kitchen. Tapping anywhere else,
 // pressing Escape or scrolling closes it.
 export function FoodChip({ ingredient, scale }: { ingredient: RecipeIngredient; scale: number }) {
@@ -105,7 +106,11 @@ export function FoodChip({ ingredient, scale }: { ingredient: RecipeIngredient; 
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         onClick={toggle}
-        className="inline-flex items-center gap-1.5 rounded-pill bg-primary-soft px-2.5 py-0.5 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-on-accent"
+        className={`inline-flex items-center gap-1.5 rounded-pill border px-2.5 py-0.5 text-sm font-medium transition-colors ${
+          ingredient.is_optional
+            ? 'border-dashed border-primary/50 bg-transparent text-primary hover:bg-primary-soft'
+            : 'border-transparent bg-primary-soft text-primary hover:bg-primary hover:text-on-accent'
+        }`}
       >
         <CategoryDot category={ingredient.category} />
         {ingredient.food_name}

@@ -12,7 +12,7 @@ test.use(IPHONE)
 
 test('a developer account sees the switch, and it starts off here', async ({ page }) => {
   await page.goto(`/households/${HID}/settings`)
-  const toggle = page.getByRole('switch', { name: /Developer features/ })
+  const toggle = page.getByRole('switch', { name: /Experimental features/ })
   await fixtureExpect(toggle).toBeVisible()
   await fixtureExpect(toggle).toHaveAttribute('aria-checked', 'false')
   await toggle.click()

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NumberInput } from '../../components/NumberInput'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Download } from 'lucide-react'
+import { Download, Pencil, Trash2 } from 'lucide-react'
 import { apiClient, ApiError } from '../../lib/apiClient'
 import { useHouseholdResource } from '../../hooks/useHouseholdResource'
 import { useIsDeveloper } from '../../hooks/useIsDeveloper'
@@ -138,35 +138,46 @@ export function RecipeDetailPage() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">{recipe.name}</h2>
-          {recipe.description && <p className="text-sm text-muted">{recipe.description}</p>}
-          <p className="mt-1 text-xs text-faint">
-            {recipe.prep_time_minutes != null && <>Prep {recipe.prep_time_minutes}m </>}
-            {recipe.cook_time_minutes != null && <>Cook {recipe.cook_time_minutes}m</>}
-          </p>
-        </div>
-        <div className="flex items-center gap-3 text-sm">
+      {/* min-w-0 is what lets the name shrink below the width of its content: a flex child will not
+          otherwise get narrower than its longest unbroken word, so a long name would push the page
+          wider than the screen. The name may break anywhere to fit. */}
+      <div className="min-w-0">
+        <div className="flex items-start gap-1">
+          <h2 className="min-w-0 text-xl font-semibold [overflow-wrap:anywhere]">{recipe.name}</h2>
+          <Link
+            to={`/households/${householdId}/recipes/${recipeId}/edit`}
+            title="Edit recipe"
+            aria-label="Edit recipe"
+            className="mt-0.5 shrink-0 rounded-control p-1.5 text-muted transition-colors hover:bg-surface-hover hover:text-text"
+          >
+            <Pencil size={16} strokeWidth={1.75} />
+          </Link>
           <button
             type="button"
             onClick={() => downloadRecipeAsJson(recipe)}
-            title="Download as a JSON file to share with someone"
-            className="flex items-center gap-1 text-muted hover:text-text hover:underline"
+            title="Export: download as a JSON file to share with someone"
+            aria-label="Export recipe"
+            className="mt-0.5 shrink-0 rounded-control p-1.5 text-muted transition-colors hover:bg-surface-hover hover:text-text"
           >
-            <Download size={14} strokeWidth={1.75} />
-            Export
+            <Download size={16} strokeWidth={1.75} />
           </button>
-          <Link
-            to={`/households/${householdId}/recipes/${recipeId}/edit`}
-            className="text-muted hover:text-text hover:underline"
+          <button
+            type="button"
+            onClick={deleteRecipe}
+            title="Delete recipe"
+            aria-label="Delete recipe"
+            className="mt-0.5 shrink-0 rounded-control p-1.5 text-danger transition-colors hover:bg-danger-soft"
           >
-            Edit
-          </Link>
-          <button type="button" onClick={deleteRecipe} className="text-danger hover:underline">
-            Delete
+            <Trash2 size={16} strokeWidth={1.75} />
           </button>
         </div>
+        {recipe.description && (
+          <p className="text-sm text-muted [overflow-wrap:anywhere]">{recipe.description}</p>
+        )}
+        <p className="mt-1 text-xs text-faint">
+          {recipe.prep_time_minutes != null && <>Prep {recipe.prep_time_minutes}m </>}
+          {recipe.cook_time_minutes != null && <>Cook {recipe.cook_time_minutes}m</>}
+        </p>
       </div>
 
       {actionError && <p className="text-sm text-danger">{actionError}</p>}
@@ -267,26 +278,24 @@ export function RecipeDetailPage() {
         </ol>
       </div>
 
-      {/* Takes what was used out of the kitchen. Developer-only while the redesign is on its branch. */}
-      {isDeveloper && (
-        <div>
-          {usedNotice && (
-            <p role="status" className="mb-2 text-sm text-success">
-              Removed from your kitchen.
-            </p>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              setUsedNotice(false)
-              setUsingOpen(true)
-            }}
-            className="w-full rounded-control border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-soft"
-          >
-            Mark as cooked
-          </button>
-        </div>
-      )}
+      {/* Takes what was used out of the kitchen. */}
+      <div>
+        {usedNotice && (
+          <p role="status" className="mb-2 text-sm text-success">
+            Removed from your kitchen.
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            setUsedNotice(false)
+            setUsingOpen(true)
+          }}
+          className="w-full rounded-control bg-primary px-4 py-2.5 text-sm font-semibold text-on-accent transition-colors hover:bg-primary-hover"
+        >
+          Mark as cooked
+        </button>
+      </div>
       {usingOpen && householdId && (
         <UseRecipeModal
           recipe={recipe}

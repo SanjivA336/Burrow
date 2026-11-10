@@ -28,6 +28,8 @@ from app.schemas.recipe import (
     RecipeDetail,
     RecipeIngredient,
     UsedIngredient,
+    UsePreviewItem,
+    UsePreviewResult,
     UseRecipeRequest,
     UseRecipeResult,
 )
@@ -75,6 +77,10 @@ class StockItem:
     created_at: datetime
     # Whether the person cooking is allowed to use this item (some are private to a few members).
     allowed: bool = True
+    # What the item was bought as (base units) and the unit it is stored and shown in; the preview
+    # reports amounts in that unit. Left out, they default to the quantity and the base unit.
+    total: Decimal | None = None
+    unit: Unit | None = None
 
 
 @dataclass
@@ -84,6 +90,7 @@ class Plan:
     used: list[UsedIngredient] = field(default_factory=list)
     # The items that end up empty, with the food each belongs to.
     emptied: dict[UUID, UUID] = field(default_factory=dict)
+    previews: list[UsePreviewItem] = field(default_factory=list)
 
 
 def _order(item: StockItem) -> tuple:
@@ -115,28 +122,24 @@ def allocate(
     return taken
 
 
-def plan_use(
-    recipe: RecipeDetail,
-    chosen: list[UUID],
-    servings: Decimal,
-    stock: list[StockItem],
-    names: dict[UUID, str] | None = None,
-) -> Plan:
-    """Work out what cooking `chosen` ingredients for `servings` takes from `stock`.
+Wanted = list[tuple[RecipeIngredient, Decimal, list[StockItem]]]
 
-    Raises UnknownIngredientError for an ingredient not in the recipe, and CantUseError (listing
-    every problem at once) when a ticked ingredient has nothing usable in the kitchen.
+
+def _resolve(
+    recipe: RecipeDetail, chosen: list[UUID], servings: Decimal, stock: list[StockItem]
+) -> tuple[Wanted, list[str]]:
+    """For each ticked ingredient: how much it needs (base units) and which items could supply it.
+
+    Ingredients that cannot be supplied at all are left out and described in the second value.
+    Raises UnknownIngredientError for an ingredient that is not in the recipe.
     """
     by_id = {ingredient.id: ingredient for ingredient in recipe.ingredients}
     if any(ingredient_id not in by_id for ingredient_id in chosen):
         raise UnknownIngredientError
     scale = servings / Decimal(recipe.servings) if recipe.servings else Decimal(1)
 
-    remaining = {item.id: item.quantity for item in stock}
-    plan = Plan()
     problems: list[str] = []
-    wanted: list[tuple[RecipeIngredient, Decimal, list[StockItem]]] = []
-
+    wanted: Wanted = []
     for ingredient_id in dict.fromkeys(chosen):  # in order, once each
         ingredient = by_id[ingredient_id]
         in_kitchen = [s for s in stock if s.food_id == ingredient.global_food_definition_id]
@@ -157,23 +160,44 @@ def plan_use(
             continue
         need = units_service.to_base(ingredient.quantity * scale, ingredient.unit)
         wanted.append((ingredient, need.quantize(_QUANTUM, rounding=ROUND_HALF_UP), usable))
+    return wanted, problems
 
-    if problems:
-        raise CantUseError(problems)
 
+def _run(wanted: Wanted, stock: list[StockItem]) -> Plan:
+    """Take each ingredient's amount from its items, in order, and describe the result."""
+    remaining = {item.id: item.quantity for item in stock}
+    plan = Plan()
     for ingredient, need, usable in wanted:
+        ordered = sorted(usable, key=_order)
+        # The bar is shown in the unit of the item used first, with everything usable added up.
+        lead = next((i for i in ordered if remaining[i.id] > 0), ordered[0])
+        unit = lead.unit or units_service.base_unit_for(lead.dimension)
+        left_base = sum((remaining[i.id] for i in usable), Decimal(0))
+        total_base = sum(
+            (i.total if i.total is not None else i.quantity for i in usable), Decimal(0)
+        )
+
         taken = allocate(need, usable, remaining)
         got = sum(taken.values(), Decimal(0))
         for item_id, amount in taken.items():
             plan.takes[item_id] = plan.takes.get(item_id, Decimal(0)) + amount
-        short = need - got
         plan.used.append(
             UsedIngredient(
                 ingredient_id=ingredient.id,
                 food_name=ingredient.food_name,
                 quantity=units_service.display_quantity(got, ingredient.unit),
                 unit=ingredient.unit,
-                short_by=units_service.display_quantity(short, ingredient.unit),
+                short_by=units_service.display_quantity(need - got, ingredient.unit),
+            )
+        )
+        plan.previews.append(
+            UsePreviewItem(
+                ingredient_id=ingredient.id,
+                food_name=ingredient.food_name,
+                using=units_service.display_quantity(got, unit),
+                left=units_service.display_quantity(left_base, unit),
+                total=units_service.display_quantity(max(total_base, left_base), unit),
+                unit=unit,
             )
         )
 
@@ -182,6 +206,29 @@ def plan_use(
         if remaining[item_id] <= 0:
             plan.emptied[item_id] = food_of[item_id]
     return plan
+
+
+def plan_use(
+    recipe: RecipeDetail, chosen: list[UUID], servings: Decimal, stock: list[StockItem]
+) -> Plan:
+    """Work out what cooking `chosen` ingredients for `servings` takes from `stock`.
+
+    Raises UnknownIngredientError for an ingredient not in the recipe, and CantUseError (listing
+    every problem at once) when a ticked ingredient has nothing usable in the kitchen.
+    """
+    wanted, problems = _resolve(recipe, chosen, servings, stock)
+    if problems:
+        raise CantUseError(problems)
+    return _run(wanted, stock)
+
+
+def preview_use(
+    recipe: RecipeDetail, chosen: list[UUID], servings: Decimal, stock: list[StockItem]
+) -> UsePreviewResult:
+    """The same plan as plan_use, described for the preview, and without refusing to answer:
+    an ingredient that cannot be used is reported in `problems` and the rest still get a bar."""
+    wanted, problems = _resolve(recipe, chosen, servings, stock)
+    return UsePreviewResult(items=_run(wanted, stock).previews, problems=problems)
 
 
 def _fetch_stock(household_id: UUID, member_id: UUID, food_ids: set[UUID]) -> list[StockItem]:
@@ -198,7 +245,10 @@ def _fetch_stock(household_id: UUID, member_id: UUID, food_ids: set[UUID]) -> li
         return []
     rows = (
         client.table("inventory_items")
-        .select("id, household_food_variant_id, quantity, display_unit, expiry_date, created_at")
+        .select(
+            "id, household_food_variant_id, quantity, total_quantity, display_unit, "
+            "expiry_date, created_at"
+        )
         .eq("household_id", str(household_id))
         .eq("status", "ACTIVE")
         .in_("household_food_variant_id", list(food_of_variant))
@@ -223,9 +273,24 @@ def _fetch_stock(household_id: UUID, member_id: UUID, food_ids: set[UUID]) -> li
             expiry=date.fromisoformat(row["expiry_date"]) if row["expiry_date"] else None,
             created_at=datetime.fromisoformat(row["created_at"]),
             allowed=row["id"] in allowed_ids,
+            total=Decimal(str(row["total_quantity"])),
+            unit=Unit(row["display_unit"]),
         )
         for row in rows
     ]
+
+
+def preview_recipe_use(
+    household_id: UUID, caller: Member, user_id: UUID, recipe_id: UUID, body: UseRecipeRequest
+) -> UsePreviewResult:
+    """What Mark as cooked would do to the kitchen, without doing it."""
+    recipe = recipe_service.get_recipe(household_id, user_id, recipe_id)
+    if recipe is None:
+        raise recipe_service.RecipeNotFoundError
+    by_id = {ingredient.id: ingredient for ingredient in recipe.ingredients}
+    foods = {by_id[i].global_food_definition_id for i in body.ingredient_ids if i in by_id}
+    stock = _fetch_stock(household_id, caller.id, foods) if foods else []
+    return preview_use(recipe, body.ingredient_ids, body.servings, stock)
 
 
 def use_recipe(

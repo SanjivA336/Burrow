@@ -49,6 +49,12 @@ export interface ApiState {
   // How the fake answers a use: 'ok', 'asks-first' (a 409 until confirm_depletion is set) or
   // 'fails' (a plain error).
   recipeUseOutcome: 'ok' | 'asks-first' | 'fails'
+  // The bodies of POST .../recipes/r1/use-preview requests (the amounts left, for the review step).
+  recipePreviews: Record<string, unknown>[]
+  // Whether the fake answers the preview ('ok') or fails it ('fails').
+  recipePreviewOutcome: 'ok' | 'fails'
+  // Replaces the sample recipe's name (to try a very long one).
+  recipeName: string | null
 }
 
 export function newState(overrides: Partial<ApiState> = {}): ApiState {
@@ -63,6 +69,9 @@ export function newState(overrides: Partial<ApiState> = {}): ApiState {
     forbiddenBurrows: [],
     recipeUses: [],
     recipeUseOutcome: 'ok',
+    recipePreviews: [],
+    recipePreviewOutcome: 'ok',
+    recipeName: null,
     ...overrides,
   }
 }
@@ -174,7 +183,50 @@ export async function mockApi(page: Page, state: ApiState): Promise<void> {
         terms.includes('butter') ? [{ term: 'butter', matches: [{ food: butter, score: 1 }] }] : [],
       )
     }
-    if (path === `${base}/recipes/r1`) return reply(route, recipeDetail)
+    if (path === `${base}/recipes/r1`) {
+      return reply(
+        route,
+        state.recipeName ? { ...recipeDetail, name: state.recipeName } : recipeDetail,
+      )
+    }
+    if (path === `${base}/recipes/r1/use-preview` && method === 'POST') {
+      state.recipePreviews.push(JSON.parse(request.postData() ?? '{}') as Record<string, unknown>)
+      if (state.recipePreviewOutcome === 'fails') {
+        return route.fulfill({
+          status: 500,
+          headers: { ...CORS, 'content-type': 'application/json' },
+          body: JSON.stringify({
+            status: 'error',
+            data: null,
+            error: { code: '500', message: 'Something went wrong' },
+            timestamp: new Date().toISOString(),
+          }),
+        })
+      }
+      // Milk: 1 l of the 3 l left (of 4 l bought). Butter: all 1.5 g that is left (of 4 g). Garlic
+      // is not in the kitchen, so it gets no bar.
+      return reply(route, {
+        items: [
+          {
+            ingredient_id: 'i-milk',
+            food_name: 'Whole Milk',
+            using: '1',
+            left: '3',
+            total: '4',
+            unit: 'l',
+          },
+          {
+            ingredient_id: 'i-butter',
+            food_name: 'Butter',
+            using: '1.5',
+            left: '1.5',
+            total: '4',
+            unit: 'g',
+          },
+        ],
+        problems: ["You don't have Garlic in your kitchen"],
+      })
+    }
     if (path === `${base}/recipes/r1/use` && method === 'POST') {
       const body = JSON.parse(request.postData() ?? '{}') as Record<string, unknown>
       state.recipeUses.push(body)

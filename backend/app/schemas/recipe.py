@@ -112,3 +112,26 @@ class UseRecipeResult(BaseModel):
     used: list[UsedIngredient]
     # Foods whose last of an item was used up by this.
     emptied: list[str]
+
+
+class UsePreviewItem(BaseModel):
+    """What cooking would do to one ingredient's stock, for the preview bar.
+
+    All three amounts are in the unit the food is stored in (`unit`), not the recipe's unit.
+    `left` and `total` add up every usable item of that food, so the bar reads like the one in
+    the "use item" screen: `total` is the length of the bar, `left` what is in it now, `using`
+    how much of that this would take.
+    """
+
+    ingredient_id: UUID
+    food_name: str
+    using: Decimal
+    left: Decimal
+    total: Decimal
+    unit: Unit
+
+
+class UsePreviewResult(BaseModel):
+    items: list[UsePreviewItem]
+    # Ticked ingredients that cannot be used at all (not in the kitchen, not comparable), in words.
+    problems: list[str]
